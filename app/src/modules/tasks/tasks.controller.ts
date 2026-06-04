@@ -1,6 +1,7 @@
-import { Body, Controller, Get, Param, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post } from '@nestjs/common';
 import { TasksService } from './tasks.service';
 import { CreateTaskDto } from './dto/create-task.dto';
+import { UpdateTaskDto } from './dto/update-task.dto';
 import { Tenant } from '../../common/tenant/tenant.decorator';
 import { Roles } from '../../auth/decorators/roles.decorator';
 
@@ -24,5 +25,21 @@ export class TasksController {
   @Patch(':id/toggle')
   toggle(@Tenant() tenantId: string, @Param('id') id: string) {
     return this.tasks.toggle(tenantId, id);
+  }
+
+  @Roles('ADMIN', 'FINANCE', 'COMMERCIAL', 'OPERATIONS', 'USER', 'AGENT')
+  @Patch(':id')
+  update(
+    @Tenant() tenantId: string,
+    @Param('id') id: string,
+    @Body() dto: UpdateTaskDto,
+  ) {
+    return this.tasks.update(tenantId, id, dto);
+  }
+
+  @Roles('ADMIN', 'FINANCE', 'COMMERCIAL', 'OPERATIONS', 'USER', 'AGENT')
+  @Delete(':id')
+  remove(@Tenant() tenantId: string, @Param('id') id: string) {
+    return this.tasks.remove(tenantId, id);
   }
 }

@@ -3,7 +3,13 @@
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
-import { fetchProducts, createProduct } from '@/store/catalogSlice';
+import {
+  createProduct,
+  deleteProduct,
+  fetchProducts,
+  type Product,
+  updateProduct,
+} from '@/store/catalogSlice';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,16 +31,20 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Plus } from 'lucide-react';
+import { Pencil, Plus, Trash2 } from 'lucide-react';
 
 const brl = (cents: number) =>
   (cents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+const centsToInput = (cents: number) => (cents / 100).toFixed(2);
+const inputToCents = (value: string) => Math.round(Number(value || '0') * 100);
 
 export default function ProdutosPage() {
   const dispatch = useAppDispatch();
   const { products } = useAppSelector((s) => s.catalog);
 
   const [open, setOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [sku, setSku] = useState('');
   const [name, setName] = useState('');
   const [price, setPrice] = useState('0.00');
@@ -45,24 +55,59 @@ export default function ProdutosPage() {
     void dispatch(fetchProducts());
   }, [dispatch]);
 
-  async function onAdd(e: React.FormEvent) {
+  function resetForm() {
+    setEditingId(null);
+    setSku('');
+    setName('');
+    setPrice('0.00');
+    setCost('0.00');
+    setUnit('UN');
+  }
+
+  function openCreate() {
+    resetForm();
+    setOpen(true);
+  }
+
+  function openEdit(product: Product) {
+    setEditingId(product.id);
+    setSku(product.sku);
+    setName(product.name);
+    setPrice(centsToInput(product.priceCents));
+    setCost(centsToInput(product.costCents));
+    setUnit(product.unit);
+    setOpen(true);
+  }
+
+  async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const res = await dispatch(
-      createProduct({
-        sku,
-        name,
-        priceCents: Math.round(parseFloat(price) * 100),
-        costCents: Math.round(parseFloat(cost) * 100),
-        unit,
-      }),
-    );
-    if (createProduct.fulfilled.match(res)) {
-      toast.success('Produto salvo');
-      setSku('');
-      setName('');
-      setPrice('0.00');
-      setCost('0.00');
+    const payload = {
+      sku,
+      name,
+      priceCents: inputToCents(price),
+      costCents: inputToCents(cost),
+      unit,
+    };
+    const res = editingId
+      ? await dispatch(updateProduct({ id: editingId, ...payload }))
+      : await dispatch(createProduct(payload));
+    const ok = editingId
+      ? updateProduct.fulfilled.match(res)
+      : createProduct.fulfilled.match(res);
+    if (ok) {
+      toast.success(editingId ? 'Produto atualizado' : 'Produto salvo');
+      resetForm();
       setOpen(false);
+    } else {
+      toast.error(typeof res.payload === 'string' ? res.payload : 'Erro');
+    }
+  }
+
+  async function onDelete(product: Product) {
+    if (!window.confirm(`Excluir produto "${product.name}"?`)) return;
+    const res = await dispatch(deleteProduct(product.id));
+    if (deleteProduct.fulfilled.match(res)) {
+      toast.success('Produto excluido');
     } else {
       toast.error(typeof res.payload === 'string' ? res.payload : 'Erro');
     }
@@ -74,7 +119,7 @@ export default function ProdutosPage() {
         title="Produtos"
         description={`${products.length} cadastrado(s)`}
         actions={
-          <Button onClick={() => setOpen(true)}>
+          <Button onClick={openCreate}>
             <Plus className="h-4 w-4" />
             Novo produto
           </Button>
@@ -87,9 +132,10 @@ export default function ProdutosPage() {
               <TableRow>
                 <TableHead>SKU</TableHead>
                 <TableHead>Nome</TableHead>
-                <TableHead>Preço</TableHead>
+                <TableHead>Preco</TableHead>
                 <TableHead>Custo</TableHead>
                 <TableHead>Estoque</TableHead>
+                <TableHead className="w-[96px] text-right">Acoes</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -104,11 +150,31 @@ export default function ProdutosPage() {
                       {p.stockQty} {p.unit}
                     </Badge>
                   </TableCell>
+                  <TableCell>
+                    <div className="flex justify-end gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        title="Editar"
+                        onClick={() => openEdit(p)}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        title="Excluir"
+                        onClick={() => void onDelete(p)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
                 </TableRow>
               ))}
               {products.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={5} className="py-12 text-center text-muted-foreground">
+                  <TableCell colSpan={6} className="py-12 text-center text-muted-foreground">
                     Nenhum produto ainda.
                   </TableCell>
                 </TableRow>
@@ -121,10 +187,10 @@ export default function ProdutosPage() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Novo produto</DialogTitle>
-            <DialogDescription>O estoque começa em 0 — ajuste em Movimentações.</DialogDescription>
+            <DialogTitle>{editingId ? 'Editar produto' : 'Novo produto'}</DialogTitle>
+            <DialogDescription>O saldo de estoque e ajustado em Movimentacoes.</DialogDescription>
           </DialogHeader>
-          <form onSubmit={onAdd} className="grid gap-4">
+          <form onSubmit={onSubmit} className="grid gap-4">
             <div className="grid grid-cols-3 gap-3">
               <div className="grid gap-1.5">
                 <Label>SKU</Label>
@@ -137,7 +203,7 @@ export default function ProdutosPage() {
             </div>
             <div className="grid grid-cols-3 gap-3">
               <div className="grid gap-1.5">
-                <Label>Preço (R$)</Label>
+                <Label>Preco (R$)</Label>
                 <Input
                   type="number"
                   step="0.01"
@@ -162,7 +228,7 @@ export default function ProdutosPage() {
               </div>
             </div>
             <Button type="submit" className="w-full">
-              Salvar produto
+              {editingId ? 'Salvar alteracoes' : 'Salvar produto'}
             </Button>
           </form>
         </DialogContent>

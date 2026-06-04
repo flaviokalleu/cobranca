@@ -1,6 +1,7 @@
-import { Body, Controller, Get, Param, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post } from '@nestjs/common';
 import { SalesService } from './sales.service';
 import { CreateSalesOrderDto } from './dto/create-sales-order.dto';
+import { UpdateSalesOrderDto } from './dto/update-sales-order.dto';
 import { Tenant } from '../../common/tenant/tenant.decorator';
 import { Roles } from '../../auth/decorators/roles.decorator';
 
@@ -24,5 +25,21 @@ export class SalesController {
   @Post(':id/confirm')
   confirm(@Tenant() tenantId: string, @Param('id') id: string) {
     return this.sales.confirm(tenantId, id);
+  }
+
+  @Roles('ADMIN', 'COMMERCIAL', 'AGENT')
+  @Patch(':id')
+  update(
+    @Tenant() tenantId: string,
+    @Param('id') id: string,
+    @Body() dto: UpdateSalesOrderDto,
+  ) {
+    return this.sales.update(tenantId, id, dto);
+  }
+
+  @Roles('ADMIN', 'COMMERCIAL')
+  @Delete(':id')
+  remove(@Tenant() tenantId: string, @Param('id') id: string) {
+    return this.sales.remove(tenantId, id);
   }
 }

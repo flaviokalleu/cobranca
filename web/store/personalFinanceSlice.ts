@@ -6,6 +6,7 @@ export interface PersonalAccount {
   name: string;
   type: string;
   balanceCents: number;
+  active?: boolean;
 }
 
 export interface PersonalCard {
@@ -18,6 +19,8 @@ export interface PersonalCard {
 
 export interface PersonalTransaction {
   id: string;
+  accountId?: string | null;
+  cardId?: string | null;
   type: string;
   amountCents: number;
   description: string;
@@ -35,6 +38,8 @@ export interface SpendingLimit {
   usedCents?: number;
   percentUsed?: number;
   alertThresholdPercent: number;
+  period?: string;
+  active?: boolean;
 }
 
 export interface InvestmentGoal {
@@ -43,6 +48,8 @@ export interface InvestmentGoal {
   targetCents: number;
   currentCents: number;
   percentDone?: number;
+  dueDate?: string | null;
+  notes?: string | null;
 }
 
 export interface PersonalFinanceSummary {
@@ -139,6 +146,160 @@ export const createInvestmentGoal = createAsyncThunk(
   ) => {
     const { status } = await api('POST', '/personal-finance/goals', body);
     if (status >= 300) return rejectWithValue('Erro ao criar meta.');
+    await dispatch(fetchPersonalFinance());
+    return true;
+  },
+);
+
+export const updatePersonalAccount = createAsyncThunk(
+  'personalFinance/updateAccount',
+  async (
+    body: { id: string; name?: string; type?: string; balanceCents?: number; active?: boolean },
+    { dispatch, rejectWithValue },
+  ) => {
+    const { id, ...payload } = body;
+    const { status } = await api('PATCH', `/personal-finance/accounts/${id}`, payload);
+    if (status >= 300) return rejectWithValue('Erro ao atualizar conta.');
+    await dispatch(fetchPersonalFinance());
+    return true;
+  },
+);
+
+export const deletePersonalAccount = createAsyncThunk(
+  'personalFinance/deleteAccount',
+  async (id: string, { dispatch, rejectWithValue }) => {
+    const { status } = await api('DELETE', `/personal-finance/accounts/${id}`);
+    if (status >= 300) return rejectWithValue('Erro ao excluir conta.');
+    await dispatch(fetchPersonalFinance());
+    return true;
+  },
+);
+
+export const updatePersonalCard = createAsyncThunk(
+  'personalFinance/updateCard',
+  async (
+    body: {
+      id: string;
+      name?: string;
+      limitCents?: number;
+      closingDay?: number | null;
+      dueDay?: number | null;
+      active?: boolean;
+    },
+    { dispatch, rejectWithValue },
+  ) => {
+    const { id, ...payload } = body;
+    const { status } = await api('PATCH', `/personal-finance/cards/${id}`, payload);
+    if (status >= 300) return rejectWithValue('Erro ao atualizar cartao.');
+    await dispatch(fetchPersonalFinance());
+    return true;
+  },
+);
+
+export const deletePersonalCard = createAsyncThunk(
+  'personalFinance/deleteCard',
+  async (id: string, { dispatch, rejectWithValue }) => {
+    const { status } = await api('DELETE', `/personal-finance/cards/${id}`);
+    if (status >= 300) return rejectWithValue('Erro ao excluir cartao.');
+    await dispatch(fetchPersonalFinance());
+    return true;
+  },
+);
+
+export const updatePersonalTransaction = createAsyncThunk(
+  'personalFinance/updateTransaction',
+  async (
+    body: {
+      id: string;
+      accountId?: string | null;
+      cardId?: string | null;
+      type?: string;
+      amountCents?: number;
+      description?: string;
+      category?: string;
+      subcategory?: string | null;
+      occurredAt?: string;
+      source?: string;
+      rawInput?: string | null;
+      attachmentUrl?: string | null;
+    },
+    { dispatch, rejectWithValue },
+  ) => {
+    const { id, ...payload } = body;
+    const { status } = await api('PATCH', `/personal-finance/transactions/${id}`, payload);
+    if (status >= 300) return rejectWithValue('Erro ao atualizar transacao.');
+    await dispatch(fetchPersonalFinance());
+    return true;
+  },
+);
+
+export const deletePersonalTransaction = createAsyncThunk(
+  'personalFinance/deleteTransaction',
+  async (id: string, { dispatch, rejectWithValue }) => {
+    const { status } = await api('DELETE', `/personal-finance/transactions/${id}`);
+    if (status >= 300) return rejectWithValue('Erro ao excluir transacao.');
+    await dispatch(fetchPersonalFinance());
+    return true;
+  },
+);
+
+export const updateSpendingLimit = createAsyncThunk(
+  'personalFinance/updateLimit',
+  async (
+    body: {
+      id: string;
+      category?: string;
+      period?: string;
+      limitCents?: number;
+      alertThresholdPercent?: number;
+      active?: boolean;
+    },
+    { dispatch, rejectWithValue },
+  ) => {
+    const { id, ...payload } = body;
+    const { status } = await api('PATCH', `/personal-finance/limits/${id}`, payload);
+    if (status >= 300) return rejectWithValue('Erro ao atualizar limite.');
+    await dispatch(fetchPersonalFinance());
+    return true;
+  },
+);
+
+export const deleteSpendingLimit = createAsyncThunk(
+  'personalFinance/deleteLimit',
+  async (id: string, { dispatch, rejectWithValue }) => {
+    const { status } = await api('DELETE', `/personal-finance/limits/${id}`);
+    if (status >= 300) return rejectWithValue('Erro ao excluir limite.');
+    await dispatch(fetchPersonalFinance());
+    return true;
+  },
+);
+
+export const updateInvestmentGoal = createAsyncThunk(
+  'personalFinance/updateGoal',
+  async (
+    body: {
+      id: string;
+      name?: string;
+      targetCents?: number;
+      currentCents?: number;
+      dueDate?: string | null;
+      notes?: string | null;
+    },
+    { dispatch, rejectWithValue },
+  ) => {
+    const { id, ...payload } = body;
+    const { status } = await api('PATCH', `/personal-finance/goals/${id}`, payload);
+    if (status >= 300) return rejectWithValue('Erro ao atualizar meta.');
+    await dispatch(fetchPersonalFinance());
+    return true;
+  },
+);
+
+export const deleteInvestmentGoal = createAsyncThunk(
+  'personalFinance/deleteGoal',
+  async (id: string, { dispatch, rejectWithValue }) => {
+    const { status } = await api('DELETE', `/personal-finance/goals/${id}`);
+    if (status >= 300) return rejectWithValue('Erro ao excluir meta.');
     await dispatch(fetchPersonalFinance());
     return true;
   },

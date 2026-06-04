@@ -1,7 +1,9 @@
 import {
+  BadRequestException,
   Injectable,
   UnauthorizedException,
   ConflictException,
+  NotFoundException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
@@ -10,6 +12,7 @@ import { AuditService } from '../common/audit/audit.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { CreateUserDto } from './dto/create-user.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
 import { Role } from './jwt-user.interface';
 import { TenantsService } from '../modules/tenants/tenants.service';
 
@@ -98,6 +101,69 @@ export class AuthService {
     });
   }
 
+  async updateUser(
+    tenantId: string,
+    actorId: string,
+    actor: string,
+    id: string,
+    dto: UpdateUserDto,
+  ) {
+    const user = await this.prisma.user.findFirst({ where: { id, tenantId } });
+    if (!user) throw new NotFoundException('Usuario nao encontrado neste tenant.');
+    if (dto.email && dto.email !== user.email) {
+      const exists = await this.prisma.user.findFirst({
+        where: { tenantId, email: dto.email },
+      });
+      if (exists) throw new ConflictException('E-mail ja cadastrado neste tenant.');
+    }
+    if (dto.role && dto.role !== 'ADMIN' && user.role === 'ADMIN') {
+      await this.ensureAnotherAdmin(tenantId, id);
+    }
+    if (actorId === id && dto.role && dto.role !== user.role) {
+      throw new BadRequestException('Voce nao pode alterar o proprio papel.');
+    }
+
+    const passwordHash = dto.password ? await bcrypt.hash(dto.password, 10) : undefined;
+    const updated = await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        email: dto.email,
+        passwordHash,
+        role: dto.role,
+      },
+      select: { id: true, email: true, role: true, createdAt: true },
+    });
+    await this.audit.record({
+      tenantId,
+      actor,
+      action: 'USER_UPDATED',
+      entityType: 'User',
+      entityId: user.id,
+      metadata: { role: updated.role },
+    });
+    return updated;
+  }
+
+  async deleteUser(tenantId: string, actorId: string, actor: string, id: string) {
+    if (actorId === id) {
+      throw new BadRequestException('Voce nao pode excluir o proprio usuario.');
+    }
+    const user = await this.prisma.user.findFirst({ where: { id, tenantId } });
+    if (!user) throw new NotFoundException('Usuario nao encontrado neste tenant.');
+    if (user.role === 'ADMIN') {
+      await this.ensureAnotherAdmin(tenantId, id);
+    }
+    await this.prisma.user.delete({ where: { id: user.id } });
+    await this.audit.record({
+      tenantId,
+      actor,
+      action: 'USER_DELETED',
+      entityType: 'User',
+      entityId: user.id,
+    });
+    return { ok: true };
+  }
+
   private sign(user: UserRecord) {
     const accessToken = this.jwt.sign({
       sub: user.id,
@@ -106,5 +172,18 @@ export class AuthService {
       email: user.email,
     });
     return { accessToken, role: user.role as Role, tenantId: user.tenantId };
+  }
+
+  private async ensureAnotherAdmin(tenantId: string, excludedUserId: string) {
+    const admins = await this.prisma.user.count({
+      where: {
+        tenantId,
+        role: 'ADMIN',
+        id: { not: excludedUserId },
+      },
+    });
+    if (admins === 0) {
+      throw new BadRequestException('O tenant precisa manter ao menos um ADMIN.');
+    }
   }
 }

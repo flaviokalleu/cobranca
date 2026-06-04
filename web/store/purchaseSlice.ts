@@ -9,6 +9,15 @@ export interface PurchaseOrder {
   totalCents: number;
   payableId?: string | null;
   createdAt: string;
+  items?: PurchaseOrderItem[];
+}
+
+export interface PurchaseOrderItem {
+  id: string;
+  productId: string;
+  qty: number;
+  unitCostCents: number;
+  totalCents: number;
 }
 
 const arr = <T>(d: unknown): T[] => (Array.isArray(d) ? (d as T[]) : []);
@@ -38,6 +47,34 @@ export const receivePurchase = createAsyncThunk(
   async (id: string, { dispatch, rejectWithValue }) => {
     const { status } = await api('POST', `/purchases/${id}/receive`);
     if (status >= 300) return rejectWithValue('Erro ao receber compra.');
+    await dispatch(fetchPurchases());
+    return true;
+  },
+);
+
+export const updatePurchase = createAsyncThunk(
+  'purchases/update',
+  async (
+    body: {
+      id: string;
+      supplierId?: string;
+      items?: { productId: string; qty: number; unitCostCents?: number }[];
+    },
+    { dispatch, rejectWithValue },
+  ) => {
+    const { id, ...payload } = body;
+    const { status } = await api('PATCH', `/purchases/${id}`, payload);
+    if (status >= 300) return rejectWithValue('Erro ao atualizar pedido de compra.');
+    await dispatch(fetchPurchases());
+    return true;
+  },
+);
+
+export const deletePurchase = createAsyncThunk(
+  'purchases/delete',
+  async (id: string, { dispatch, rejectWithValue }) => {
+    const { status } = await api('DELETE', `/purchases/${id}`);
+    if (status >= 300) return rejectWithValue('Erro ao excluir pedido de compra.');
     await dispatch(fetchPurchases());
     return true;
   },

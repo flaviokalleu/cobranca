@@ -16,6 +16,7 @@ export interface Product {
   costCents: number;
   stockQty: number;
   unit: string;
+  description?: string | null;
 }
 export interface StockMovement {
   id: string;
@@ -23,6 +24,8 @@ export interface StockMovement {
   type: string;
   qty: number;
   reason: string;
+  refType?: string | null;
+  refId?: string | null;
   createdAt: string;
 }
 
@@ -51,6 +54,30 @@ export const createSupplier = createAsyncThunk(
   },
 );
 
+export const updateSupplier = createAsyncThunk(
+  'catalog/updateSupplier',
+  async (
+    body: { id: string; name?: string; document?: string; phone?: string; email?: string },
+    { dispatch, rejectWithValue },
+  ) => {
+    const { id, ...payload } = body;
+    const { status } = await api('PATCH', `/suppliers/${id}`, payload);
+    if (status >= 300) return rejectWithValue('Erro ao atualizar fornecedor.');
+    await dispatch(fetchSuppliers());
+    return true;
+  },
+);
+
+export const deleteSupplier = createAsyncThunk(
+  'catalog/deleteSupplier',
+  async (id: string, { dispatch, rejectWithValue }) => {
+    const { status } = await api('DELETE', `/suppliers/${id}`);
+    if (status >= 300) return rejectWithValue('Erro ao excluir fornecedor.');
+    await dispatch(fetchSuppliers());
+    return true;
+  },
+);
+
 export const createProduct = createAsyncThunk(
   'catalog/createProduct',
   async (
@@ -70,6 +97,38 @@ export const createProduct = createAsyncThunk(
   },
 );
 
+export const updateProduct = createAsyncThunk(
+  'catalog/updateProduct',
+  async (
+    body: {
+      id: string;
+      sku?: string;
+      name?: string;
+      description?: string;
+      priceCents?: number;
+      costCents?: number;
+      unit?: string;
+    },
+    { dispatch, rejectWithValue },
+  ) => {
+    const { id, ...payload } = body;
+    const { status } = await api('PATCH', `/products/${id}`, payload);
+    if (status >= 300) return rejectWithValue('Erro ao atualizar produto.');
+    await dispatch(fetchProducts());
+    return true;
+  },
+);
+
+export const deleteProduct = createAsyncThunk(
+  'catalog/deleteProduct',
+  async (id: string, { dispatch, rejectWithValue }) => {
+    const { status } = await api('DELETE', `/products/${id}`);
+    if (status >= 300) return rejectWithValue('Erro ao excluir produto.');
+    await dispatch(fetchProducts());
+    return true;
+  },
+);
+
 export const adjustStock = createAsyncThunk(
   'catalog/adjustStock',
   async (
@@ -78,6 +137,30 @@ export const adjustStock = createAsyncThunk(
   ) => {
     const { status } = await api('POST', '/stock/adjust', body);
     if (status >= 300) return rejectWithValue('Erro ao ajustar estoque.');
+    await Promise.all([dispatch(fetchMovements()), dispatch(fetchProducts())]);
+    return true;
+  },
+);
+
+export const updateStockMovement = createAsyncThunk(
+  'catalog/updateStockMovement',
+  async (
+    body: { id: string; qty?: number; reason?: string },
+    { dispatch, rejectWithValue },
+  ) => {
+    const { id, ...payload } = body;
+    const { status } = await api('PATCH', `/stock/movements/${id}`, payload);
+    if (status >= 300) return rejectWithValue('Erro ao atualizar movimentacao.');
+    await Promise.all([dispatch(fetchMovements()), dispatch(fetchProducts())]);
+    return true;
+  },
+);
+
+export const deleteStockMovement = createAsyncThunk(
+  'catalog/deleteStockMovement',
+  async (id: string, { dispatch, rejectWithValue }) => {
+    const { status } = await api('DELETE', `/stock/movements/${id}`);
+    if (status >= 300) return rejectWithValue('Erro ao excluir movimentacao.');
     await Promise.all([dispatch(fetchMovements()), dispatch(fetchProducts())]);
     return true;
   },

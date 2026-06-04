@@ -3,7 +3,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
-import { fetchSales, createSale, confirmSale } from '@/store/salesSlice';
+import {
+  confirmSale,
+  createSale,
+  deleteSale,
+  fetchSales,
+  type SalesOrder,
+  updateSale,
+} from '@/store/salesSlice';
 import { fetchProducts } from '@/store/catalogSlice';
 import { fetchCustomers } from '@/store/dataSlice';
 import { PageHeader } from '@/components/page-header';
@@ -34,7 +41,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Plus, X } from 'lucide-react';
+import { Check, Pencil, Plus, Trash2, X } from 'lucide-react';
 
 const brl = (cents: number) =>
   (cents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -51,6 +58,7 @@ export default function VendasPage() {
   const { customers } = useAppSelector((s) => s.data);
 
   const [open, setOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [customerId, setCustomerId] = useState('');
   const [lineProduct, setLineProduct] = useState('');
   const [lineQty, setLineQty] = useState('1');
@@ -78,9 +86,31 @@ export default function VendasPage() {
     [customers],
   );
   const itemsTotal = items.reduce(
-    (s, i) => s + (productById[i.productId]?.priceCents ?? 0) * i.qty,
+    (sum, item) => sum + (productById[item.productId]?.priceCents ?? 0) * item.qty,
     0,
   );
+
+  function resetForm() {
+    setEditingId(null);
+    setCustomerId(customers[0]?.id ?? '');
+    setLineProduct(products[0]?.id ?? '');
+    setLineQty('1');
+    setItems([]);
+  }
+
+  function openCreate() {
+    resetForm();
+    setOpen(true);
+  }
+
+  function openEdit(order: SalesOrder) {
+    setEditingId(order.id);
+    setCustomerId(order.customerId);
+    setItems(order.items?.map((item) => ({ productId: item.productId, qty: item.qty })) ?? []);
+    setLineProduct(products[0]?.id ?? '');
+    setLineQty('1');
+    setOpen(true);
+  }
 
   function addItem() {
     const qty = parseInt(lineQty, 10);
@@ -95,10 +125,13 @@ export default function VendasPage() {
       toast.error('Adicione ao menos um item.');
       return;
     }
-    const res = await dispatch(createSale({ customerId, items }));
-    if (createSale.fulfilled.match(res)) {
-      toast.success('Pedido criado (rascunho)');
-      setItems([]);
+    const res = editingId
+      ? await dispatch(updateSale({ id: editingId, customerId, items }))
+      : await dispatch(createSale({ customerId, items }));
+    const ok = editingId ? updateSale.fulfilled.match(res) : createSale.fulfilled.match(res);
+    if (ok) {
+      toast.success(editingId ? 'Pedido atualizado' : 'Pedido criado');
+      resetForm();
       setOpen(false);
     } else {
       toast.error(typeof res.payload === 'string' ? res.payload : 'Erro');
@@ -107,8 +140,14 @@ export default function VendasPage() {
 
   async function onConfirm(id: string) {
     const res = await dispatch(confirmSale(id));
-    if (confirmSale.fulfilled.match(res))
-      toast.success('Pedido confirmado — estoque baixado e cobrança gerada');
+    if (confirmSale.fulfilled.match(res)) toast.success('Pedido confirmado');
+    else toast.error(typeof res.payload === 'string' ? res.payload : 'Erro');
+  }
+
+  async function onDelete(order: SalesOrder) {
+    if (!window.confirm(`Excluir pedido #${order.number}?`)) return;
+    const res = await dispatch(deleteSale(order.id));
+    if (deleteSale.fulfilled.match(res)) toast.success('Pedido excluido');
     else toast.error(typeof res.payload === 'string' ? res.payload : 'Erro');
   }
 
@@ -118,7 +157,7 @@ export default function VendasPage() {
         title="Pedidos de venda"
         description={`${orders.length} pedido(s)`}
         actions={
-          <Button onClick={() => setOpen(true)} disabled={products.length === 0 || customers.length === 0}>
+          <Button onClick={openCreate} disabled={products.length === 0 || customers.length === 0}>
             <Plus className="h-4 w-4" />
             Novo pedido
           </Button>
@@ -133,33 +172,60 @@ export default function VendasPage() {
                 <TableHead>Cliente</TableHead>
                 <TableHead>Total</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
+                <TableHead className="w-[136px] text-right">Acoes</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {orders.map((o) => (
-                <TableRow key={o.id}>
-                  <TableCell className="font-medium">#{o.number}</TableCell>
-                  <TableCell>{customerById[o.customerId] ?? '-'}</TableCell>
-                  <TableCell>{brl(o.totalCents)}</TableCell>
-                  <TableCell>
-                    {o.status === 'CONFIRMED' ? (
-                      <Badge variant="success">Confirmado</Badge>
-                    ) : o.status === 'CANCELED' ? (
-                      <Badge variant="destructive">Cancelado</Badge>
-                    ) : (
-                      <Badge variant="warning">Rascunho</Badge>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {o.status === 'DRAFT' && (
-                      <Button size="sm" onClick={() => onConfirm(o.id)}>
-                        Confirmar
-                      </Button>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))}
+              {orders.map((o) => {
+                const draft = o.status === 'DRAFT';
+                return (
+                  <TableRow key={o.id}>
+                    <TableCell className="font-medium">#{o.number}</TableCell>
+                    <TableCell>{customerById[o.customerId] ?? '-'}</TableCell>
+                    <TableCell>{brl(o.totalCents)}</TableCell>
+                    <TableCell>
+                      {o.status === 'CONFIRMED' ? (
+                        <Badge variant="success">Confirmado</Badge>
+                      ) : o.status === 'CANCELED' ? (
+                        <Badge variant="destructive">Cancelado</Badge>
+                      ) : (
+                        <Badge variant="warning">Rascunho</Badge>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          title="Confirmar"
+                          disabled={!draft}
+                          onClick={() => void onConfirm(o.id)}
+                        >
+                          <Check className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          title={draft ? 'Editar' : 'Somente rascunhos'}
+                          disabled={!draft}
+                          onClick={() => openEdit(o)}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          title={draft ? 'Excluir' : 'Somente rascunhos'}
+                          disabled={!draft}
+                          onClick={() => void onDelete(o)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
               {orders.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={5} className="py-12 text-center text-muted-foreground">
@@ -175,10 +241,8 @@ export default function VendasPage() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Novo pedido de venda</DialogTitle>
-            <DialogDescription>
-              Ao confirmar, baixa o estoque e gera uma cobrança.
-            </DialogDescription>
+            <DialogTitle>{editingId ? 'Editar pedido de venda' : 'Novo pedido de venda'}</DialogTitle>
+            <DialogDescription>Ao confirmar, baixa o estoque e gera uma cobranca.</DialogDescription>
           </DialogHeader>
           <form onSubmit={onSubmit} className="grid gap-4">
             <div className="grid gap-1.5">
@@ -208,7 +272,7 @@ export default function VendasPage() {
                     <SelectContent>
                       {products.map((p) => (
                         <SelectItem key={p.id} value={p.id}>
-                          {p.name} — {brl(p.priceCents)}
+                          {p.name} - {brl(p.priceCents)}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -228,12 +292,11 @@ export default function VendasPage() {
 
               <ul className="mt-3 space-y-1">
                 {items.map((it, idx) => {
-                  const p = productById[it.productId];
+                  const product = productById[it.productId];
                   return (
-                    <li key={idx} className="flex items-center justify-between text-sm">
+                    <li key={`${it.productId}-${idx}`} className="flex items-center justify-between text-sm">
                       <span>
-                        {p?.name} × {it.qty} ={' '}
-                        {brl((p?.priceCents ?? 0) * it.qty)}
+                        {product?.name} x {it.qty} = {brl((product?.priceCents ?? 0) * it.qty)}
                       </span>
                       <button
                         type="button"
@@ -256,7 +319,7 @@ export default function VendasPage() {
             </div>
 
             <Button type="submit" className="w-full">
-              Criar pedido
+              {editingId ? 'Salvar alteracoes' : 'Criar pedido'}
             </Button>
           </form>
         </DialogContent>

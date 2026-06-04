@@ -5,14 +5,17 @@ import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { fetchSummary } from '@/store/financeSlice';
 import { PageHeader } from '@/components/page-header';
 import { StatCard } from '@/components/stat-card';
+import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import {
-  TrendingUp,
-  TrendingDown,
-  Scale,
-  Wallet,
   ArrowDownCircle,
   ArrowUpCircle,
+  Pencil,
+  Scale,
+  Trash2,
+  TrendingDown,
+  TrendingUp,
+  Wallet,
 } from 'lucide-react';
 
 const brl = (cents: number) =>
@@ -40,7 +43,7 @@ export default function DrePage() {
     );
   }
 
-  const s = summary ?? {
+  const data = summary ?? {
     revenueCents: 0,
     expenseCents: 0,
     resultCents: 0,
@@ -51,23 +54,46 @@ export default function DrePage() {
 
   return (
     <>
-      <PageHeader title="DRE" description="Resultado e posição financeira" />
+      <PageHeader
+        title="DRE"
+        description="Resultado e posicao financeira"
+        actions={
+          <div className="flex gap-1">
+            <Button
+              variant="outline"
+              size="icon"
+              title="Relatorio derivado; edite a origem"
+              disabled
+            >
+              <Pencil className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              title="Relatorio derivado; exclua pela origem"
+              disabled
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        }
+      />
       <div className="space-y-6 p-6">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <StatCard label="Receita" value={brl(s.revenueCents)} icon={TrendingUp} accent="green" />
-          <StatCard label="Despesa" value={brl(s.expenseCents)} icon={TrendingDown} accent="red" />
+          <StatCard label="Receita" value={brl(data.revenueCents)} icon={TrendingUp} accent="green" />
+          <StatCard label="Despesa" value={brl(data.expenseCents)} icon={TrendingDown} accent="red" />
           <StatCard
             label="Resultado"
-            value={brl(s.resultCents)}
-            hint={s.resultCents >= 0 ? 'lucro' : 'prejuízo'}
+            value={brl(data.resultCents)}
+            hint={data.resultCents >= 0 ? 'lucro' : 'prejuizo'}
             icon={Scale}
-            accent={s.resultCents >= 0 ? 'green' : 'red'}
+            accent={data.resultCents >= 0 ? 'green' : 'red'}
           />
         </div>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <StatCard label="Em caixa" value={brl(s.cashCents)} icon={Wallet} accent="indigo" />
-          <StatCard label="A receber" value={brl(s.aReceberCents)} icon={ArrowDownCircle} accent="indigo" />
-          <StatCard label="A pagar" value={brl(s.aPagarCents)} icon={ArrowUpCircle} accent="slate" />
+          <StatCard label="Em caixa" value={brl(data.cashCents)} icon={Wallet} accent="indigo" />
+          <StatCard label="A receber" value={brl(data.aReceberCents)} icon={ArrowDownCircle} accent="indigo" />
+          <StatCard label="A pagar" value={brl(data.aPagarCents)} icon={ArrowUpCircle} accent="slate" />
         </div>
       </div>
     </>

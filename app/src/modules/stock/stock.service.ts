@@ -6,6 +6,7 @@ import {
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { AuditService } from '../../common/audit/audit.service';
 import { AdjustStockDto } from './dto/adjust-stock.dto';
+import { UpdateStockMovementDto } from './dto/update-stock-movement.dto';
 
 export type StockMoveType = 'IN' | 'OUT';
 
@@ -88,5 +89,82 @@ export class StockService {
       orderBy: { createdAt: 'desc' },
       take: 100,
     });
+  }
+
+  async updateMovement(tenantId: string, id: string, dto: UpdateStockMovementDto) {
+    const movement = await this.prisma.stockMovement.findFirst({
+      where: { id, tenantId },
+    });
+    if (!movement) throw new NotFoundException('Movimentacao nao encontrada.');
+    if (movement.refType !== 'ADJUST') {
+      throw new BadRequestException(
+        'Somente ajustes manuais podem ser editados. Edite o documento de origem.',
+      );
+    }
+
+    const oldSignedQty = movement.type === 'IN' ? movement.qty : -movement.qty;
+    const nextSignedQty = dto.qty ?? oldSignedQty;
+    if (nextSignedQty === 0) {
+      throw new BadRequestException('Informe uma quantidade diferente de zero.');
+    }
+    const delta = nextSignedQty - oldSignedQty;
+    const type: StockMoveType = nextSignedQty > 0 ? 'IN' : 'OUT';
+
+    await this.prisma.$transaction([
+      this.prisma.stockMovement.update({
+        where: { id: movement.id },
+        data: {
+          type,
+          qty: Math.abs(nextSignedQty),
+          reason: dto.reason,
+        },
+      }),
+      this.prisma.product.update({
+        where: { id: movement.productId },
+        data: { stockQty: { increment: delta } },
+      }),
+    ]);
+
+    await this.audit.record({
+      tenantId,
+      actor: 'system',
+      action: 'STOCK_MOVEMENT_UPDATED',
+      entityType: 'StockMovement',
+      entityId: movement.id,
+      metadata: { delta },
+    });
+
+    return this.prisma.stockMovement.findFirst({
+      where: { id: movement.id, tenantId },
+    });
+  }
+
+  async removeMovement(tenantId: string, id: string) {
+    const movement = await this.prisma.stockMovement.findFirst({
+      where: { id, tenantId },
+    });
+    if (!movement) throw new NotFoundException('Movimentacao nao encontrada.');
+    if (movement.refType !== 'ADJUST') {
+      throw new BadRequestException(
+        'Somente ajustes manuais podem ser excluidos. Edite o documento de origem.',
+      );
+    }
+    const signedQty = movement.type === 'IN' ? movement.qty : -movement.qty;
+    await this.prisma.$transaction([
+      this.prisma.stockMovement.delete({ where: { id: movement.id } }),
+      this.prisma.product.update({
+        where: { id: movement.productId },
+        data: { stockQty: { increment: -signedQty } },
+      }),
+    ]);
+    await this.audit.record({
+      tenantId,
+      actor: 'system',
+      action: 'STOCK_MOVEMENT_DELETED',
+      entityType: 'StockMovement',
+      entityId: movement.id,
+      metadata: { revertedQty: signedQty },
+    });
+    return { ok: true };
   }
 }

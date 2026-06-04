@@ -13,35 +13,35 @@ generator client {
 
 /// Cliente devedor, sempre dentro de um tenant (empresa).
 model Customer {
-  id        String   @id @default(cuid())
-  tenantId  String
-  name      String
-  document  String?
-  phone     String
-  whatsapp  String?
-  email     String?
-  address   String?
-  city      String?
-  profession String?
+  id          String   @id @default(cuid())
+  tenantId    String
+  name        String
+  document    String?
+  phone       String
+  whatsapp    String?
+  email       String?
+  address     String?
+  city        String?
+  profession  String?
   incomeCents Int?
-  createdAt DateTime @default(now())
-  charges   Charge[]
+  createdAt   DateTime @default(now())
+  charges     Charge[]
 
   @@index([tenantId])
 }
 
 /// Cobranca emitida para um cliente.
 model Charge {
-  id          String    @id @default(cuid())
-  tenantId    String
-  customerId  String
-  customer    Customer  @relation(fields: [customerId], references: [id])
-  amountCents Int
-  description String
-  dueDate     DateTime
-  status      String    @default("PENDING") // PENDING | PAID | CANCELED
-  createdAt   DateTime  @default(now())
-  paidAt      DateTime?
+  id              String    @id @default(cuid())
+  tenantId        String
+  customerId      String
+  customer        Customer  @relation(fields: [customerId], references: [id])
+  amountCents     Int
+  description     String
+  dueDate         DateTime
+  status          String    @default("PENDING") // PENDING | PAID | CANCELED
+  createdAt       DateTime  @default(now())
+  paidAt          DateTime?
   gatewayProvider String?
   gatewayChargeId String?
   paymentLink     String?
@@ -68,8 +68,8 @@ model LedgerEntry {
 
 /// Configuracoes por tenant (dados do recebedor PIX).
 model Settings {
-  id           String   @id @default(cuid())
-  tenantId     String   @unique
+  id               String   @id @default(cuid())
+  tenantId         String   @unique
   pixKey           String
   merchantName     String
   merchantCity     String
@@ -295,20 +295,20 @@ model CustomerDocument {
 
 /// Evento operacional para calendario, visitas, vencimentos e tarefas.
 model CalendarEvent {
-  id          String    @id @default(cuid())
-  tenantId    String
-  title       String
-  type        String    @default("MEETING") // MEETING | VISIT | CHARGE | CONTRACT | DUE_DATE | TASK
-  startsAt    DateTime
-  endsAt      DateTime?
-  status      String    @default("SCHEDULED") // SCHEDULED | DONE | CANCELED
-  customerId  String?
-  chargeId    String?
-  payableId   String?
-  taskId      String?
-  notes       String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id         String    @id @default(cuid())
+  tenantId   String
+  title      String
+  type       String    @default("MEETING") // MEETING | VISIT | CHARGE | CONTRACT | DUE_DATE | TASK
+  startsAt   DateTime
+  endsAt     DateTime?
+  status     String    @default("SCHEDULED") // SCHEDULED | DONE | CANCELED
+  customerId String?
+  chargeId   String?
+  payableId  String?
+  taskId     String?
+  notes      String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
 
   @@index([tenantId, startsAt])
   @@index([tenantId, status])
@@ -363,22 +363,22 @@ model PersonalCreditCard {
 
 /// Transacao criada manualmente, por WhatsApp ou por integracao.
 model PersonalFinanceTransaction {
-  id                String   @id @default(cuid())
-  tenantId          String
-  accountId         String?
-  cardId            String?
-  type              String   // EXPENSE | INCOME | TRANSFER
-  amountCents       Int
-  description       String
-  category          String   @default("Outros")
-  subcategory       String?
-  occurredAt        DateTime
-  source            String   @default("MANUAL") // MANUAL | WHATSAPP_TEXT | WHATSAPP_AUDIO | WHATSAPP_IMAGE | WHATSAPP_PDF | IMPORT
-  rawInput          String?
-  attachmentUrl     String?
-  classifier        String   @default("RULES")
-  confidence        Int      @default(70)
-  createdAt         DateTime @default(now())
+  id            String   @id @default(cuid())
+  tenantId      String
+  accountId     String?
+  cardId        String?
+  type          String // EXPENSE | INCOME | TRANSFER
+  amountCents   Int
+  description   String
+  category      String   @default("Outros")
+  subcategory   String?
+  occurredAt    DateTime
+  source        String   @default("MANUAL") // MANUAL | WHATSAPP_TEXT | WHATSAPP_AUDIO | WHATSAPP_IMAGE | WHATSAPP_PDF | IMPORT
+  rawInput      String?
+  attachmentUrl String?
+  classifier    String   @default("RULES")
+  confidence    Int      @default(70)
+  createdAt     DateTime @default(now())
 
   @@index([tenantId, occurredAt])
   @@index([tenantId, category])
@@ -459,24 +459,24 @@ model WhatsappConnection {
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 
-  sessions          WhatsappSession[]
-  logs              WhatsappConnectionLog[]
+  sessions WhatsappSession[]
+  logs     WhatsappConnectionLog[]
 
   @@index([status])
 }
 
 /// Credenciais principais da sessao Baileys, sempre criptografadas antes de persistir.
 model WhatsappSession {
-  id           String   @id @default(cuid())
+  id           String              @id @default(cuid())
   connectionId String?
   connection   WhatsappConnection? @relation(fields: [connectionId], references: [id], onDelete: Cascade)
-  sessionName  String   @default("main-bot")
+  sessionName  String              @default("main-bot")
   creds        String
-  isActive     Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  isActive     Boolean             @default(true)
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
 
-  keys         WhatsappSessionKey[]
+  keys WhatsappSessionKey[]
 
   @@index([sessionName])
   @@index([isActive])
@@ -484,14 +484,14 @@ model WhatsappSession {
 
 /// Chaves individuais da sessao Baileys, criptografadas e atualizadas incrementalmente.
 model WhatsappSessionKey {
-  id        String   @id @default(cuid())
+  id        String          @id @default(cuid())
   sessionId String
   session   WhatsappSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   keyType   String
   keyId     String
   keyValue  String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
 
   @@unique([sessionId, keyType, keyId])
   @@index([keyType])
@@ -500,7 +500,7 @@ model WhatsappSessionKey {
 
 /// Logs administrativos da conexao principal do WhatsApp.
 model WhatsappConnectionLog {
-  id           String    @id @default(cuid())
+  id           String              @id @default(cuid())
   connectionId String?
   connection   WhatsappConnection? @relation(fields: [connectionId], references: [id], onDelete: SetNull)
   adminId      String?
@@ -508,7 +508,7 @@ model WhatsappConnectionLog {
   status       String?
   description  String?
   metadata     String?
-  createdAt    DateTime  @default(now())
+  createdAt    DateTime            @default(now())
 
   @@index([connectionId])
   @@index([createdAt])
@@ -590,36 +590,36 @@ model CompanyActivationLog {
 
 /// Lancamento financeiro confirmado via WhatsApp. Valores em centavos para consistencia.
 model FinancialEntry {
-  id                  String    @id @default(cuid())
-  tenantId            String
-  whatsappUserId      String
-  userWhatsapp        String
-  tipo                String    // receita | gasto
-  valorCents          Int
-  moeda               String    @default("BRL")
-  dataTransacao       DateTime?
-  horaTransacao       String?
-  pagadorNome         String?
-  pagadorDocumento    String?
-  pagadorInstituicao  String?
-  recebedorNome       String?
-  recebedorDocumento  String?
+  id                   String    @id @default(cuid())
+  tenantId             String
+  whatsappUserId       String
+  userWhatsapp         String
+  tipo                 String // receita | gasto
+  valorCents           Int
+  moeda                String    @default("BRL")
+  dataTransacao        DateTime?
+  horaTransacao        String?
+  pagadorNome          String?
+  pagadorDocumento     String?
+  pagadorInstituicao   String?
+  recebedorNome        String?
+  recebedorDocumento   String?
   recebedorInstituicao String?
-  chavePix            String?
-  tipoTransferencia   String?
-  idTransacao         String?
-  codigoAutenticacao  String?
-  numeroControle      String?
-  bancoEmissor        String?
-  situacao            String?
-  descricao           String
-  confianca           String
-  fonteExtracao       String
-  arquivoUrl          String?
-  jsonOriginal        String?
-  status              String    @default("pending_confirmation") // pending_confirmation | saved | corrected | cancelled | error
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @updatedAt
+  chavePix             String?
+  tipoTransferencia    String?
+  idTransacao          String?
+  codigoAutenticacao   String?
+  numeroControle       String?
+  bancoEmissor         String?
+  situacao             String?
+  descricao            String
+  confianca            String
+  fonteExtracao        String
+  arquivoUrl           String?
+  jsonOriginal         String?
+  status               String    @default("pending_confirmation") // pending_confirmation | saved | corrected | cancelled | error
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
 
   @@index([tenantId, createdAt])
   @@index([tenantId, status])
@@ -650,13 +650,13 @@ model Plan {
 
 /// Assinatura da empresa (a plataforma cobra a empresa).
 model Subscription {
-  id              String    @id @default(cuid())
-  tenantId        String    @unique
-  planCode        String    @default("FREE")
-  status          String    @default("TRIALING") // TRIALING | ACTIVE | PAST_DUE | CANCELED
+  id               String    @id @default(cuid())
+  tenantId         String    @unique
+  planCode         String    @default("FREE")
+  status           String    @default("TRIALING") // TRIALING | ACTIVE | PAST_DUE | CANCELED
   currentPeriodEnd DateTime?
-  gatewayChargeId String?
-  createdAt       DateTime  @default(now())
+  gatewayChargeId  String?
+  createdAt        DateTime  @default(now())
 }
 
 /// Configuração da plataforma (chave Asaas usada para cobrar as empresas). Linha única.

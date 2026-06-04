@@ -4,6 +4,8 @@ import { AuditService } from '../../common/audit/audit.service';
 import { CreateDocumentRequirementDto } from './dto/create-document-requirement.dto';
 import { CreateCustomerDocumentDto } from './dto/create-customer-document.dto';
 import { UpdateCustomerDocumentStatusDto } from './dto/update-customer-document-status.dto';
+import { UpdateDocumentRequirementDto } from './dto/update-document-requirement.dto';
+import { UpdateCustomerDocumentDto } from './dto/update-customer-document.dto';
 
 @Injectable()
 export class DocumentsService {
@@ -38,6 +40,57 @@ export class DocumentsService {
       where: { tenantId, active: true },
       orderBy: [{ category: 'asc' }, { name: 'asc' }],
     });
+  }
+
+  async updateRequirement(
+    tenantId: string,
+    id: string,
+    dto: UpdateDocumentRequirementDto,
+  ) {
+    const current = await this.prisma.documentRequirement.findFirst({
+      where: { id, tenantId },
+    });
+    if (!current) {
+      throw new NotFoundException('Requisito de documento nao encontrado.');
+    }
+    const requirement = await this.prisma.documentRequirement.update({
+      where: { id: current.id },
+      data: {
+        name: dto.name,
+        category: dto.category,
+        description: dto.description === undefined ? undefined : dto.description,
+        active: dto.active,
+      },
+    });
+    await this.audit.record({
+      tenantId,
+      actor: 'system',
+      action: 'DOCUMENT_REQUIREMENT_UPDATED',
+      entityType: 'DocumentRequirement',
+      entityId: requirement.id,
+    });
+    return requirement;
+  }
+
+  async removeRequirement(tenantId: string, id: string) {
+    const current = await this.prisma.documentRequirement.findFirst({
+      where: { id, tenantId },
+    });
+    if (!current) {
+      throw new NotFoundException('Requisito de documento nao encontrado.');
+    }
+    await this.prisma.documentRequirement.update({
+      where: { id: current.id },
+      data: { active: false },
+    });
+    await this.audit.record({
+      tenantId,
+      actor: 'system',
+      action: 'DOCUMENT_REQUIREMENT_DELETED',
+      entityType: 'DocumentRequirement',
+      entityId: current.id,
+    });
+    return { ok: true };
   }
 
   async listCustomerDocuments(tenantId: string, customerId: string) {
@@ -119,6 +172,61 @@ export class DocumentsService {
     });
 
     return document;
+  }
+
+  async updateCustomerDocument(
+    tenantId: string,
+    id: string,
+    dto: UpdateCustomerDocumentDto,
+  ) {
+    const current = await this.prisma.customerDocument.findFirst({
+      where: { id, tenantId },
+    });
+    if (!current) {
+      throw new NotFoundException('Documento nao encontrado neste tenant.');
+    }
+    if (dto.requirementId) {
+      await this.ensureRequirement(tenantId, dto.requirementId);
+    }
+    const document = await this.prisma.customerDocument.update({
+      where: { id: current.id },
+      data: {
+        requirementId:
+          dto.requirementId === undefined ? undefined : dto.requirementId,
+        name: dto.name,
+        status: dto.status,
+        fileName: dto.fileName === undefined ? undefined : dto.fileName,
+        fileUrl: dto.fileUrl === undefined ? undefined : dto.fileUrl,
+        notes: dto.notes === undefined ? undefined : dto.notes,
+        uploadedAt: dto.fileUrl ? new Date() : undefined,
+      },
+    });
+    await this.audit.record({
+      tenantId,
+      actor: 'system',
+      action: 'CUSTOMER_DOCUMENT_UPDATED',
+      entityType: 'CustomerDocument',
+      entityId: document.id,
+    });
+    return document;
+  }
+
+  async removeCustomerDocument(tenantId: string, id: string) {
+    const current = await this.prisma.customerDocument.findFirst({
+      where: { id, tenantId },
+    });
+    if (!current) {
+      throw new NotFoundException('Documento nao encontrado neste tenant.');
+    }
+    await this.prisma.customerDocument.delete({ where: { id: current.id } });
+    await this.audit.record({
+      tenantId,
+      actor: 'system',
+      action: 'CUSTOMER_DOCUMENT_DELETED',
+      entityType: 'CustomerDocument',
+      entityId: current.id,
+    });
+    return { ok: true };
   }
 
   private async ensureCustomer(tenantId: string, customerId: string) {

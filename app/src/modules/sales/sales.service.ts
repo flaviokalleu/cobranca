@@ -8,6 +8,7 @@ import { AuditService } from '../../common/audit/audit.service';
 import { StockService } from '../stock/stock.service';
 import { ChargesService } from '../charges/charges.service';
 import { CreateSalesOrderDto } from './dto/create-sales-order.dto';
+import { UpdateSalesOrderDto } from './dto/update-sales-order.dto';
 
 @Injectable()
 export class SalesService {
@@ -74,11 +75,114 @@ export class SalesService {
     return updated;
   }
 
-  list(tenantId: string) {
-    return this.prisma.salesOrder.findMany({
+  async list(tenantId: string) {
+    const orders = await this.prisma.salesOrder.findMany({
       where: { tenantId },
       orderBy: { createdAt: 'desc' },
     });
+    const items = await this.prisma.salesOrderItem.findMany({
+      where: { tenantId, orderId: { in: orders.map((order) => order.id) } },
+    });
+    const itemsByOrder = new Map<string, typeof items>();
+    for (const item of items) {
+      itemsByOrder.set(item.orderId, [...(itemsByOrder.get(item.orderId) ?? []), item]);
+    }
+    return orders.map((order) => ({
+      ...order,
+      items: itemsByOrder.get(order.id) ?? [],
+    }));
+  }
+
+  async update(tenantId: string, id: string, dto: UpdateSalesOrderDto) {
+    const order = await this.prisma.salesOrder.findFirst({
+      where: { id, tenantId },
+    });
+    if (!order) throw new NotFoundException('Pedido nao encontrado.');
+    if (order.status !== 'DRAFT') {
+      throw new BadRequestException('Somente pedidos em rascunho podem ser editados.');
+    }
+    if (dto.customerId) {
+      const customer = await this.prisma.customer.findFirst({
+        where: { id: dto.customerId, tenantId },
+      });
+      if (!customer) throw new NotFoundException('Cliente nao encontrado.');
+    }
+
+    let total = order.totalCents;
+    const itemsData: {
+      tenantId: string;
+      orderId: string;
+      productId: string;
+      qty: number;
+      unitPriceCents: number;
+      totalCents: number;
+    }[] = [];
+
+    if (dto.items) {
+      total = 0;
+      for (const item of dto.items) {
+        const product = await this.prisma.product.findFirst({
+          where: { id: item.productId, tenantId, active: true },
+        });
+        if (!product) throw new NotFoundException(`Produto nao encontrado: ${item.productId}`);
+        const lineTotal = product.priceCents * item.qty;
+        total += lineTotal;
+        itemsData.push({
+          tenantId,
+          orderId: order.id,
+          productId: product.id,
+          qty: item.qty,
+          unitPriceCents: product.priceCents,
+          totalCents: lineTotal,
+        });
+      }
+    }
+
+    const updated = await this.prisma.$transaction(async (db) => {
+      if (dto.items) {
+        await db.salesOrderItem.deleteMany({ where: { orderId: order.id } });
+        await db.salesOrderItem.createMany({ data: itemsData });
+      }
+      return db.salesOrder.update({
+        where: { id: order.id },
+        data: {
+          customerId: dto.customerId,
+          totalCents: total,
+        },
+      });
+    });
+
+    await this.audit.record({
+      tenantId,
+      actor: 'system',
+      action: 'SALE_UPDATED',
+      entityType: 'SalesOrder',
+      entityId: order.id,
+      metadata: { totalCents: updated.totalCents },
+    });
+    return updated;
+  }
+
+  async remove(tenantId: string, id: string) {
+    const order = await this.prisma.salesOrder.findFirst({
+      where: { id, tenantId },
+    });
+    if (!order) throw new NotFoundException('Pedido nao encontrado.');
+    if (order.status !== 'DRAFT') {
+      throw new BadRequestException('Somente pedidos em rascunho podem ser excluidos.');
+    }
+    await this.prisma.$transaction([
+      this.prisma.salesOrderItem.deleteMany({ where: { orderId: order.id } }),
+      this.prisma.salesOrder.delete({ where: { id: order.id } }),
+    ]);
+    await this.audit.record({
+      tenantId,
+      actor: 'system',
+      action: 'SALE_DELETED',
+      entityType: 'SalesOrder',
+      entityId: order.id,
+    });
+    return { ok: true };
   }
 
   async confirm(tenantId: string, id: string) {

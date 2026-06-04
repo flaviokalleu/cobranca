@@ -43,6 +43,39 @@ export const updateEventStatus = createAsyncThunk(
   },
 );
 
+export const updateEvent = createAsyncThunk(
+  'calendar/update',
+  async (
+    body: {
+      id: string;
+      title?: string;
+      type?: string;
+      startsAt?: string;
+      endsAt?: string | null;
+      status?: string;
+      customerId?: string | null;
+      notes?: string | null;
+    },
+    { dispatch, rejectWithValue },
+  ) => {
+    const { id, ...payload } = body;
+    const { status } = await api('PATCH', `/calendar/events/${id}`, payload);
+    if (status >= 300) return rejectWithValue('Erro ao atualizar evento.');
+    await dispatch(fetchEvents());
+    return true;
+  },
+);
+
+export const deleteEvent = createAsyncThunk(
+  'calendar/delete',
+  async (id: string, { dispatch, rejectWithValue }) => {
+    const { status } = await api('DELETE', `/calendar/events/${id}`);
+    if (status >= 300) return rejectWithValue('Erro ao excluir evento.');
+    await dispatch(fetchEvents());
+    return true;
+  },
+);
+
 interface CalendarState {
   events: CalendarEvent[];
   error: string | null;

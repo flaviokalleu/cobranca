@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { fetchCashflow } from '@/store/financeSlice';
 import { PageHeader } from '@/components/page-header';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Table,
@@ -13,6 +14,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { Pencil, Trash2 } from 'lucide-react';
 
 const brl = (cents: number) =>
   (cents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -28,7 +30,7 @@ export default function FluxoCaixaPage() {
 
   return (
     <>
-      <PageHeader title="Fluxo de caixa" description="Entradas e saídas do caixa" />
+      <PageHeader title="Fluxo de caixa" description="Entradas e saidas do caixa" />
       <div className="space-y-6 p-6">
         <Card className="max-w-xs">
           <CardHeader className="pb-2">
@@ -46,34 +48,55 @@ export default function FluxoCaixaPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Quando</TableHead>
-                <TableHead>Descrição</TableHead>
+                <TableHead>Descricao</TableHead>
                 <TableHead className="text-right">Entrada</TableHead>
-                <TableHead className="text-right">Saída</TableHead>
+                <TableHead className="text-right">Saida</TableHead>
                 <TableHead className="text-right">Saldo</TableHead>
+                <TableHead className="w-[96px] text-right">Acoes</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {cashflow.rows.map((r) => (
-                <TableRow key={r.id}>
+              {cashflow.rows.map((row) => (
+                <TableRow key={row.id}>
                   <TableCell className="whitespace-nowrap text-muted-foreground">
-                    {fmt(r.date)}
+                    {fmt(row.date)}
                   </TableCell>
-                  <TableCell>{r.description}</TableCell>
+                  <TableCell>{row.description}</TableCell>
                   <TableCell className="text-right text-emerald-600">
-                    {r.inCents ? brl(r.inCents) : '-'}
+                    {row.inCents ? brl(row.inCents) : '-'}
                   </TableCell>
                   <TableCell className="text-right text-rose-600">
-                    {r.outCents ? brl(r.outCents) : '-'}
+                    {row.outCents ? brl(row.outCents) : '-'}
                   </TableCell>
                   <TableCell className="text-right font-medium">
-                    {brl(r.balanceCents)}
+                    {brl(row.balanceCents)}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex justify-end gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        title="Relatorio derivado; edite a origem"
+                        disabled
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        title="Relatorio derivado; exclua pela origem"
+                        disabled
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
               {cashflow.rows.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={5} className="py-12 text-center text-muted-foreground">
-                    Sem movimentações de caixa ainda.
+                  <TableCell colSpan={6} className="py-12 text-center text-muted-foreground">
+                    Sem movimentacoes de caixa ainda.
                   </TableCell>
                 </TableRow>
               )}

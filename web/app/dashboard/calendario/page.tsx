@@ -3,7 +3,15 @@
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
-import { createEvent, fetchEvents, updateEventStatus } from '@/store/calendarSlice';
+import {
+  createEvent,
+  deleteEvent,
+  fetchEvents,
+  type CalendarEvent,
+  updateEvent,
+  updateEventStatus,
+} from '@/store/calendarSlice';
+import { fetchCustomers } from '@/store/dataSlice';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -24,7 +32,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { CalendarPlus, CheckCircle2, Clock, XCircle } from 'lucide-react';
+import { CalendarPlus, CheckCircle2, Clock, Pencil, Trash2, XCircle } from 'lucide-react';
 
 const typeLabel: Record<string, string> = {
   MEETING: 'Reuniao',
@@ -49,6 +57,12 @@ const fmtDateTime = (iso: string) =>
     minute: '2-digit',
   });
 
+const toLocalInput = (iso: string) => {
+  const date = new Date(iso);
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
+  return local.toISOString().slice(0, 16);
+};
+
 function inRange(iso: string, view: string) {
   if (view === 'ALL') return true;
   const date = new Date(iso);
@@ -68,15 +82,18 @@ export default function CalendarioPage() {
   const customers = useAppSelector((state) => state.data.customers);
 
   const [open, setOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [view, setView] = useState('WEEK');
   const [title, setTitle] = useState('');
   const [type, setType] = useState('MEETING');
+  const [status, setStatus] = useState('SCHEDULED');
   const [startsAt, setStartsAt] = useState('');
   const [customerId, setCustomerId] = useState('NONE');
   const [notes, setNotes] = useState('');
 
   useEffect(() => {
     void dispatch(fetchEvents());
+    void dispatch(fetchCustomers());
   }, [dispatch]);
 
   const filtered = useMemo(
@@ -84,25 +101,68 @@ export default function CalendarioPage() {
     [events, view],
   );
 
-  async function onCreate(e: React.FormEvent) {
+  function resetForm() {
+    setEditingId(null);
+    setTitle('');
+    setType('MEETING');
+    setStatus('SCHEDULED');
+    setStartsAt('');
+    setCustomerId('NONE');
+    setNotes('');
+  }
+
+  function openCreate() {
+    resetForm();
+    setOpen(true);
+  }
+
+  function openEdit(event: CalendarEvent) {
+    setEditingId(event.id);
+    setTitle(event.title);
+    setType(event.type);
+    setStatus(event.status);
+    setStartsAt(toLocalInput(event.startsAt));
+    setCustomerId(event.customerId ?? 'NONE');
+    setNotes(event.notes ?? '');
+    setOpen(true);
+  }
+
+  async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const res = await dispatch(
-      createEvent({
-        title,
-        type,
-        startsAt,
-        customerId: customerId === 'NONE' ? undefined : customerId,
-        notes: notes || undefined,
-      }),
-    );
-    if (createEvent.fulfilled.match(res)) {
-      toast.success('Evento criado');
-      setTitle('');
-      setStartsAt('');
-      setNotes('');
-      setCustomerId('NONE');
+    const payload = {
+      title,
+      type,
+      status,
+      startsAt,
+      customerId: customerId === 'NONE' ? null : customerId,
+      notes: notes || null,
+    };
+    const res = editingId
+      ? await dispatch(updateEvent({ id: editingId, ...payload }))
+      : await dispatch(
+          createEvent({
+            title,
+            type,
+            startsAt,
+            customerId: customerId === 'NONE' ? undefined : customerId,
+            notes: notes || undefined,
+          }),
+        );
+    const ok = editingId ? updateEvent.fulfilled.match(res) : createEvent.fulfilled.match(res);
+    if (ok) {
+      toast.success(editingId ? 'Evento atualizado' : 'Evento criado');
+      resetForm();
       setOpen(false);
+    } else {
+      toast.error(typeof res.payload === 'string' ? res.payload : 'Erro');
     }
+  }
+
+  async function onDelete(event: CalendarEvent) {
+    if (!window.confirm(`Excluir evento "${event.title}"?`)) return;
+    const res = await dispatch(deleteEvent(event.id));
+    if (deleteEvent.fulfilled.match(res)) toast.success('Evento excluido');
+    else toast.error(typeof res.payload === 'string' ? res.payload : 'Erro');
   }
 
   return (
@@ -111,7 +171,7 @@ export default function CalendarioPage() {
         title="Calendario"
         description={`${filtered.length} evento(s) no periodo`}
         actions={
-          <Button onClick={() => setOpen(true)}>
+          <Button onClick={openCreate}>
             <CalendarPlus className="h-4 w-4" />
             Novo evento
           </Button>
@@ -157,21 +217,34 @@ export default function CalendarioPage() {
                       <p className="mt-1 text-sm text-muted-foreground">{event.notes}</p>
                     )}
                   </div>
-                  <Select
-                    value={event.status}
-                    onValueChange={(status) =>
-                      dispatch(updateEventStatus({ id: event.id, status }))
-                    }
-                  >
-                    <SelectTrigger className="w-full md:w-40">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="SCHEDULED">Agendado</SelectItem>
-                      <SelectItem value="DONE">Concluido</SelectItem>
-                      <SelectItem value="CANCELED">Cancelado</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <div className="flex flex-wrap justify-end gap-1">
+                    <Select
+                      value={event.status}
+                      onValueChange={(nextStatus) =>
+                        void dispatch(updateEventStatus({ id: event.id, status: nextStatus }))
+                      }
+                    >
+                      <SelectTrigger className="w-40">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="SCHEDULED">Agendado</SelectItem>
+                        <SelectItem value="DONE">Concluido</SelectItem>
+                        <SelectItem value="CANCELED">Cancelado</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Button variant="ghost" size="icon" title="Editar" onClick={() => openEdit(event)}>
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      title="Excluir"
+                      onClick={() => void onDelete(event)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             );
@@ -189,10 +262,10 @@ export default function CalendarioPage() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Novo evento</DialogTitle>
-            <DialogDescription>Agenda operacional do WEBBA ERP.</DialogDescription>
+            <DialogTitle>{editingId ? 'Editar evento' : 'Novo evento'}</DialogTitle>
+            <DialogDescription>Agenda operacional do ERP.</DialogDescription>
           </DialogHeader>
-          <form onSubmit={onCreate} className="grid gap-4">
+          <form onSubmit={onSubmit} className="grid gap-4">
             <div className="grid gap-1.5">
               <Label>Titulo</Label>
               <Input value={title} onChange={(event) => setTitle(event.target.value)} required />
@@ -214,14 +287,27 @@ export default function CalendarioPage() {
                 </Select>
               </div>
               <div className="grid gap-1.5">
-                <Label>Data e hora</Label>
-                <Input
-                  type="datetime-local"
-                  value={startsAt}
-                  onChange={(event) => setStartsAt(event.target.value)}
-                  required
-                />
+                <Label>Status</Label>
+                <Select value={status} onValueChange={setStatus}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="SCHEDULED">Agendado</SelectItem>
+                    <SelectItem value="DONE">Concluido</SelectItem>
+                    <SelectItem value="CANCELED">Cancelado</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
+            </div>
+            <div className="grid gap-1.5">
+              <Label>Data e hora</Label>
+              <Input
+                type="datetime-local"
+                value={startsAt}
+                onChange={(event) => setStartsAt(event.target.value)}
+                required
+              />
             </div>
             <div className="grid gap-1.5">
               <Label>Cliente</Label>
@@ -243,7 +329,9 @@ export default function CalendarioPage() {
               <Label>Observacoes</Label>
               <Input value={notes} onChange={(event) => setNotes(event.target.value)} />
             </div>
-            <Button type="submit">Salvar evento</Button>
+            <Button type="submit">
+              {editingId ? 'Salvar alteracoes' : 'Salvar evento'}
+            </Button>
           </form>
         </DialogContent>
       </Dialog>

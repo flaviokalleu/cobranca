@@ -3,7 +3,13 @@
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
-import { fetchSuppliers, createSupplier } from '@/store/catalogSlice';
+import {
+  createSupplier,
+  deleteSupplier,
+  fetchSuppliers,
+  type Supplier,
+  updateSupplier,
+} from '@/store/catalogSlice';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,13 +30,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Plus } from 'lucide-react';
+import { Pencil, Plus, Trash2 } from 'lucide-react';
 
 export default function FornecedoresPage() {
   const dispatch = useAppDispatch();
   const { suppliers } = useAppSelector((s) => s.catalog);
 
   const [open, setOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [doc, setDoc] = useState('');
   const [phone, setPhone] = useState('');
@@ -40,23 +47,56 @@ export default function FornecedoresPage() {
     void dispatch(fetchSuppliers());
   }, [dispatch]);
 
-  async function onAdd(e: React.FormEvent) {
+  function resetForm() {
+    setEditingId(null);
+    setName('');
+    setDoc('');
+    setPhone('');
+    setEmail('');
+  }
+
+  function openCreate() {
+    resetForm();
+    setOpen(true);
+  }
+
+  function openEdit(supplier: Supplier) {
+    setEditingId(supplier.id);
+    setName(supplier.name);
+    setDoc(supplier.document ?? '');
+    setPhone(supplier.phone ?? '');
+    setEmail(supplier.email ?? '');
+    setOpen(true);
+  }
+
+  async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const res = await dispatch(
-      createSupplier({
-        name,
-        document: doc || undefined,
-        phone: phone || undefined,
-        email: email || undefined,
-      }),
-    );
-    if (createSupplier.fulfilled.match(res)) {
-      toast.success('Fornecedor salvo');
-      setName('');
-      setDoc('');
-      setPhone('');
-      setEmail('');
+    const payload = {
+      name,
+      document: doc || undefined,
+      phone: phone || undefined,
+      email: email || undefined,
+    };
+    const res = editingId
+      ? await dispatch(updateSupplier({ id: editingId, ...payload }))
+      : await dispatch(createSupplier(payload));
+    const ok = editingId
+      ? updateSupplier.fulfilled.match(res)
+      : createSupplier.fulfilled.match(res);
+    if (ok) {
+      toast.success(editingId ? 'Fornecedor atualizado' : 'Fornecedor salvo');
+      resetForm();
       setOpen(false);
+    } else {
+      toast.error(typeof res.payload === 'string' ? res.payload : 'Erro');
+    }
+  }
+
+  async function onDelete(supplier: Supplier) {
+    if (!window.confirm(`Excluir fornecedor "${supplier.name}"?`)) return;
+    const res = await dispatch(deleteSupplier(supplier.id));
+    if (deleteSupplier.fulfilled.match(res)) {
+      toast.success('Fornecedor excluido');
     } else {
       toast.error(typeof res.payload === 'string' ? res.payload : 'Erro');
     }
@@ -68,7 +108,7 @@ export default function FornecedoresPage() {
         title="Fornecedores"
         description={`${suppliers.length} cadastrado(s)`}
         actions={
-          <Button onClick={() => setOpen(true)}>
+          <Button onClick={openCreate}>
             <Plus className="h-4 w-4" />
             Novo fornecedor
           </Button>
@@ -83,6 +123,7 @@ export default function FornecedoresPage() {
                 <TableHead>Documento</TableHead>
                 <TableHead>Telefone</TableHead>
                 <TableHead>E-mail</TableHead>
+                <TableHead className="w-[96px] text-right">Acoes</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -92,11 +133,31 @@ export default function FornecedoresPage() {
                   <TableCell>{s.document ?? '-'}</TableCell>
                   <TableCell>{s.phone ?? '-'}</TableCell>
                   <TableCell>{s.email ?? '-'}</TableCell>
+                  <TableCell>
+                    <div className="flex justify-end gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        title="Editar"
+                        onClick={() => openEdit(s)}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        title="Excluir"
+                        onClick={() => void onDelete(s)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
                 </TableRow>
               ))}
               {suppliers.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={4} className="py-12 text-center text-muted-foreground">
+                  <TableCell colSpan={5} className="py-12 text-center text-muted-foreground">
                     Nenhum fornecedor ainda.
                   </TableCell>
                 </TableRow>
@@ -109,10 +170,10 @@ export default function FornecedoresPage() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Novo fornecedor</DialogTitle>
-            <DialogDescription>Quem fornece produtos/serviços à empresa.</DialogDescription>
+            <DialogTitle>{editingId ? 'Editar fornecedor' : 'Novo fornecedor'}</DialogTitle>
+            <DialogDescription>Quem fornece produtos/servicos a empresa.</DialogDescription>
           </DialogHeader>
-          <form onSubmit={onAdd} className="grid gap-4">
+          <form onSubmit={onSubmit} className="grid gap-4">
             <div className="grid gap-1.5">
               <Label>Nome</Label>
               <Input value={name} onChange={(e) => setName(e.target.value)} required />
@@ -132,7 +193,7 @@ export default function FornecedoresPage() {
               </div>
             </div>
             <Button type="submit" className="w-full">
-              Salvar fornecedor
+              {editingId ? 'Salvar alteracoes' : 'Salvar fornecedor'}
             </Button>
           </form>
         </DialogContent>

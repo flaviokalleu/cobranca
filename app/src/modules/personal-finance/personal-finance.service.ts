@@ -8,6 +8,11 @@ import { IngestFinanceMessageDto } from './dto/ingest-finance-message.dto';
 import { CreateSpendingLimitDto } from './dto/create-spending-limit.dto';
 import { CreateInvestmentGoalDto } from './dto/create-investment-goal.dto';
 import { ContributeInvestmentGoalDto } from './dto/contribute-investment-goal.dto';
+import { UpdatePersonalFinanceAccountDto } from './dto/update-personal-finance-account.dto';
+import { UpdatePersonalCreditCardDto } from './dto/update-personal-credit-card.dto';
+import { UpdatePersonalTransactionDto } from './dto/update-personal-transaction.dto';
+import { UpdateSpendingLimitDto } from './dto/update-spending-limit.dto';
+import { UpdateInvestmentGoalDto } from './dto/update-investment-goal.dto';
 
 interface ClassifiedMessage {
   type: 'EXPENSE' | 'INCOME' | 'TRANSFER';
@@ -17,6 +22,12 @@ interface ClassifiedMessage {
   subcategory?: string;
   occurredAt: Date;
   confidence: number;
+}
+
+interface TransactionBalanceInput {
+  accountId: string | null;
+  type: string;
+  amountCents: number;
 }
 
 @Injectable()
@@ -52,6 +63,53 @@ export class PersonalFinanceService {
     });
   }
 
+  async updateAccount(
+    tenantId: string,
+    id: string,
+    dto: UpdatePersonalFinanceAccountDto,
+  ) {
+    const current = await this.prisma.personalFinanceAccount.findFirst({
+      where: { id, tenantId },
+    });
+    if (!current) throw new NotFoundException('Conta nao encontrada neste tenant.');
+    const account = await this.prisma.personalFinanceAccount.update({
+      where: { id: current.id },
+      data: {
+        name: dto.name,
+        type: dto.type,
+        balanceCents: dto.balanceCents,
+        active: dto.active,
+      },
+    });
+    await this.audit.record({
+      tenantId,
+      actor: 'system',
+      action: 'PERSONAL_FINANCE_ACCOUNT_UPDATED',
+      entityType: 'PersonalFinanceAccount',
+      entityId: account.id,
+    });
+    return account;
+  }
+
+  async removeAccount(tenantId: string, id: string) {
+    const current = await this.prisma.personalFinanceAccount.findFirst({
+      where: { id, tenantId },
+    });
+    if (!current) throw new NotFoundException('Conta nao encontrada neste tenant.');
+    await this.prisma.personalFinanceAccount.update({
+      where: { id: current.id },
+      data: { active: false },
+    });
+    await this.audit.record({
+      tenantId,
+      actor: 'system',
+      action: 'PERSONAL_FINANCE_ACCOUNT_DELETED',
+      entityType: 'PersonalFinanceAccount',
+      entityId: current.id,
+    });
+    return { ok: true };
+  }
+
   async createCard(tenantId: string, dto: CreatePersonalCreditCardDto) {
     const card = await this.prisma.personalCreditCard.create({
       data: {
@@ -77,6 +135,54 @@ export class PersonalFinanceService {
       where: { tenantId, active: true },
       orderBy: { createdAt: 'desc' },
     });
+  }
+
+  async updateCard(
+    tenantId: string,
+    id: string,
+    dto: UpdatePersonalCreditCardDto,
+  ) {
+    const current = await this.prisma.personalCreditCard.findFirst({
+      where: { id, tenantId },
+    });
+    if (!current) throw new NotFoundException('Cartao nao encontrado neste tenant.');
+    const card = await this.prisma.personalCreditCard.update({
+      where: { id: current.id },
+      data: {
+        name: dto.name,
+        limitCents: dto.limitCents,
+        closingDay: dto.closingDay === undefined ? undefined : dto.closingDay,
+        dueDay: dto.dueDay === undefined ? undefined : dto.dueDay,
+        active: dto.active,
+      },
+    });
+    await this.audit.record({
+      tenantId,
+      actor: 'system',
+      action: 'PERSONAL_CREDIT_CARD_UPDATED',
+      entityType: 'PersonalCreditCard',
+      entityId: card.id,
+    });
+    return card;
+  }
+
+  async removeCard(tenantId: string, id: string) {
+    const current = await this.prisma.personalCreditCard.findFirst({
+      where: { id, tenantId },
+    });
+    if (!current) throw new NotFoundException('Cartao nao encontrado neste tenant.');
+    await this.prisma.personalCreditCard.update({
+      where: { id: current.id },
+      data: { active: false },
+    });
+    await this.audit.record({
+      tenantId,
+      actor: 'system',
+      action: 'PERSONAL_CREDIT_CARD_DELETED',
+      entityType: 'PersonalCreditCard',
+      entityId: current.id,
+    });
+    return { ok: true };
   }
 
   async createTransaction(tenantId: string, dto: CreatePersonalTransactionDto) {
@@ -163,6 +269,103 @@ export class PersonalFinanceService {
     });
   }
 
+  async updateTransaction(
+    tenantId: string,
+    id: string,
+    dto: UpdatePersonalTransactionDto,
+  ) {
+    const current = await this.prisma.personalFinanceTransaction.findFirst({
+      where: { id, tenantId },
+    });
+    if (!current) {
+      throw new NotFoundException('Transacao nao encontrada neste tenant.');
+    }
+
+    const nextAccountId =
+      dto.accountId === undefined ? current.accountId : dto.accountId;
+    const nextCardId = dto.cardId === undefined ? current.cardId : dto.cardId;
+    await this.ensureAccount(tenantId, nextAccountId);
+    await this.ensureCard(tenantId, nextCardId);
+
+    const nextBalanceInput: TransactionBalanceInput = {
+      accountId: nextAccountId,
+      type: dto.type ?? current.type,
+      amountCents: dto.amountCents ?? current.amountCents,
+    };
+    const oldImpact = this.accountBalanceImpact(current);
+    const nextImpact = this.accountBalanceImpact(nextBalanceInput);
+
+    const transaction = await this.prisma.$transaction(async (db) => {
+      if (current.accountId && oldImpact !== 0) {
+        await db.personalFinanceAccount.update({
+          where: { id: current.accountId },
+          data: { balanceCents: { increment: -oldImpact } },
+        });
+      }
+      if (nextAccountId && nextImpact !== 0) {
+        await db.personalFinanceAccount.update({
+          where: { id: nextAccountId },
+          data: { balanceCents: { increment: nextImpact } },
+        });
+      }
+      return db.personalFinanceTransaction.update({
+        where: { id: current.id },
+        data: {
+          accountId: dto.accountId === undefined ? undefined : dto.accountId,
+          cardId: dto.cardId === undefined ? undefined : dto.cardId,
+          type: dto.type,
+          amountCents: dto.amountCents,
+          description: dto.description,
+          category: dto.category,
+          subcategory: dto.subcategory === undefined ? undefined : dto.subcategory,
+          occurredAt: dto.occurredAt ? new Date(dto.occurredAt) : undefined,
+          source: dto.source,
+          rawInput: dto.rawInput === undefined ? undefined : dto.rawInput,
+          attachmentUrl:
+            dto.attachmentUrl === undefined ? undefined : dto.attachmentUrl,
+        },
+      });
+    });
+
+    await this.audit.record({
+      tenantId,
+      actor: 'system',
+      action: 'PERSONAL_FINANCE_TRANSACTION_UPDATED',
+      entityType: 'PersonalFinanceTransaction',
+      entityId: transaction.id,
+      metadata: { type: transaction.type, amountCents: transaction.amountCents },
+    });
+    await this.checkSpendingLimit(tenantId, transaction.category);
+    return transaction;
+  }
+
+  async removeTransaction(tenantId: string, id: string) {
+    const current = await this.prisma.personalFinanceTransaction.findFirst({
+      where: { id, tenantId },
+    });
+    if (!current) {
+      throw new NotFoundException('Transacao nao encontrada neste tenant.');
+    }
+    const oldImpact = this.accountBalanceImpact(current);
+    await this.prisma.$transaction(async (db) => {
+      if (current.accountId && oldImpact !== 0) {
+        await db.personalFinanceAccount.update({
+          where: { id: current.accountId },
+          data: { balanceCents: { increment: -oldImpact } },
+        });
+      }
+      await db.personalFinanceTransaction.delete({ where: { id: current.id } });
+    });
+    await this.audit.record({
+      tenantId,
+      actor: 'system',
+      action: 'PERSONAL_FINANCE_TRANSACTION_DELETED',
+      entityType: 'PersonalFinanceTransaction',
+      entityId: current.id,
+    });
+    return { ok: true };
+  }
+
   async createLimit(tenantId: string, dto: CreateSpendingLimitDto) {
     const limit = await this.prisma.spendingLimit.create({
       data: {
@@ -189,6 +392,51 @@ export class PersonalFinanceService {
       where: { tenantId, active: true },
       orderBy: { createdAt: 'desc' },
     });
+  }
+
+  async updateLimit(tenantId: string, id: string, dto: UpdateSpendingLimitDto) {
+    const current = await this.prisma.spendingLimit.findFirst({
+      where: { id, tenantId },
+    });
+    if (!current) throw new NotFoundException('Limite nao encontrado neste tenant.');
+    const limit = await this.prisma.spendingLimit.update({
+      where: { id: current.id },
+      data: {
+        category: dto.category,
+        period: dto.period,
+        limitCents: dto.limitCents,
+        alertThresholdPercent: dto.alertThresholdPercent,
+        active: dto.active,
+      },
+    });
+    await this.audit.record({
+      tenantId,
+      actor: 'system',
+      action: 'SPENDING_LIMIT_UPDATED',
+      entityType: 'SpendingLimit',
+      entityId: limit.id,
+      metadata: { category: limit.category, limitCents: limit.limitCents },
+    });
+    return limit;
+  }
+
+  async removeLimit(tenantId: string, id: string) {
+    const current = await this.prisma.spendingLimit.findFirst({
+      where: { id, tenantId },
+    });
+    if (!current) throw new NotFoundException('Limite nao encontrado neste tenant.');
+    await this.prisma.spendingLimit.update({
+      where: { id: current.id },
+      data: { active: false },
+    });
+    await this.audit.record({
+      tenantId,
+      actor: 'system',
+      action: 'SPENDING_LIMIT_DELETED',
+      entityType: 'SpendingLimit',
+      entityId: current.id,
+    });
+    return { ok: true };
   }
 
   async createGoal(tenantId: string, dto: CreateInvestmentGoalDto) {
@@ -218,6 +466,48 @@ export class PersonalFinanceService {
       where: { tenantId },
       orderBy: { createdAt: 'desc' },
     });
+  }
+
+  async updateGoal(tenantId: string, id: string, dto: UpdateInvestmentGoalDto) {
+    const current = await this.prisma.investmentGoal.findFirst({
+      where: { id, tenantId },
+    });
+    if (!current) throw new NotFoundException('Meta nao encontrada neste tenant.');
+    const goal = await this.prisma.investmentGoal.update({
+      where: { id: current.id },
+      data: {
+        name: dto.name,
+        targetCents: dto.targetCents,
+        currentCents: dto.currentCents,
+        dueDate: dto.dueDate === undefined ? undefined : dto.dueDate ? new Date(dto.dueDate) : null,
+        notes: dto.notes === undefined ? undefined : dto.notes,
+      },
+    });
+    await this.audit.record({
+      tenantId,
+      actor: 'system',
+      action: 'INVESTMENT_GOAL_UPDATED',
+      entityType: 'InvestmentGoal',
+      entityId: goal.id,
+      metadata: { targetCents: goal.targetCents },
+    });
+    return goal;
+  }
+
+  async removeGoal(tenantId: string, id: string) {
+    const current = await this.prisma.investmentGoal.findFirst({
+      where: { id, tenantId },
+    });
+    if (!current) throw new NotFoundException('Meta nao encontrada neste tenant.');
+    await this.prisma.investmentGoal.delete({ where: { id: current.id } });
+    await this.audit.record({
+      tenantId,
+      actor: 'system',
+      action: 'INVESTMENT_GOAL_DELETED',
+      entityType: 'InvestmentGoal',
+      entityId: current.id,
+    });
+    return { ok: true };
   }
 
   async contributeGoal(tenantId: string, id: string, dto: ContributeInvestmentGoalDto) {
@@ -302,7 +592,7 @@ export class PersonalFinanceService {
     };
   }
 
-  private async ensureAccount(tenantId: string, accountId?: string) {
+  private async ensureAccount(tenantId: string, accountId?: string | null) {
     if (!accountId) return;
     const account = await this.prisma.personalFinanceAccount.findFirst({
       where: { id: accountId, tenantId, active: true },
@@ -310,12 +600,19 @@ export class PersonalFinanceService {
     if (!account) throw new NotFoundException('Conta nao encontrada neste tenant.');
   }
 
-  private async ensureCard(tenantId: string, cardId?: string) {
+  private async ensureCard(tenantId: string, cardId?: string | null) {
     if (!cardId) return;
     const card = await this.prisma.personalCreditCard.findFirst({
       where: { id: cardId, tenantId, active: true },
     });
     if (!card) throw new NotFoundException('Cartao nao encontrado neste tenant.');
+  }
+
+  private accountBalanceImpact(transaction: TransactionBalanceInput) {
+    if (!transaction.accountId || transaction.type === 'TRANSFER') return 0;
+    return transaction.type === 'INCOME'
+      ? transaction.amountCents
+      : -transaction.amountCents;
   }
 
   private classify(message: string): ClassifiedMessage {

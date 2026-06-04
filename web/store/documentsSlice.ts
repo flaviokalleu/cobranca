@@ -39,6 +39,30 @@ export const createRequirement = createAsyncThunk(
   },
 );
 
+export const updateRequirement = createAsyncThunk(
+  'documents/updateRequirement',
+  async (
+    body: { id: string; name?: string; category?: string; description?: string | null },
+    { dispatch, rejectWithValue },
+  ) => {
+    const { id, ...payload } = body;
+    const { status } = await api('PATCH', `/documents/requirements/${id}`, payload);
+    if (status >= 300) return rejectWithValue('Erro ao atualizar requisito documental.');
+    await dispatch(fetchRequirements());
+    return true;
+  },
+);
+
+export const deleteRequirement = createAsyncThunk(
+  'documents/deleteRequirement',
+  async (id: string, { dispatch, rejectWithValue }) => {
+    const { status } = await api('DELETE', `/documents/requirements/${id}`);
+    if (status >= 300) return rejectWithValue('Erro ao excluir requisito documental.');
+    await dispatch(fetchRequirements());
+    return true;
+  },
+);
+
 export const fetchCustomerDocuments = createAsyncThunk(
   'documents/customerDocuments',
   async (customerId: string) =>
@@ -76,6 +100,39 @@ export const updateCustomerDocumentStatus = createAsyncThunk(
     const { status } = await api('PATCH', `/documents/customer-documents/${id}/status`, payload);
     if (status >= 300) return rejectWithValue('Erro ao atualizar status do documento.');
     await dispatch(fetchCustomerDocuments(customerId));
+    return true;
+  },
+);
+
+export const updateCustomerDocument = createAsyncThunk(
+  'documents/updateCustomerDocument',
+  async (
+    body: {
+      id: string;
+      customerId: string;
+      requirementId?: string | null;
+      name?: string;
+      status?: string;
+      fileName?: string | null;
+      fileUrl?: string | null;
+      notes?: string | null;
+    },
+    { dispatch, rejectWithValue },
+  ) => {
+    const { id, customerId, ...payload } = body;
+    const { status } = await api('PATCH', `/documents/customer-documents/${id}`, payload);
+    if (status >= 300) return rejectWithValue('Erro ao atualizar documento do cliente.');
+    await dispatch(fetchCustomerDocuments(customerId));
+    return true;
+  },
+);
+
+export const deleteCustomerDocument = createAsyncThunk(
+  'documents/deleteCustomerDocument',
+  async (body: { id: string; customerId: string }, { dispatch, rejectWithValue }) => {
+    const { status } = await api('DELETE', `/documents/customer-documents/${body.id}`);
+    if (status >= 300) return rejectWithValue('Erro ao excluir documento do cliente.');
+    await dispatch(fetchCustomerDocuments(body.customerId));
     return true;
   },
 );

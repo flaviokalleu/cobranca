@@ -101,8 +101,10 @@ export class WhatsappMessageHandler {
       await this.outbound.sendText(remoteJid, resolution.message ?? 'Nao foi possivel identificar a empresa.');
       return;
     }
+    const tenant = resolution.tenant;
+    const whatsappUser = resolution.whatsappUser;
 
-    if (!this.whatsappUsers.hasPermission(resolution.whatsappUser, 'financial_entries:create')) {
+    if (!this.whatsappUsers.hasPermission(whatsappUser, 'financial_entries:create')) {
       await this.outbound.sendText(
         remoteJid,
         'Seu usuario nao tem permissao para criar lancamentos financeiros.',
@@ -113,17 +115,17 @@ export class WhatsappMessageHandler {
     const state = await this.states.get<PendingReceiptPayload | CorrectionPayload>(phone);
     const confirmation = this.buttons.parseConfirmation(text);
     if (confirmation && state?.state === 'pending_confirmation' && state.payload) {
-      await this.handleConfirmation(remoteJid, phone, resolution.whatsappUser.id, state.payload, confirmation);
+      await this.handleConfirmation(remoteJid, phone, whatsappUser.id, state.payload, confirmation);
       return;
     }
 
     if (state?.state === 'awaiting_correction_field' && state.payload) {
-      await this.handleCorrectionField(remoteJid, phone, resolution, state.payload, text);
+      await this.handleCorrectionField(remoteJid, phone, { tenant, whatsappUser }, state.payload, text);
       return;
     }
 
     if (state?.state === 'awaiting_correction_value' && state.payload) {
-      await this.handleCorrectionValue(remoteJid, phone, resolution, state.payload as CorrectionPayload, text);
+      await this.handleCorrectionValue(remoteJid, phone, { tenant, whatsappUser }, state.payload as CorrectionPayload, text);
       return;
     }
 
@@ -132,13 +134,13 @@ export class WhatsappMessageHandler {
       const payload = {
         ...(state.payload as ReceiptDraftPayload),
         tipo: receiptType,
-        tenantId: resolution.tenant.id,
-        whatsappUserId: resolution.whatsappUser.id,
+        tenantId: tenant.id,
+        whatsappUserId: whatsappUser.id,
         phone,
       };
       await this.states.set({
-        tenantId: resolution.tenant.id,
-        whatsappUserId: resolution.whatsappUser.id,
+        tenantId: tenant.id,
+        whatsappUserId: whatsappUser.id,
         phone,
         state: 'processing_receipt',
         payload,
@@ -168,8 +170,8 @@ export class WhatsappMessageHandler {
 
     if (file.hasMedia || this.looksLikeReceiptText(text)) {
       await this.states.set<ReceiptDraftPayload>({
-        tenantId: resolution.tenant.id,
-        whatsappUserId: resolution.whatsappUser.id,
+        tenantId: tenant.id,
+        whatsappUserId: whatsappUser.id,
         phone,
         state: 'awaiting_receipt_type',
         payload: {
@@ -178,7 +180,7 @@ export class WhatsappMessageHandler {
           fileName: file.fileName,
           mimeType: file.mimeType,
           mediaBase64: file.mediaBase64,
-          companyName: resolution.tenant.name,
+          companyName: tenant.name,
         },
         ttlMinutes: 30,
       });

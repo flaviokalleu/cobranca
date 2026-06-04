@@ -1,6 +1,7 @@
-import { Body, Controller, Get, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post } from '@nestjs/common';
 import { SuppliersService } from './suppliers.service';
 import { CreateSupplierDto } from './dto/create-supplier.dto';
+import { UpdateSupplierDto } from './dto/update-supplier.dto';
 import { Tenant } from '../../common/tenant/tenant.decorator';
 import { Roles } from '../../auth/decorators/roles.decorator';
 
@@ -18,5 +19,21 @@ export class SuppliersController {
   @Get()
   list(@Tenant() tenantId: string) {
     return this.suppliers.list(tenantId);
+  }
+
+  @Roles('ADMIN', 'FINANCE', 'OPERATIONS', 'AGENT')
+  @Patch(':id')
+  update(
+    @Tenant() tenantId: string,
+    @Param('id') id: string,
+    @Body() dto: UpdateSupplierDto,
+  ) {
+    return this.suppliers.update(tenantId, id, dto);
+  }
+
+  @Roles('ADMIN', 'FINANCE', 'OPERATIONS')
+  @Delete(':id')
+  remove(@Tenant() tenantId: string, @Param('id') id: string) {
+    return this.suppliers.remove(tenantId, id);
   }
 }

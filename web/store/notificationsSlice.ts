@@ -42,6 +42,39 @@ export const markNotificationRead = createAsyncThunk(
   },
 );
 
+export const updateNotification = createAsyncThunk(
+  'notifications/update',
+  async (
+    body: {
+      id: string;
+      channel?: string;
+      title?: string;
+      message?: string;
+      status?: string;
+      entityType?: string | null;
+      entityId?: string | null;
+      scheduledAt?: string | null;
+    },
+    { dispatch, rejectWithValue },
+  ) => {
+    const { id, ...payload } = body;
+    const { status } = await api('PATCH', `/notifications/${id}`, payload);
+    if (status >= 300) return rejectWithValue('Erro ao atualizar notificacao.');
+    await dispatch(fetchNotifications());
+    return true;
+  },
+);
+
+export const deleteNotification = createAsyncThunk(
+  'notifications/delete',
+  async (id: string, { dispatch, rejectWithValue }) => {
+    const { status } = await api('DELETE', `/notifications/${id}`);
+    if (status >= 300) return rejectWithValue('Erro ao excluir notificacao.');
+    await dispatch(fetchNotifications());
+    return true;
+  },
+);
+
 interface NotificationsState {
   items: NotificationItem[];
   error: string | null;

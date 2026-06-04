@@ -42,6 +42,12 @@ export class WhatsappAdminController {
     return this.whatsapp.qr();
   }
 
+  @Get('logs')
+  @Roles('SUPERADMIN', 'ADMIN')
+  logs() {
+    return this.whatsapp.logs();
+  }
+
   @Public()
   @Sse('events')
   events(@Query('token') token: string): Observable<MessageEvent> {

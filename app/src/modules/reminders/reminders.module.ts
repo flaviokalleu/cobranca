@@ -7,6 +7,7 @@ import {
   ConsoleReminderSender,
 } from './reminder-sender';
 import { BaileysReminderSender } from './baileys-reminder.sender';
+import { WhatsappBotModule } from '../whatsapp-bot/whatsapp-bot.module';
 
 // console (padrao) ou baileys (WhatsApp real). Trocado por env REMINDER_SENDER.
 const SenderImpl =
@@ -15,6 +16,7 @@ const SenderImpl =
     : ConsoleReminderSender;
 
 @Module({
+  imports: [WhatsappBotModule],
   controllers: [RemindersController],
   providers: [
     ReminderProcessor,

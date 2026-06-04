@@ -197,6 +197,30 @@ export const createUser = createAsyncThunk(
   },
 );
 
+export const updateUser = createAsyncThunk(
+  'data/updateUser',
+  async (
+    body: { id: string; email?: string; password?: string; role?: string },
+    { dispatch, rejectWithValue },
+  ) => {
+    const { id, ...payload } = body;
+    const { status } = await api('PATCH', `/users/${id}`, payload);
+    if (status >= 300) return rejectWithValue('Erro ao atualizar usuario.');
+    await dispatch(fetchUsers());
+    return true;
+  },
+);
+
+export const deleteUser = createAsyncThunk(
+  'data/deleteUser',
+  async (id: string, { dispatch, rejectWithValue }) => {
+    const { status } = await api('DELETE', `/users/${id}`);
+    if (status >= 300) return rejectWithValue('Erro ao excluir usuario.');
+    await dispatch(fetchUsers());
+    return true;
+  },
+);
+
 export const saveSettings = createAsyncThunk(
   'data/saveSettings',
   async (body: Settings, { rejectWithValue }) => {

@@ -1,7 +1,8 @@
-import { Body, Controller, Get, Param, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post } from '@nestjs/common';
 import { Roles } from '../../auth/decorators/roles.decorator';
 import { Tenant } from '../../common/tenant/tenant.decorator';
 import { CreateNotificationDto } from './dto/create-notification.dto';
+import { UpdateNotificationDto } from './dto/update-notification.dto';
 import { NotificationsService } from './notifications.service';
 
 @Controller('notifications')
@@ -24,5 +25,21 @@ export class NotificationsController {
   @Patch(':id/read')
   markRead(@Tenant() tenantId: string, @Param('id') id: string) {
     return this.notifications.markRead(tenantId, id);
+  }
+
+  @Roles('ADMIN', 'FINANCE', 'COMMERCIAL', 'OPERATIONS', 'AGENT')
+  @Patch(':id')
+  update(
+    @Tenant() tenantId: string,
+    @Param('id') id: string,
+    @Body() dto: UpdateNotificationDto,
+  ) {
+    return this.notifications.update(tenantId, id, dto);
+  }
+
+  @Roles('ADMIN', 'FINANCE', 'COMMERCIAL', 'OPERATIONS')
+  @Delete(':id')
+  remove(@Tenant() tenantId: string, @Param('id') id: string) {
+    return this.notifications.remove(tenantId, id);
   }
 }

@@ -1,4 +1,5 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
+import type { PayloadAction } from '@reduxjs/toolkit';
 import { api } from '@/lib/api';
 
 export interface AiAnswer {
@@ -38,7 +39,22 @@ const initialState: AiState = {
 const aiSlice = createSlice({
   name: 'ai',
   initialState,
-  reducers: {},
+  reducers: {
+    editHistoryEntry(
+      state,
+      action: PayloadAction<{ generatedAt: string; answer: string }>,
+    ) {
+      const item = state.history.find(
+        (entry) => entry.generatedAt === action.payload.generatedAt,
+      );
+      if (item) item.answer = action.payload.answer;
+    },
+    deleteHistoryEntry(state, action: PayloadAction<string>) {
+      state.history = state.history.filter(
+        (entry) => entry.generatedAt !== action.payload,
+      );
+    },
+  },
   extraReducers: (builder) => {
     builder
       .addCase(fetchAiSuggestions.fulfilled, (state, action) => {
@@ -59,4 +75,5 @@ const aiSlice = createSlice({
   },
 });
 
+export const { editHistoryEntry, deleteHistoryEntry } = aiSlice.actions;
 export default aiSlice.reducer;

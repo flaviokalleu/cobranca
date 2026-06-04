@@ -9,6 +9,7 @@ export interface Payable {
   status: string;
   paidAt?: string | null;
   supplierId?: string | null;
+  category?: string | null;
 }
 export interface CashflowRow {
   id: string;
@@ -71,6 +72,37 @@ export const payPayable = createAsyncThunk(
     if (status === 403) return rejectWithValue('Apenas ADMIN pode pagar.');
     if (status >= 300) return rejectWithValue('Erro ao pagar.');
     await dispatch(fetchPayables());
+    return true;
+  },
+);
+
+export const updatePayable = createAsyncThunk(
+  'finance/updatePayable',
+  async (
+    body: {
+      id: string;
+      description?: string;
+      amountCents?: number;
+      dueDate?: string;
+      supplierId?: string | null;
+      category?: string | null;
+    },
+    { dispatch, rejectWithValue },
+  ) => {
+    const { id, ...payload } = body;
+    const { status } = await api('PATCH', `/payables/${id}`, payload);
+    if (status >= 300) return rejectWithValue('Erro ao atualizar conta a pagar.');
+    await Promise.all([dispatch(fetchPayables()), dispatch(fetchCashflow()), dispatch(fetchSummary())]);
+    return true;
+  },
+);
+
+export const deletePayable = createAsyncThunk(
+  'finance/deletePayable',
+  async (id: string, { dispatch, rejectWithValue }) => {
+    const { status } = await api('DELETE', `/payables/${id}`);
+    if (status >= 300) return rejectWithValue('Erro ao excluir conta a pagar.');
+    await Promise.all([dispatch(fetchPayables()), dispatch(fetchCashflow()), dispatch(fetchSummary())]);
     return true;
   },
 );

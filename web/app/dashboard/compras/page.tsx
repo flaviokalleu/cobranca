@@ -3,7 +3,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
-import { fetchPurchases, createPurchase, receivePurchase } from '@/store/purchaseSlice';
+import {
+  createPurchase,
+  deletePurchase,
+  fetchPurchases,
+  receivePurchase,
+  type PurchaseOrder,
+  updatePurchase,
+} from '@/store/purchaseSlice';
 import { fetchProducts, fetchSuppliers } from '@/store/catalogSlice';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
@@ -33,10 +40,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Plus, X } from 'lucide-react';
+import { Check, Pencil, Plus, Trash2, X } from 'lucide-react';
 
 const brl = (cents: number) =>
   (cents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+const inputToCents = (value: string) => Math.round(Number(value || '0') * 100);
 
 interface Line {
   productId: string;
@@ -50,6 +58,7 @@ export default function ComprasPage() {
   const { products, suppliers } = useAppSelector((s) => s.catalog);
 
   const [open, setOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [supplierId, setSupplierId] = useState('');
   const [lineProduct, setLineProduct] = useState('');
   const [lineQty, setLineQty] = useState('1');
@@ -78,19 +87,48 @@ export default function ComprasPage() {
     [suppliers],
   );
 
-  // Ao trocar de produto, sugere o custo cadastrado.
   useEffect(() => {
-    const p = productById[lineProduct];
-    if (p) setLineCost((p.costCents / 100).toFixed(2));
+    const product = productById[lineProduct];
+    if (product) setLineCost((product.costCents / 100).toFixed(2));
   }, [lineProduct, productById]);
 
-  const itemsTotal = items.reduce((s, i) => s + i.unitCostCents * i.qty, 0);
+  const itemsTotal = items.reduce((sum, item) => sum + item.unitCostCents * item.qty, 0);
+
+  function resetForm() {
+    setEditingId(null);
+    setSupplierId(suppliers[0]?.id ?? '');
+    setLineProduct(products[0]?.id ?? '');
+    setLineQty('1');
+    setLineCost(products[0] ? (products[0].costCents / 100).toFixed(2) : '0.00');
+    setItems([]);
+  }
+
+  function openCreate() {
+    resetForm();
+    setOpen(true);
+  }
+
+  function openEdit(order: PurchaseOrder) {
+    setEditingId(order.id);
+    setSupplierId(order.supplierId);
+    setItems(
+      order.items?.map((item) => ({
+        productId: item.productId,
+        qty: item.qty,
+        unitCostCents: item.unitCostCents,
+      })) ?? [],
+    );
+    setLineProduct(products[0]?.id ?? '');
+    setLineQty('1');
+    setLineCost(products[0] ? (products[0].costCents / 100).toFixed(2) : '0.00');
+    setOpen(true);
+  }
 
   function addItem() {
     const qty = parseInt(lineQty, 10);
-    const cost = Math.round(parseFloat(lineCost) * 100);
+    const unitCostCents = inputToCents(lineCost);
     if (!lineProduct || !qty) return;
-    setItems((prev) => [...prev, { productId: lineProduct, qty, unitCostCents: cost }]);
+    setItems((prev) => [...prev, { productId: lineProduct, qty, unitCostCents }]);
     setLineQty('1');
   }
 
@@ -100,10 +138,15 @@ export default function ComprasPage() {
       toast.error('Adicione ao menos um item.');
       return;
     }
-    const res = await dispatch(createPurchase({ supplierId, items }));
-    if (createPurchase.fulfilled.match(res)) {
-      toast.success('Pedido de compra criado (rascunho)');
-      setItems([]);
+    const res = editingId
+      ? await dispatch(updatePurchase({ id: editingId, supplierId, items }))
+      : await dispatch(createPurchase({ supplierId, items }));
+    const ok = editingId
+      ? updatePurchase.fulfilled.match(res)
+      : createPurchase.fulfilled.match(res);
+    if (ok) {
+      toast.success(editingId ? 'Pedido atualizado' : 'Pedido de compra criado');
+      resetForm();
       setOpen(false);
     } else {
       toast.error(typeof res.payload === 'string' ? res.payload : 'Erro');
@@ -112,8 +155,14 @@ export default function ComprasPage() {
 
   async function onReceive(id: string) {
     const res = await dispatch(receivePurchase(id));
-    if (receivePurchase.fulfilled.match(res))
-      toast.success('Compra recebida — estoque atualizado e conta a pagar gerada');
+    if (receivePurchase.fulfilled.match(res)) toast.success('Compra recebida');
+    else toast.error(typeof res.payload === 'string' ? res.payload : 'Erro');
+  }
+
+  async function onDelete(order: PurchaseOrder) {
+    if (!window.confirm(`Excluir pedido de compra #${order.number}?`)) return;
+    const res = await dispatch(deletePurchase(order.id));
+    if (deletePurchase.fulfilled.match(res)) toast.success('Pedido excluido');
     else toast.error(typeof res.payload === 'string' ? res.payload : 'Erro');
   }
 
@@ -123,7 +172,7 @@ export default function ComprasPage() {
         title="Pedidos de compra"
         description={`${orders.length} pedido(s)`}
         actions={
-          <Button onClick={() => setOpen(true)} disabled={products.length === 0 || suppliers.length === 0}>
+          <Button onClick={openCreate} disabled={products.length === 0 || suppliers.length === 0}>
             <Plus className="h-4 w-4" />
             Novo pedido
           </Button>
@@ -138,33 +187,60 @@ export default function ComprasPage() {
                 <TableHead>Fornecedor</TableHead>
                 <TableHead>Total</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
+                <TableHead className="w-[136px] text-right">Acoes</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {orders.map((o) => (
-                <TableRow key={o.id}>
-                  <TableCell className="font-medium">#{o.number}</TableCell>
-                  <TableCell>{supplierById[o.supplierId] ?? '-'}</TableCell>
-                  <TableCell>{brl(o.totalCents)}</TableCell>
-                  <TableCell>
-                    {o.status === 'RECEIVED' ? (
-                      <Badge variant="success">Recebido</Badge>
-                    ) : o.status === 'CANCELED' ? (
-                      <Badge variant="destructive">Cancelado</Badge>
-                    ) : (
-                      <Badge variant="warning">Rascunho</Badge>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {o.status === 'DRAFT' && (
-                      <Button size="sm" onClick={() => onReceive(o.id)}>
-                        Receber
-                      </Button>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))}
+              {orders.map((o) => {
+                const draft = o.status === 'DRAFT';
+                return (
+                  <TableRow key={o.id}>
+                    <TableCell className="font-medium">#{o.number}</TableCell>
+                    <TableCell>{supplierById[o.supplierId] ?? '-'}</TableCell>
+                    <TableCell>{brl(o.totalCents)}</TableCell>
+                    <TableCell>
+                      {o.status === 'RECEIVED' ? (
+                        <Badge variant="success">Recebido</Badge>
+                      ) : o.status === 'CANCELED' ? (
+                        <Badge variant="destructive">Cancelado</Badge>
+                      ) : (
+                        <Badge variant="warning">Rascunho</Badge>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          title="Receber"
+                          disabled={!draft}
+                          onClick={() => void onReceive(o.id)}
+                        >
+                          <Check className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          title={draft ? 'Editar' : 'Somente rascunhos'}
+                          disabled={!draft}
+                          onClick={() => openEdit(o)}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          title={draft ? 'Excluir' : 'Somente rascunhos'}
+                          disabled={!draft}
+                          onClick={() => void onDelete(o)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
               {orders.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={5} className="py-12 text-center text-muted-foreground">
@@ -180,10 +256,8 @@ export default function ComprasPage() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Novo pedido de compra</DialogTitle>
-            <DialogDescription>
-              Ao receber, dá entrada no estoque e gera uma conta a pagar.
-            </DialogDescription>
+            <DialogTitle>{editingId ? 'Editar pedido de compra' : 'Novo pedido de compra'}</DialogTitle>
+            <DialogDescription>Ao receber, da entrada no estoque e gera conta a pagar.</DialogDescription>
           </DialogHeader>
           <form onSubmit={onSubmit} className="grid gap-4">
             <div className="grid gap-1.5">
@@ -241,11 +315,11 @@ export default function ComprasPage() {
 
               <ul className="mt-3 space-y-1">
                 {items.map((it, idx) => {
-                  const p = productById[it.productId];
+                  const product = productById[it.productId];
                   return (
-                    <li key={idx} className="flex items-center justify-between text-sm">
+                    <li key={`${it.productId}-${idx}`} className="flex items-center justify-between text-sm">
                       <span>
-                        {p?.name} × {it.qty} × {brl(it.unitCostCents)} ={' '}
+                        {product?.name} x {it.qty} x {brl(it.unitCostCents)} ={' '}
                         {brl(it.unitCostCents * it.qty)}
                       </span>
                       <button
@@ -269,7 +343,7 @@ export default function ComprasPage() {
             </div>
 
             <Button type="submit" className="w-full">
-              Criar pedido
+              {editingId ? 'Salvar alteracoes' : 'Criar pedido'}
             </Button>
           </form>
         </DialogContent>

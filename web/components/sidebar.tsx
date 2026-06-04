@@ -33,7 +33,7 @@ export function Sidebar() {
       <nav className="flex-1 space-y-4 overflow-y-auto p-3">
         {navSections.map((section, i) => {
           const items = section.items.filter(
-            (item) => !item.adminOnly || role === 'ADMIN',
+            (item) => !item.adminOnly || role === 'ADMIN' || role === 'SUPERADMIN',
           );
           if (items.length === 0) return null;
           return (

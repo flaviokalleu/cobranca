@@ -1,4 +1,11 @@
-import { ForbiddenException, Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  Logger,
+  MessageEvent,
+  OnModuleDestroy,
+  OnModuleInit,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { Observable } from 'rxjs';
 import { PrismaService } from '../../common/prisma/prisma.service';
@@ -74,8 +81,8 @@ export class WhatsappAdminService implements OnModuleInit, OnModuleDestroy {
       lastUpdate: connection.updatedAt,
       lastError: connection.lastError,
       qrAvailable: !!this.currentQr,
-      qrCode: status === 'waiting_qr' ? this.currentQr : null,
-      qrImageDataUrl: status === 'waiting_qr' ? this.currentQrImageDataUrl : null,
+      qrCode: null,
+      qrImageDataUrl: null,
     };
   }
 
@@ -147,9 +154,34 @@ export class WhatsappAdminService implements OnModuleInit, OnModuleDestroy {
     return this.status();
   }
 
+  async logs(): Promise<
+    Array<{
+      action: string;
+      status: string | null;
+      description: string | null;
+      createdAt: Date;
+    }>
+  > {
+    return this.prisma.whatsappConnectionLog.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: 30,
+      select: {
+        action: true,
+        status: true,
+        description: true,
+        createdAt: true,
+      },
+    });
+  }
+
   eventsForToken(token: string): Observable<MessageEvent> {
     if (!token) throw new ForbiddenException('Token ausente.');
-    const user = this.jwt.verify<JwtUser>(token);
+    let user: JwtUser;
+    try {
+      user = this.jwt.verify<JwtUser>(token);
+    } catch {
+      throw new ForbiddenException('Token invalido para eventos do WhatsApp.');
+    }
     if (!['SUPERADMIN', 'ADMIN'].includes(user.role)) {
       throw new ForbiddenException('Permissao insuficiente para eventos do WhatsApp.');
     }
@@ -175,7 +207,13 @@ export class WhatsappAdminService implements OnModuleInit, OnModuleDestroy {
     this.socket = socket;
     this.outbound.bindSocket(socket);
 
-    socket.ev.on('creds.update', saveCreds);
+    socket.ev.on('creds.update', () => {
+      void saveCreds().catch((err) =>
+        this.setStatus('error', {
+          lastError: (err as Error).message,
+        }),
+      );
+    });
     socket.ev.on('connection.update', (update: Record<string, any>) =>
       void this.handleConnectionUpdate(update),
     );

@@ -3,7 +3,14 @@
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
-import { fetchPayables, createPayable, payPayable } from '@/store/financeSlice';
+import {
+  createPayable,
+  deletePayable,
+  fetchPayables,
+  payPayable,
+  type Payable,
+  updatePayable,
+} from '@/store/financeSlice';
 import { fetchSuppliers } from '@/store/catalogSlice';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
@@ -33,7 +40,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Plus } from 'lucide-react';
+import { Check, Pencil, Plus, Trash2 } from 'lucide-react';
 
 const brl = (cents: number) =>
   (cents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -41,6 +48,8 @@ const fmtDate = (iso: string) =>
   new Date(iso).toLocaleDateString('pt-BR', { timeZone: 'UTC' });
 const isOverdue = (p: { status: string; dueDate: string }) =>
   p.status === 'PENDING' && new Date(p.dueDate).getTime() < Date.now();
+const centsToInput = (cents: number) => (cents / 100).toFixed(2);
+const inputToCents = (value: string) => Math.round(Number(value || '0') * 100);
 
 export default function ContasPagarPage() {
   const dispatch = useAppDispatch();
@@ -48,30 +57,66 @@ export default function ContasPagarPage() {
   const { suppliers } = useAppSelector((s) => s.catalog);
 
   const [open, setOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('0.00');
   const [dueDate, setDueDate] = useState('');
   const [supplierId, setSupplierId] = useState('none');
+  const [category, setCategory] = useState('');
 
   useEffect(() => {
     void dispatch(fetchPayables());
     void dispatch(fetchSuppliers());
   }, [dispatch]);
 
-  async function onAdd(e: React.FormEvent) {
+  function resetForm() {
+    setEditingId(null);
+    setDescription('');
+    setAmount('0.00');
+    setDueDate('');
+    setSupplierId('none');
+    setCategory('');
+  }
+
+  function openCreate() {
+    resetForm();
+    setOpen(true);
+  }
+
+  function openEdit(payable: Payable) {
+    setEditingId(payable.id);
+    setDescription(payable.description);
+    setAmount(centsToInput(payable.amountCents));
+    setDueDate(payable.dueDate.slice(0, 10));
+    setSupplierId(payable.supplierId ?? 'none');
+    setCategory(payable.category ?? '');
+    setOpen(true);
+  }
+
+  async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const res = await dispatch(
-      createPayable({
-        description,
-        amountCents: Math.round(parseFloat(amount) * 100),
-        dueDate,
-        supplierId: supplierId === 'none' ? undefined : supplierId,
-      }),
-    );
-    if (createPayable.fulfilled.match(res)) {
-      toast.success('Conta a pagar criada');
-      setDescription('');
-      setAmount('0.00');
+    const payload = {
+      description,
+      amountCents: inputToCents(amount),
+      dueDate,
+      supplierId: supplierId === 'none' ? null : supplierId,
+      category: category || null,
+    };
+    const res = editingId
+      ? await dispatch(updatePayable({ id: editingId, ...payload }))
+      : await dispatch(
+          createPayable({
+            ...payload,
+            supplierId: payload.supplierId ?? undefined,
+            category: payload.category ?? undefined,
+          }),
+        );
+    const ok = editingId
+      ? updatePayable.fulfilled.match(res)
+      : createPayable.fulfilled.match(res);
+    if (ok) {
+      toast.success(editingId ? 'Conta atualizada' : 'Conta a pagar criada');
+      resetForm();
       setOpen(false);
     } else {
       toast.error(typeof res.payload === 'string' ? res.payload : 'Erro');
@@ -84,13 +129,20 @@ export default function ContasPagarPage() {
     else toast.error(typeof res.payload === 'string' ? res.payload : 'Erro');
   }
 
+  async function onDelete(payable: Payable) {
+    if (!window.confirm(`Excluir conta "${payable.description}"?`)) return;
+    const res = await dispatch(deletePayable(payable.id));
+    if (deletePayable.fulfilled.match(res)) toast.success('Conta cancelada');
+    else toast.error(typeof res.payload === 'string' ? res.payload : 'Erro');
+  }
+
   return (
     <>
       <PageHeader
         title="Contas a pagar"
         description={`${payables.length} no total`}
         actions={
-          <Button onClick={() => setOpen(true)}>
+          <Button onClick={openCreate}>
             <Plus className="h-4 w-4" />
             Nova conta
           </Button>
@@ -101,37 +153,66 @@ export default function ContasPagarPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Descrição</TableHead>
+                <TableHead>Descricao</TableHead>
                 <TableHead>Valor</TableHead>
                 <TableHead>Vencimento</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
+                <TableHead className="w-[136px] text-right">Acoes</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {payables.map((p) => (
-                <TableRow key={p.id}>
-                  <TableCell className="font-medium">{p.description}</TableCell>
-                  <TableCell>{brl(p.amountCents)}</TableCell>
-                  <TableCell>{fmtDate(p.dueDate)}</TableCell>
-                  <TableCell>
-                    {p.status === 'PAID' ? (
-                      <Badge variant="success">Pago</Badge>
-                    ) : isOverdue(p) ? (
-                      <Badge variant="destructive">Vencida</Badge>
-                    ) : (
-                      <Badge variant="warning">Pendente</Badge>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {p.status === 'PENDING' && (
-                      <Button size="sm" onClick={() => onPay(p.id)}>
-                        Pagar
-                      </Button>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))}
+              {payables.map((p) => {
+                const pending = p.status === 'PENDING';
+                return (
+                  <TableRow key={p.id}>
+                    <TableCell className="font-medium">{p.description}</TableCell>
+                    <TableCell>{brl(p.amountCents)}</TableCell>
+                    <TableCell>{fmtDate(p.dueDate)}</TableCell>
+                    <TableCell>
+                      {p.status === 'PAID' ? (
+                        <Badge variant="success">Pago</Badge>
+                      ) : isOverdue(p) ? (
+                        <Badge variant="destructive">Vencida</Badge>
+                      ) : p.status === 'CANCELED' ? (
+                        <Badge variant="secondary">Cancelada</Badge>
+                      ) : (
+                        <Badge variant="warning">Pendente</Badge>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          title="Pagar"
+                          disabled={!pending}
+                          onClick={() => void onPay(p.id)}
+                        >
+                          <Check className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          title={pending ? 'Editar' : 'Somente pendentes'}
+                          disabled={!pending}
+                          onClick={() => openEdit(p)}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          title={pending ? 'Excluir' : 'Somente pendentes'}
+                          disabled={!pending}
+                          onClick={() => void onDelete(p)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
               {payables.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={5} className="py-12 text-center text-muted-foreground">
@@ -147,12 +228,12 @@ export default function ContasPagarPage() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Nova conta a pagar</DialogTitle>
-            <DialogDescription>Gera despesa no razão (partida dobrada).</DialogDescription>
+            <DialogTitle>{editingId ? 'Editar conta a pagar' : 'Nova conta a pagar'}</DialogTitle>
+            <DialogDescription>Alteracoes de valor ajustam o razao automaticamente.</DialogDescription>
           </DialogHeader>
-          <form onSubmit={onAdd} className="grid gap-4">
+          <form onSubmit={onSubmit} className="grid gap-4">
             <div className="grid gap-1.5">
-              <Label>Descrição</Label>
+              <Label>Descricao</Label>
               <Input
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
@@ -180,24 +261,30 @@ export default function ContasPagarPage() {
                 />
               </div>
             </div>
-            <div className="grid gap-1.5">
-              <Label>Fornecedor (opcional)</Label>
-              <Select value={supplierId} onValueChange={setSupplierId}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Sem fornecedor</SelectItem>
-                  {suppliers.map((s) => (
-                    <SelectItem key={s.id} value={s.id}>
-                      {s.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-1.5">
+                <Label>Fornecedor</Label>
+                <Select value={supplierId} onValueChange={setSupplierId}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Sem fornecedor</SelectItem>
+                    {suppliers.map((s) => (
+                      <SelectItem key={s.id} value={s.id}>
+                        {s.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-1.5">
+                <Label>Categoria</Label>
+                <Input value={category} onChange={(e) => setCategory(e.target.value)} />
+              </div>
             </div>
             <Button type="submit" className="w-full">
-              Salvar conta
+              {editingId ? 'Salvar alteracoes' : 'Salvar conta'}
             </Button>
           </form>
         </DialogContent>

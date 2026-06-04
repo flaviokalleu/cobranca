@@ -40,6 +40,37 @@ export const toggleTask = createAsyncThunk(
   },
 );
 
+export const updateTask = createAsyncThunk(
+  'tasks/update',
+  async (
+    body: {
+      id: string;
+      title?: string;
+      dueDate?: string;
+      priority?: string;
+      notes?: string;
+      done?: boolean;
+    },
+    { dispatch, rejectWithValue },
+  ) => {
+    const { id, ...payload } = body;
+    const { status } = await api('PATCH', `/tasks/${id}`, payload);
+    if (status >= 300) return rejectWithValue('Erro ao atualizar tarefa.');
+    await dispatch(fetchTasks());
+    return true;
+  },
+);
+
+export const deleteTask = createAsyncThunk(
+  'tasks/delete',
+  async (id: string, { dispatch, rejectWithValue }) => {
+    const { status } = await api('DELETE', `/tasks/${id}`);
+    if (status >= 300) return rejectWithValue('Erro ao excluir tarefa.');
+    await dispatch(fetchTasks());
+    return true;
+  },
+);
+
 interface TasksState {
   tasks: Task[];
 }

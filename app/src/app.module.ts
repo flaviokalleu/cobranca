@@ -34,6 +34,11 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
 import { AiModule } from './modules/ai/ai.module';
 import { PersonalFinanceModule } from './modules/personal-finance/personal-finance.module';
 import { BillingModule } from './modules/billing/billing.module';
+import { CompaniesModule } from './modules/companies/companies.module';
+import { FinancialEntriesModule } from './modules/financial-entries/financial-entries.module';
+import { FinancialExtractorModule } from './modules/financial-extractor/financial-extractor.module';
+import { WhatsappAdminModule } from './modules/whatsapp-admin/whatsapp-admin.module';
+import { WhatsappBotModule } from './modules/whatsapp-bot/whatsapp-bot.module';
 
 @Module({
   imports: [
@@ -65,6 +70,11 @@ import { BillingModule } from './modules/billing/billing.module';
     AiModule,
     PersonalFinanceModule,
     BillingModule,
+    CompaniesModule,
+    FinancialExtractorModule,
+    FinancialEntriesModule,
+    WhatsappBotModule,
+    WhatsappAdminModule,
   ],
   controllers: [HealthController],
   providers: [

@@ -21,7 +21,7 @@ export function MobileNav() {
 
   const items = navSections
     .flatMap((s) => s.items)
-    .filter((item) => !item.adminOnly || role === 'ADMIN');
+    .filter((item) => !item.adminOnly || role === 'ADMIN' || role === 'SUPERADMIN');
 
   return (
     <header className="flex items-center gap-2 border-b bg-card px-4 py-3 md:hidden">

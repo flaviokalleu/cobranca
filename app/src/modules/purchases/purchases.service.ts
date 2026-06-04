@@ -8,6 +8,7 @@ import { AuditService } from '../../common/audit/audit.service';
 import { StockService } from '../stock/stock.service';
 import { PayablesService } from '../payables/payables.service';
 import { CreatePurchaseOrderDto } from './dto/create-purchase-order.dto';
+import { UpdatePurchaseOrderDto } from './dto/update-purchase-order.dto';
 
 @Injectable()
 export class PurchasesService {
@@ -75,11 +76,119 @@ export class PurchasesService {
     return updated;
   }
 
-  list(tenantId: string) {
-    return this.prisma.purchaseOrder.findMany({
+  async list(tenantId: string) {
+    const orders = await this.prisma.purchaseOrder.findMany({
       where: { tenantId },
       orderBy: { createdAt: 'desc' },
     });
+    const items = await this.prisma.purchaseOrderItem.findMany({
+      where: { tenantId, orderId: { in: orders.map((order) => order.id) } },
+    });
+    const itemsByOrder = new Map<string, typeof items>();
+    for (const item of items) {
+      itemsByOrder.set(item.orderId, [...(itemsByOrder.get(item.orderId) ?? []), item]);
+    }
+    return orders.map((order) => ({
+      ...order,
+      items: itemsByOrder.get(order.id) ?? [],
+    }));
+  }
+
+  async update(tenantId: string, id: string, dto: UpdatePurchaseOrderDto) {
+    const order = await this.prisma.purchaseOrder.findFirst({
+      where: { id, tenantId },
+    });
+    if (!order) throw new NotFoundException('Pedido de compra nao encontrado.');
+    if (order.status !== 'DRAFT') {
+      throw new BadRequestException(
+        'Somente pedidos de compra em rascunho podem ser editados.',
+      );
+    }
+    if (dto.supplierId) {
+      const supplier = await this.prisma.supplier.findFirst({
+        where: { id: dto.supplierId, tenantId },
+      });
+      if (!supplier) throw new NotFoundException('Fornecedor nao encontrado.');
+    }
+
+    let total = order.totalCents;
+    const itemsData: {
+      tenantId: string;
+      orderId: string;
+      productId: string;
+      qty: number;
+      unitCostCents: number;
+      totalCents: number;
+    }[] = [];
+
+    if (dto.items) {
+      total = 0;
+      for (const item of dto.items) {
+        const product = await this.prisma.product.findFirst({
+          where: { id: item.productId, tenantId, active: true },
+        });
+        if (!product) throw new NotFoundException(`Produto nao encontrado: ${item.productId}`);
+        const unitCost = item.unitCostCents ?? product.costCents;
+        const lineTotal = unitCost * item.qty;
+        total += lineTotal;
+        itemsData.push({
+          tenantId,
+          orderId: order.id,
+          productId: product.id,
+          qty: item.qty,
+          unitCostCents: unitCost,
+          totalCents: lineTotal,
+        });
+      }
+    }
+
+    const updated = await this.prisma.$transaction(async (db) => {
+      if (dto.items) {
+        await db.purchaseOrderItem.deleteMany({ where: { orderId: order.id } });
+        await db.purchaseOrderItem.createMany({ data: itemsData });
+      }
+      return db.purchaseOrder.update({
+        where: { id: order.id },
+        data: {
+          supplierId: dto.supplierId,
+          totalCents: total,
+        },
+      });
+    });
+
+    await this.audit.record({
+      tenantId,
+      actor: 'system',
+      action: 'PURCHASE_UPDATED',
+      entityType: 'PurchaseOrder',
+      entityId: order.id,
+      metadata: { totalCents: updated.totalCents },
+    });
+    return updated;
+  }
+
+  async remove(tenantId: string, id: string) {
+    const order = await this.prisma.purchaseOrder.findFirst({
+      where: { id, tenantId },
+    });
+    if (!order) throw new NotFoundException('Pedido de compra nao encontrado.');
+    if (order.status !== 'DRAFT') {
+      throw new BadRequestException(
+        'Somente pedidos de compra em rascunho podem ser excluidos.',
+      );
+    }
+    await this.prisma.$transaction([
+      this.prisma.purchaseOrderItem.deleteMany({ where: { orderId: order.id } }),
+      this.prisma.purchaseOrder.delete({ where: { id: order.id } }),
+    ]);
+    await this.audit.record({
+      tenantId,
+      actor: 'system',
+      action: 'PURCHASE_DELETED',
+      entityType: 'PurchaseOrder',
+      entityId: order.id,
+    });
+    return { ok: true };
   }
 
   async receive(tenantId: string, id: string) {

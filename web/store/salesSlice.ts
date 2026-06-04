@@ -9,6 +9,15 @@ export interface SalesOrder {
   totalCents: number;
   chargeId?: string | null;
   createdAt: string;
+  items?: SalesOrderItem[];
+}
+
+export interface SalesOrderItem {
+  id: string;
+  productId: string;
+  qty: number;
+  unitPriceCents: number;
+  totalCents: number;
 }
 
 const arr = <T>(d: unknown): T[] => (Array.isArray(d) ? (d as T[]) : []);
@@ -35,6 +44,30 @@ export const confirmSale = createAsyncThunk(
   async (id: string, { dispatch, rejectWithValue }) => {
     const { status } = await api('POST', `/sales/${id}/confirm`);
     if (status >= 300) return rejectWithValue('Erro ao confirmar pedido.');
+    await dispatch(fetchSales());
+    return true;
+  },
+);
+
+export const updateSale = createAsyncThunk(
+  'sales/updateSale',
+  async (
+    body: { id: string; customerId?: string; items?: { productId: string; qty: number }[] },
+    { dispatch, rejectWithValue },
+  ) => {
+    const { id, ...payload } = body;
+    const { status } = await api('PATCH', `/sales/${id}`, payload);
+    if (status >= 300) return rejectWithValue('Erro ao atualizar pedido.');
+    await dispatch(fetchSales());
+    return true;
+  },
+);
+
+export const deleteSale = createAsyncThunk(
+  'sales/deleteSale',
+  async (id: string, { dispatch, rejectWithValue }) => {
+    const { status } = await api('DELETE', `/sales/${id}`);
+    if (status >= 300) return rejectWithValue('Erro ao excluir pedido.');
     await dispatch(fetchSales());
     return true;
   },

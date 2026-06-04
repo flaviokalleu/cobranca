@@ -1,7 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { AuditService } from '../../common/audit/audit.service';
 import { CreateSupplierDto } from './dto/create-supplier.dto';
+import { UpdateSupplierDto } from './dto/update-supplier.dto';
 
 @Injectable()
 export class SuppliersService {
@@ -35,5 +36,50 @@ export class SuppliersService {
       where: { tenantId },
       orderBy: { createdAt: 'desc' },
     });
+  }
+
+  async update(tenantId: string, id: string, dto: UpdateSupplierDto) {
+    const existing = await this.prisma.supplier.findFirst({ where: { id, tenantId } });
+    if (!existing) throw new NotFoundException('Fornecedor nao encontrado.');
+    const supplier = await this.prisma.supplier.update({
+      where: { id: existing.id },
+      data: {
+        name: dto.name,
+        document: dto.document,
+        phone: dto.phone,
+        email: dto.email,
+      },
+    });
+    await this.audit.record({
+      tenantId,
+      actor: 'system',
+      action: 'SUPPLIER_UPDATED',
+      entityType: 'Supplier',
+      entityId: supplier.id,
+    });
+    return supplier;
+  }
+
+  async remove(tenantId: string, id: string) {
+    const existing = await this.prisma.supplier.findFirst({ where: { id, tenantId } });
+    if (!existing) throw new NotFoundException('Fornecedor nao encontrado.');
+    const [purchaseOrders, payables] = await Promise.all([
+      this.prisma.purchaseOrder.count({ where: { tenantId, supplierId: existing.id } }),
+      this.prisma.payable.count({ where: { tenantId, supplierId: existing.id } }),
+    ]);
+    if (purchaseOrders > 0 || payables > 0) {
+      throw new BadRequestException(
+        'Fornecedor possui pedidos ou contas vinculadas e nao pode ser excluido.',
+      );
+    }
+    await this.prisma.supplier.delete({ where: { id: existing.id } });
+    await this.audit.record({
+      tenantId,
+      actor: 'system',
+      action: 'SUPPLIER_DELETED',
+      entityType: 'Supplier',
+      entityId: existing.id,
+    });
+    return { ok: true };
   }
 }

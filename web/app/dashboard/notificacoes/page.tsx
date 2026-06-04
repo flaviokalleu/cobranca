@@ -5,8 +5,11 @@ import { toast } from 'sonner';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import {
   createNotification,
+  deleteNotification,
   fetchNotifications,
   markNotificationRead,
+  type NotificationItem,
+  updateNotification,
 } from '@/store/notificationsSlice';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
@@ -28,7 +31,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { BellPlus, Check } from 'lucide-react';
+import { BellPlus, Check, Pencil, Trash2 } from 'lucide-react';
 
 const fmtDate = (iso: string) =>
   new Date(iso).toLocaleString('pt-BR', {
@@ -37,6 +40,13 @@ const fmtDate = (iso: string) =>
     hour: '2-digit',
     minute: '2-digit',
   });
+
+const toLocalInput = (iso?: string | null) => {
+  if (!iso) return '';
+  const date = new Date(iso);
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
+  return local.toISOString().slice(0, 16);
+};
 
 const badgeVariant = (status: string) => {
   if (status === 'READ' || status === 'SENT') return 'success' as const;
@@ -49,9 +59,12 @@ export default function NotificacoesPage() {
   const dispatch = useAppDispatch();
   const notifications = useAppSelector((state) => state.notifications.items);
   const [open, setOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [channel, setChannel] = useState('SYSTEM');
+  const [status, setStatus] = useState('UNREAD');
   const [title, setTitle] = useState('');
   const [message, setMessage] = useState('');
+  const [scheduledAt, setScheduledAt] = useState('');
 
   useEffect(() => {
     void dispatch(fetchNotifications());
@@ -62,16 +75,66 @@ export default function NotificacoesPage() {
     [notifications],
   );
 
-  async function onCreate(e: React.FormEvent) {
+  function resetForm() {
+    setEditingId(null);
+    setChannel('SYSTEM');
+    setStatus('UNREAD');
+    setTitle('');
+    setMessage('');
+    setScheduledAt('');
+  }
+
+  function openCreate() {
+    resetForm();
+    setOpen(true);
+  }
+
+  function openEdit(notification: NotificationItem) {
+    setEditingId(notification.id);
+    setChannel(notification.channel);
+    setStatus(notification.status);
+    setTitle(notification.title);
+    setMessage(notification.message);
+    setScheduledAt(toLocalInput(notification.scheduledAt));
+    setOpen(true);
+  }
+
+  async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const res = await dispatch(createNotification({ channel, title, message }));
-    if (createNotification.fulfilled.match(res)) {
-      toast.success('Notificacao criada');
-      setTitle('');
-      setMessage('');
-      setChannel('SYSTEM');
+    const payload = {
+      channel,
+      title,
+      message,
+      status,
+      scheduledAt: scheduledAt || null,
+    };
+    const res = editingId
+      ? await dispatch(updateNotification({ id: editingId, ...payload }))
+      : await dispatch(
+          createNotification({
+            channel,
+            title,
+            message,
+            scheduledAt: scheduledAt || undefined,
+          }),
+        );
+    const ok = editingId
+      ? updateNotification.fulfilled.match(res)
+      : createNotification.fulfilled.match(res);
+    if (ok) {
+      toast.success(editingId ? 'Notificacao atualizada' : 'Notificacao criada');
+      resetForm();
       setOpen(false);
+    } else {
+      toast.error(typeof res.payload === 'string' ? res.payload : 'Erro');
     }
+  }
+
+  async function onDelete(notification: NotificationItem) {
+    if (!window.confirm(`Excluir notificacao "${notification.title}"?`)) return;
+    const res = await dispatch(deleteNotification(notification.id));
+    if (deleteNotification.fulfilled.match(res)) toast.success('Notificacao excluida');
+    else toast.error(typeof res.payload === 'string' ? res.payload : 'Erro');
   }
 
   return (
@@ -80,7 +143,7 @@ export default function NotificacoesPage() {
         title="Notificacoes"
         description={`${unread} nao lida(s)`}
         actions={
-          <Button onClick={() => setOpen(true)}>
+          <Button onClick={openCreate}>
             <BellPlus className="h-4 w-4" />
             Nova notificacao
           </Button>
@@ -102,16 +165,33 @@ export default function NotificacoesPage() {
                 <p className="font-medium">{notification.title}</p>
                 <p className="text-sm text-muted-foreground">{notification.message}</p>
               </div>
-              {notification.status === 'UNREAD' && (
+              <div className="flex flex-wrap justify-end gap-1">
                 <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => dispatch(markNotificationRead(notification.id))}
+                  variant="ghost"
+                  size="icon"
+                  title="Marcar lida"
+                  disabled={notification.status !== 'UNREAD'}
+                  onClick={() => void dispatch(markNotificationRead(notification.id))}
                 >
                   <Check className="h-4 w-4" />
-                  Lida
                 </Button>
-              )}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  title="Editar"
+                  onClick={() => openEdit(notification)}
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  title="Excluir"
+                  onClick={() => void onDelete(notification)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
             </CardContent>
           </Card>
         ))}
@@ -127,22 +207,39 @@ export default function NotificacoesPage() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Nova notificacao</DialogTitle>
+            <DialogTitle>{editingId ? 'Editar notificacao' : 'Nova notificacao'}</DialogTitle>
             <DialogDescription>Crie um alerta operacional ou envie para fila externa.</DialogDescription>
           </DialogHeader>
-          <form onSubmit={onCreate} className="grid gap-4">
-            <div className="grid gap-1.5">
-              <Label>Canal</Label>
-              <Select value={channel} onValueChange={setChannel}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="SYSTEM">Sistema</SelectItem>
-                  <SelectItem value="WHATSAPP">WhatsApp</SelectItem>
-                  <SelectItem value="EMAIL">E-mail</SelectItem>
-                </SelectContent>
-              </Select>
+          <form onSubmit={onSubmit} className="grid gap-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-1.5">
+                <Label>Canal</Label>
+                <Select value={channel} onValueChange={setChannel}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="SYSTEM">Sistema</SelectItem>
+                    <SelectItem value="WHATSAPP">WhatsApp</SelectItem>
+                    <SelectItem value="EMAIL">E-mail</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-1.5">
+                <Label>Status</Label>
+                <Select value={status} onValueChange={setStatus}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="UNREAD">Nao lida</SelectItem>
+                    <SelectItem value="READ">Lida</SelectItem>
+                    <SelectItem value="QUEUED">Na fila</SelectItem>
+                    <SelectItem value="SENT">Enviada</SelectItem>
+                    <SelectItem value="FAILED">Falhou</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
             <div className="grid gap-1.5">
               <Label>Titulo</Label>
@@ -157,7 +254,17 @@ export default function NotificacoesPage() {
                 className="min-h-28 rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
               />
             </div>
-            <Button type="submit">Salvar notificacao</Button>
+            <div className="grid gap-1.5">
+              <Label>Agendamento</Label>
+              <Input
+                type="datetime-local"
+                value={scheduledAt}
+                onChange={(event) => setScheduledAt(event.target.value)}
+              />
+            </div>
+            <Button type="submit">
+              {editingId ? 'Salvar alteracoes' : 'Salvar notificacao'}
+            </Button>
           </form>
         </DialogContent>
       </Dialog>

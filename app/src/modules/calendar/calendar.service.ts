@@ -3,6 +3,7 @@ import { PrismaService } from '../../common/prisma/prisma.service';
 import { AuditService } from '../../common/audit/audit.service';
 import { CreateCalendarEventDto } from './dto/create-calendar-event.dto';
 import { UpdateCalendarEventStatusDto } from './dto/update-calendar-event-status.dto';
+import { UpdateCalendarEventDto } from './dto/update-calendar-event.dto';
 
 @Injectable()
 export class CalendarService {
@@ -87,7 +88,62 @@ export class CalendarService {
     return event;
   }
 
-  private async validateReferences(tenantId: string, dto: CreateCalendarEventDto) {
+  async update(tenantId: string, id: string, dto: UpdateCalendarEventDto) {
+    const current = await this.prisma.calendarEvent.findFirst({
+      where: { id, tenantId },
+    });
+    if (!current) {
+      throw new NotFoundException('Evento nao encontrado neste tenant.');
+    }
+    await this.validateReferences(tenantId, dto);
+    const event = await this.prisma.calendarEvent.update({
+      where: { id: current.id },
+      data: {
+        title: dto.title,
+        type: dto.type,
+        startsAt: dto.startsAt ? new Date(dto.startsAt) : undefined,
+        endsAt: dto.endsAt === undefined ? undefined : dto.endsAt ? new Date(dto.endsAt) : null,
+        status: dto.status,
+        customerId: dto.customerId === undefined ? undefined : dto.customerId,
+        chargeId: dto.chargeId === undefined ? undefined : dto.chargeId,
+        payableId: dto.payableId === undefined ? undefined : dto.payableId,
+        taskId: dto.taskId === undefined ? undefined : dto.taskId,
+        notes: dto.notes === undefined ? undefined : dto.notes,
+      },
+    });
+    await this.audit.record({
+      tenantId,
+      actor: 'system',
+      action: 'CALENDAR_EVENT_UPDATED',
+      entityType: 'CalendarEvent',
+      entityId: event.id,
+      metadata: { type: event.type, startsAt: event.startsAt.toISOString() },
+    });
+    return event;
+  }
+
+  async remove(tenantId: string, id: string) {
+    const current = await this.prisma.calendarEvent.findFirst({
+      where: { id, tenantId },
+    });
+    if (!current) {
+      throw new NotFoundException('Evento nao encontrado neste tenant.');
+    }
+    await this.prisma.calendarEvent.delete({ where: { id: current.id } });
+    await this.audit.record({
+      tenantId,
+      actor: 'system',
+      action: 'CALENDAR_EVENT_DELETED',
+      entityType: 'CalendarEvent',
+      entityId: current.id,
+    });
+    return { ok: true };
+  }
+
+  private async validateReferences(
+    tenantId: string,
+    dto: CreateCalendarEventDto | UpdateCalendarEventDto,
+  ) {
     if (dto.customerId) {
       const customer = await this.prisma.customer.findFirst({
         where: { id: dto.customerId, tenantId },
