@@ -4,6 +4,8 @@ import { useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { fetchPayables } from '@/store/financeSlice';
+import { fetchLeads } from '@/store/crmSlice';
+import { fetchTasks } from '@/store/tasksSlice';
 import { PageHeader } from '@/components/page-header';
 import { StatCard } from '@/components/stat-card';
 import { Button } from '@/components/ui/button';
@@ -30,6 +32,8 @@ import {
   Banknote,
   Plus,
   ArrowRight,
+  Target,
+  ListChecks,
 } from 'lucide-react';
 import {
   BarChart,
@@ -52,9 +56,13 @@ export default function PainelPage() {
   const dispatch = useAppDispatch();
   const { customers, charges } = useAppSelector((s) => s.data);
   const { payables } = useAppSelector((s) => s.finance);
+  const { leads } = useAppSelector((s) => s.crm);
+  const { tasks } = useAppSelector((s) => s.tasks);
 
   useEffect(() => {
     void dispatch(fetchPayables());
+    void dispatch(fetchLeads());
+    void dispatch(fetchTasks());
   }, [dispatch]);
 
   const kpis = useMemo(() => {
@@ -67,10 +75,11 @@ export default function PainelPage() {
     const aPagar = payables
       .filter((p) => p.status === 'PENDING')
       .reduce((s, p) => s + p.amountCents, 0);
+    const tarefas = tasks.filter((task) => !task.done).length;
     const total = aReceber + recebido;
     const pctRecebido = total > 0 ? Math.round((recebido / total) * 100) : 0;
-    return { aReceber, recebido, vencidas, aPagar, pctRecebido };
-  }, [charges, payables]);
+    return { aReceber, recebido, vencidas, aPagar, pctRecebido, tarefas };
+  }, [charges, payables, tasks]);
 
   const chartData = useMemo(() => {
     const now = new Date();
@@ -110,7 +119,7 @@ export default function PainelPage() {
       />
 
       <div className="space-y-6 p-6">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
           <StatCard label="A receber" value={brl(kpis.aReceber)} icon={Wallet} accent="indigo" />
           <StatCard label="A pagar" value={brl(kpis.aPagar)} icon={Banknote} accent="red" />
           <StatCard label="Recebido" value={brl(kpis.recebido)} icon={BadgeDollarSign} accent="green" />
@@ -122,6 +131,8 @@ export default function PainelPage() {
             accent="red"
           />
           <StatCard label="Clientes" value={String(customers.length)} icon={Users} accent="slate" />
+          <StatCard label="Leads" value={String(leads.length)} icon={Target} accent="indigo" />
+          <StatCard label="Tarefas" value={String(kpis.tarefas)} icon={ListChecks} accent="slate" />
         </div>
 
         <Card>

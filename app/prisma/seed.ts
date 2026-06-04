@@ -72,13 +72,38 @@ async function main(): Promise<void> {
       data: {
         tenantId: 'demo',
         name: 'Maria Souza',
+        document: '12345678901',
         phone: '+5511999998888',
+        whatsapp: '+5511999998888',
         email: 'maria@exemplo.com',
+        city: 'Sao Paulo',
+        profession: 'Analista',
       },
     });
   }
 
   console.log('Seed concluído.');
+  const documentRequirements = [
+    'RG',
+    'CPF',
+    'Comprovante de renda',
+    'Comprovante de residencia',
+    'Carteira de trabalho',
+    'Extrato FGTS',
+    'Certidao de nascimento',
+    'Certidao de casamento',
+  ];
+  for (const name of documentRequirements) {
+    const exists = await prisma.documentRequirement.findFirst({
+      where: { tenantId: 'demo', name },
+    });
+    if (!exists) {
+      await prisma.documentRequirement.create({
+        data: { tenantId: 'demo', name, category: 'Minha Casa Minha Vida' },
+      });
+    }
+  }
+
   console.log('  Empresa: tenant=demo / admin@demo.com / demo1234');
   console.log('  Superadmin: super@plataforma.com / super1234 (empresa: platform)');
 }

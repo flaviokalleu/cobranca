@@ -8,19 +8,19 @@ import { Roles } from '../../auth/decorators/roles.decorator';
 export class PayablesController {
   constructor(private readonly payables: PayablesService) {}
 
-  @Roles('ADMIN', 'AGENT')
+  @Roles('ADMIN', 'FINANCE', 'AGENT')
   @Post()
   create(@Tenant() tenantId: string, @Body() dto: CreatePayableDto) {
     return this.payables.create(tenantId, dto);
   }
 
-  @Roles('ADMIN', 'AGENT')
+  @Roles('ADMIN', 'FINANCE', 'AGENT')
   @Get()
   list(@Tenant() tenantId: string) {
     return this.payables.list(tenantId);
   }
 
-  @Roles('ADMIN')
+  @Roles('ADMIN', 'FINANCE')
   @Post(':id/pay')
   pay(@Tenant() tenantId: string, @Param('id') id: string) {
     return this.payables.pay(tenantId, id);

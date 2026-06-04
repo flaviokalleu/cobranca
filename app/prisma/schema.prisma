@@ -16,8 +16,14 @@ model Customer {
   id        String   @id @default(cuid())
   tenantId  String
   name      String
+  document  String?
   phone     String
+  whatsapp  String?
   email     String?
+  address   String?
+  city      String?
+  profession String?
+  incomeCents Int?
   createdAt DateTime @default(now())
   charges   Charge[]
 
@@ -79,7 +85,7 @@ model User {
   tenantId     String
   email        String
   passwordHash String
-  role         String   @default("ADMIN") // ADMIN | AGENT
+  role         String   @default("ADMIN") // ADMIN | FINANCE | COMMERCIAL | OPERATIONS | USER | SUPERADMIN
   createdAt    DateTime @default(now())
 
   @@unique([tenantId, email])
@@ -240,12 +246,384 @@ model Lead {
   tenantId       String
   name           String
   contact        String?
+  document       String?
+  phone          String?
+  whatsapp       String?
+  email          String?
+  city           String?
+  profession     String?
+  incomeCents    Int?
   estimatedCents Int      @default(0)
-  stage          String   @default("NEW") // NEW | CONTACTED | PROPOSAL | WON | LOST
+  stage          String   @default("LEAD") // LEAD | FIRST_CONTACT | DOCUMENTATION | ANALYSIS | APPROVED | CONTRACT | CUSTOMER | LOST
   notes          String?
   createdAt      DateTime @default(now())
 
   @@index([tenantId, stage])
+}
+
+/// Requisito reutilizavel para checklist documental.
+model DocumentRequirement {
+  id          String   @id @default(cuid())
+  tenantId    String
+  name        String
+  category    String   @default("GENERAL")
+  description String?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  @@index([tenantId, category])
+}
+
+/// Documento anexado ou pendente em uma pasta digital de cliente.
+model CustomerDocument {
+  id            String    @id @default(cuid())
+  tenantId      String
+  customerId    String
+  requirementId String?
+  name          String
+  status        String    @default("NOT_SENT") // NOT_SENT | SENT | IN_REVIEW | APPROVED | REJECTED
+  fileName      String?
+  fileUrl       String?
+  notes         String?
+  uploadedAt    DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([tenantId, customerId])
+  @@index([tenantId, status])
+}
+
+/// Evento operacional para calendario, visitas, vencimentos e tarefas.
+model CalendarEvent {
+  id          String    @id @default(cuid())
+  tenantId    String
+  title       String
+  type        String    @default("MEETING") // MEETING | VISIT | CHARGE | CONTRACT | DUE_DATE | TASK
+  startsAt    DateTime
+  endsAt      DateTime?
+  status      String    @default("SCHEDULED") // SCHEDULED | DONE | CANCELED
+  customerId  String?
+  chargeId    String?
+  payableId   String?
+  taskId      String?
+  notes       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([tenantId, startsAt])
+  @@index([tenantId, status])
+}
+
+/// Central de notificacoes e fila logica de alertas.
+model Notification {
+  id          String    @id @default(cuid())
+  tenantId    String
+  channel     String    @default("SYSTEM") // SYSTEM | WHATSAPP | EMAIL
+  title       String
+  message     String
+  status      String    @default("UNREAD") // UNREAD | READ | QUEUED | SENT | FAILED
+  entityType  String?
+  entityId    String?
+  scheduledAt DateTime?
+  sentAt      DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([tenantId, status])
+  @@index([tenantId, createdAt])
+}
+
+// ===================== WhatsApp Personal Finance =====================
+
+/// Conta, carteira ou saldo usado no controle financeiro pessoal.
+model PersonalFinanceAccount {
+  id           String   @id @default(cuid())
+  tenantId     String
+  name         String
+  type         String   @default("CHECKING") // CHECKING | SAVINGS | CASH | INVESTMENT | WALLET
+  balanceCents Int      @default(0)
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  @@index([tenantId])
+}
+
+/// Cartao de credito controlado pelo usuario.
+model PersonalCreditCard {
+  id         String   @id @default(cuid())
+  tenantId   String
+  name       String
+  limitCents Int      @default(0)
+  closingDay Int?
+  dueDay     Int?
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now())
+
+  @@index([tenantId])
+}
+
+/// Transacao criada manualmente, por WhatsApp ou por integracao.
+model PersonalFinanceTransaction {
+  id                String   @id @default(cuid())
+  tenantId          String
+  accountId         String?
+  cardId            String?
+  type              String   // EXPENSE | INCOME | TRANSFER
+  amountCents       Int
+  description       String
+  category          String   @default("Outros")
+  subcategory       String?
+  occurredAt        DateTime
+  source            String   @default("MANUAL") // MANUAL | WHATSAPP_TEXT | WHATSAPP_AUDIO | WHATSAPP_IMAGE | WHATSAPP_PDF | IMPORT
+  rawInput          String?
+  attachmentUrl     String?
+  classifier        String   @default("RULES")
+  confidence        Int      @default(70)
+  createdAt         DateTime @default(now())
+
+  @@index([tenantId, occurredAt])
+  @@index([tenantId, category])
+  @@index([tenantId, type])
+}
+
+/// Limite de gasto por categoria.
+model SpendingLimit {
+  id                    String   @id @default(cuid())
+  tenantId              String
+  category              String
+  period                String   @default("MONTHLY") // MONTHLY | WEEKLY
+  limitCents            Int
+  alertThresholdPercent Int      @default(80)
+  active                Boolean  @default(true)
+  createdAt             DateTime @default(now())
+
+  @@index([tenantId, category])
+}
+
+/// Meta financeira ou de investimento.
+model InvestmentGoal {
+  id           String    @id @default(cuid())
+  tenantId     String
+  name         String
+  targetCents  Int
+  currentCents Int       @default(0)
+  dueDate      DateTime?
+  notes        String?
+  createdAt    DateTime  @default(now())
+
+  @@index([tenantId])
+}
+
+/// Conexao futura com banco, cartao ou carteira de investimentos.
+model ConnectedFinanceProvider {
+  id           String    @id @default(cuid())
+  tenantId     String
+  provider     String
+  kind         String    @default("BANK") // BANK | CREDIT_CARD | INVESTMENT
+  status       String    @default("DISCONNECTED") // DISCONNECTED | CONNECTED | ERROR
+  lastSyncedAt DateTime?
+  createdAt    DateTime  @default(now())
+
+  @@index([tenantId, provider])
+}
+
+// ===================== Main WhatsApp Bot / Finance Receipts =====================
+
+/// WhatsApp principal usado pelo robo da plataforma. E global, nao pertence a um tenant.
+model MainWhatsappBot {
+  id                String    @id @default(cuid())
+  phone             String?
+  profileName       String?
+  profilePictureUrl String?
+  status            String    @default("disconnected") // active | inactive | blocked | disconnected | connected | error | session_expired
+  isActive          Boolean   @default(true)
+  connectedAt       DateTime?
+  disconnectedAt    DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@index([status])
+  @@index([isActive])
+}
+
+/// Estado da conexao do WhatsApp principal.
+model WhatsappConnection {
+  id                String    @id @default(cuid())
+  status            String    @default("disconnected") // disconnected | waiting_qr | connecting | connected | reconnecting | error | session_expired
+  phone             String?
+  profileName       String?
+  profilePictureUrl String?
+  connectedAt       DateTime?
+  disconnectedAt    DateTime?
+  lastQrGeneratedAt DateTime?
+  lastError         String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  sessions          WhatsappSession[]
+  logs              WhatsappConnectionLog[]
+
+  @@index([status])
+}
+
+/// Credenciais principais da sessao Baileys, sempre criptografadas antes de persistir.
+model WhatsappSession {
+  id           String   @id @default(cuid())
+  connectionId String?
+  connection   WhatsappConnection? @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  sessionName  String   @default("main-bot")
+  creds        String
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  keys         WhatsappSessionKey[]
+
+  @@index([sessionName])
+  @@index([isActive])
+}
+
+/// Chaves individuais da sessao Baileys, criptografadas e atualizadas incrementalmente.
+model WhatsappSessionKey {
+  id        String   @id @default(cuid())
+  sessionId String
+  session   WhatsappSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  keyType   String
+  keyId     String
+  keyValue  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([sessionId, keyType, keyId])
+  @@index([keyType])
+  @@index([sessionId])
+}
+
+/// Logs administrativos da conexao principal do WhatsApp.
+model WhatsappConnectionLog {
+  id           String    @id @default(cuid())
+  connectionId String?
+  connection   WhatsappConnection? @relation(fields: [connectionId], references: [id], onDelete: SetNull)
+  adminId      String?
+  action       String
+  status       String?
+  description  String?
+  metadata     String?
+  createdAt    DateTime  @default(now())
+
+  @@index([connectionId])
+  @@index([createdAt])
+}
+
+/// Codigo de ativacao emitido para uma empresa (Tenant). O codigo puro nunca e armazenado.
+model CompanyActivationCode {
+  id          String    @id @default(cuid())
+  tenantId    String
+  reference   String    @unique
+  codeHash    String
+  codePrefix  String
+  role        String    @default("FINANCE")
+  permissions String?
+  maxUses     Int       @default(1)
+  usedCount   Int       @default(0)
+  expiresAt   DateTime?
+  status      String    @default("ACTIVE") // ACTIVE | USED | EXPIRED | REVOKED
+  createdBy   String?
+  revokedAt   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([tenantId])
+  @@index([codePrefix])
+  @@index([status])
+}
+
+/// Numero de WhatsApp ativado e vinculado a empresa correta.
+model WhatsappUser {
+  id          String    @id @default(cuid())
+  tenantId    String
+  phone       String    @unique
+  displayName String?
+  role        String    @default("FINANCE")
+  permissions String?
+  status      String    @default("ACTIVE") // ACTIVE | INACTIVE | BLOCKED
+  activatedAt DateTime  @default(now())
+  lastSeenAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([tenantId])
+  @@index([status])
+}
+
+/// Estado temporario de conversa por usuario/empresa, com expiracao.
+model WhatsappUserState {
+  id             String   @id @default(cuid())
+  tenantId       String
+  whatsappUserId String
+  phone          String   @unique
+  state          String
+  payload        String?
+  expiresAt      DateTime
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([whatsappUserId])
+  @@index([expiresAt])
+}
+
+/// Logs de ativacao e uso bloqueado por status/permissao.
+model CompanyActivationLog {
+  id             String   @id @default(cuid())
+  tenantId       String
+  whatsappUserId String?
+  phone          String?
+  action         String
+  status         String?
+  description    String?
+  metadata       String?
+  createdAt      DateTime @default(now())
+
+  @@index([tenantId])
+  @@index([createdAt])
+}
+
+/// Lancamento financeiro confirmado via WhatsApp. Valores em centavos para consistencia.
+model FinancialEntry {
+  id                  String    @id @default(cuid())
+  tenantId            String
+  whatsappUserId      String
+  userWhatsapp        String
+  tipo                String    // receita | gasto
+  valorCents          Int
+  moeda               String    @default("BRL")
+  dataTransacao       DateTime?
+  horaTransacao       String?
+  pagadorNome         String?
+  pagadorDocumento    String?
+  pagadorInstituicao  String?
+  recebedorNome       String?
+  recebedorDocumento  String?
+  recebedorInstituicao String?
+  chavePix            String?
+  tipoTransferencia   String?
+  idTransacao         String?
+  codigoAutenticacao  String?
+  numeroControle      String?
+  bancoEmissor        String?
+  situacao            String?
+  descricao           String
+  confianca           String
+  fonteExtracao       String
+  arquivoUrl          String?
+  jsonOriginal        String?
+  status              String    @default("pending_confirmation") // pending_confirmation | saved | corrected | cancelled | error
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  @@index([tenantId, createdAt])
+  @@index([tenantId, status])
+  @@index([tenantId, whatsappUserId])
 }
 
 // ===================== SaaS / Plataforma =====================

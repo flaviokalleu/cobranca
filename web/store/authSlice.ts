@@ -7,19 +7,18 @@ export interface AuthState {
   tenantId: string | null;
   status: 'idle' | 'loading' | 'failed';
   error: string | null;
+  hydrated: boolean;
 }
 
 function initialState(): AuthState {
-  if (typeof window !== 'undefined') {
-    return {
-      token: localStorage.getItem('token'),
-      role: localStorage.getItem('role'),
-      tenantId: localStorage.getItem('tenantId'),
-      status: 'idle',
-      error: null,
-    };
-  }
-  return { token: null, role: null, tenantId: null, status: 'idle', error: null };
+  return {
+    token: null,
+    role: null,
+    tenantId: null,
+    status: 'idle',
+    error: null,
+    hydrated: false,
+  };
 }
 
 interface AuthResponse {
@@ -71,6 +70,7 @@ function persist(state: AuthState, payload: AuthPayload) {
   state.token = payload.token;
   state.role = payload.role;
   state.tenantId = payload.tenantId;
+  state.hydrated = true;
   if (typeof window !== 'undefined') {
     localStorage.setItem('token', payload.token);
     localStorage.setItem('role', payload.role);
@@ -82,12 +82,21 @@ const authSlice = createSlice({
   name: 'auth',
   initialState: initialState(),
   reducers: {
+    hydrateFromStorage(state) {
+      if (typeof window !== 'undefined') {
+        state.token = localStorage.getItem('token');
+        state.role = localStorage.getItem('role');
+        state.tenantId = localStorage.getItem('tenantId');
+      }
+      state.hydrated = true;
+    },
     logout(state) {
       state.token = null;
       state.role = null;
       state.tenantId = null;
       state.status = 'idle';
       state.error = null;
+      state.hydrated = true;
       if (typeof window !== 'undefined') localStorage.clear();
     },
   },
@@ -112,5 +121,5 @@ const authSlice = createSlice({
   },
 });
 
-export const { logout } = authSlice.actions;
+export const { hydrateFromStorage, logout } = authSlice.actions;
 export default authSlice.reducer;

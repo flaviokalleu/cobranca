@@ -42,7 +42,7 @@ export default function UsuariosPage() {
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [newRole, setNewRole] = useState('AGENT');
+  const [newRole, setNewRole] = useState('USER');
 
   useEffect(() => {
     if (role === 'ADMIN') void dispatch(fetchUsers());
@@ -150,8 +150,11 @@ export default function UsuariosPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="AGENT">AGENT (operador)</SelectItem>
-                  <SelectItem value="ADMIN">ADMIN (administrador)</SelectItem>
+                  <SelectItem value="USER">Usuario</SelectItem>
+                  <SelectItem value="OPERATIONS">Operacional</SelectItem>
+                  <SelectItem value="COMMERCIAL">Comercial</SelectItem>
+                  <SelectItem value="FINANCE">Financeiro</SelectItem>
+                  <SelectItem value="ADMIN">Administrador</SelectItem>
                 </SelectContent>
               </Select>
             </div>

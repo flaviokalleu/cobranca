@@ -8,6 +8,8 @@ import {
   payCharge,
   fetchPix,
   clearPix,
+  updateCharge,
+  deleteCharge,
 } from '@/store/dataSlice';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
@@ -37,7 +39,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Plus, Copy, Search } from 'lucide-react';
+import { Plus, Copy, Search, Pencil, Trash2 } from 'lucide-react';
 
 const brl = (cents: number) =>
   (cents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -58,6 +60,11 @@ export default function CobrancasPage() {
 
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
+
+  const [editOpen, setEditOpen] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editDesc, setEditDesc] = useState('');
+  const [editDue, setEditDue] = useState('');
 
   useEffect(() => {
     if (!customerId && customers[0]) setCustomerId(customers[0].id);
@@ -92,6 +99,38 @@ export default function CobrancasPage() {
   async function onPay(id: string) {
     const res = await dispatch(payCharge(id));
     if (payCharge.fulfilled.match(res)) toast.success('Pagamento registrado');
+  }
+
+  function openEdit(c: { id: string; description: string; dueDate: string }) {
+    setEditId(c.id);
+    setEditDesc(c.description);
+    setEditDue(c.dueDate.slice(0, 10));
+    setEditOpen(true);
+  }
+
+  async function onEditSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editId) return;
+    const res = await dispatch(
+      updateCharge({ id: editId, description: editDesc, dueDate: editDue || undefined }),
+    );
+    if (updateCharge.fulfilled.match(res)) {
+      toast.success('Cobrança atualizada');
+      setEditOpen(false);
+    } else {
+      const p = (res as { payload?: unknown }).payload;
+      toast.error(typeof p === 'string' ? p : 'Erro');
+    }
+  }
+
+  async function onDelete(c: { id: string; description: string }) {
+    if (!window.confirm(`Excluir a cobrança "${c.description}"?`)) return;
+    const res = await dispatch(deleteCharge(c.id));
+    if (deleteCharge.fulfilled.match(res)) toast.success('Cobrança excluída');
+    else {
+      const p = (res as { payload?: unknown }).payload;
+      toast.error(typeof p === 'string' ? p : 'Erro');
+    }
   }
 
   return (
@@ -172,6 +211,23 @@ export default function CobrancasPage() {
                           Dar baixa
                         </Button>
                       )}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        title="Editar"
+                        onClick={() => openEdit(c)}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        title="Excluir"
+                        className="text-destructive"
+                        onClick={() => onDelete(c)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -240,6 +296,29 @@ export default function CobrancasPage() {
             )}
             <Button type="submit" className="w-full" disabled={customers.length === 0}>
               Criar cobrança
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Editar cobrança */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar cobrança</DialogTitle>
+            <DialogDescription>Edite descrição e vencimento (o valor não muda).</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={onEditSubmit} className="grid gap-4">
+            <div className="grid gap-1.5">
+              <Label>Descrição</Label>
+              <Input value={editDesc} onChange={(e) => setEditDesc(e.target.value)} required />
+            </div>
+            <div className="grid gap-1.5">
+              <Label>Vencimento</Label>
+              <Input type="date" value={editDue} onChange={(e) => setEditDue(e.target.value)} required />
+            </div>
+            <Button type="submit" className="w-full">
+              Salvar
             </Button>
           </form>
         </DialogContent>

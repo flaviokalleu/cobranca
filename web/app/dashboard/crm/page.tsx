@@ -27,11 +27,14 @@ import { Plus } from 'lucide-react';
 const brl = (cents: number) =>
   (cents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-const STAGES = [
-  { key: 'NEW', label: 'Novo' },
-  { key: 'CONTACTED', label: 'Contatado' },
-  { key: 'PROPOSAL', label: 'Proposta' },
-  { key: 'WON', label: 'Ganho' },
+const STAGES: Array<{ key: string; label: string; aliases?: string[] }> = [
+  { key: 'LEAD', label: 'Lead', aliases: ['NEW'] },
+  { key: 'FIRST_CONTACT', label: 'Primeiro contato', aliases: ['CONTACTED'] },
+  { key: 'DOCUMENTATION', label: 'Documentacao' },
+  { key: 'ANALYSIS', label: 'Analise', aliases: ['PROPOSAL'] },
+  { key: 'APPROVED', label: 'Aprovado' },
+  { key: 'CONTRACT', label: 'Contrato' },
+  { key: 'CUSTOMER', label: 'Cliente', aliases: ['WON'] },
   { key: 'LOST', label: 'Perdido' },
 ];
 
@@ -83,7 +86,9 @@ export default function CrmPage() {
       <div className="p-6">
         <div className="flex gap-4 overflow-x-auto pb-2">
           {STAGES.map((stage) => {
-            const cards = leads.filter((l) => l.stage === stage.key);
+            const cards = leads.filter(
+              (l) => l.stage === stage.key || stage.aliases?.includes(l.stage),
+            );
             const total = cards.reduce((s, c) => s + c.estimatedCents, 0);
             return (
               <div key={stage.key} className="w-64 shrink-0">
@@ -139,7 +144,7 @@ export default function CrmPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Novo lead</DialogTitle>
-            <DialogDescription>Entra no funil na coluna “Novo”.</DialogDescription>
+            <DialogDescription>Entra no funil na coluna Lead.</DialogDescription>
           </DialogHeader>
           <form onSubmit={onAdd} className="grid gap-4">
             <div className="grid gap-1.5">

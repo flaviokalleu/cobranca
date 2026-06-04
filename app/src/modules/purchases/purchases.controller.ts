@@ -8,19 +8,19 @@ import { Roles } from '../../auth/decorators/roles.decorator';
 export class PurchasesController {
   constructor(private readonly purchases: PurchasesService) {}
 
-  @Roles('ADMIN', 'AGENT')
+  @Roles('ADMIN', 'FINANCE', 'OPERATIONS', 'AGENT')
   @Post()
   create(@Tenant() tenantId: string, @Body() dto: CreatePurchaseOrderDto) {
     return this.purchases.create(tenantId, dto);
   }
 
-  @Roles('ADMIN', 'AGENT')
+  @Roles('ADMIN', 'FINANCE', 'OPERATIONS', 'AGENT')
   @Get()
   list(@Tenant() tenantId: string) {
     return this.purchases.list(tenantId);
   }
 
-  @Roles('ADMIN', 'AGENT')
+  @Roles('ADMIN', 'FINANCE', 'OPERATIONS', 'AGENT')
   @Post(':id/receive')
   receive(@Tenant() tenantId: string, @Param('id') id: string) {
     return this.purchases.receive(tenantId, id);

@@ -5,6 +5,17 @@ import { PrismaService } from '../../common/prisma/prisma.service';
 export class TenantsService {
   constructor(private readonly prisma: PrismaService) {}
 
+  private readonly defaultDocumentRequirements = [
+    'RG',
+    'CPF',
+    'Comprovante de renda',
+    'Comprovante de residencia',
+    'Carteira de trabalho',
+    'Extrato FGTS',
+    'Certidao de nascimento',
+    'Certidao de casamento',
+  ];
+
   private slugify(input: string): string {
     return (
       input
@@ -25,7 +36,15 @@ export class TenantsService {
     while (await this.prisma.tenant.findUnique({ where: { slug } })) {
       slug = `${base}-${++n}`;
     }
-    return this.prisma.tenant.create({ data: { id: slug, name, slug } });
+    const tenant = await this.prisma.tenant.create({ data: { id: slug, name, slug } });
+    await this.prisma.documentRequirement.createMany({
+      data: this.defaultDocumentRequirements.map((requirementName) => ({
+        tenantId: tenant.id,
+        name: requirementName,
+        category: 'Minha Casa Minha Vida',
+      })),
+    });
+    return tenant;
   }
 
   findById(id: string) {

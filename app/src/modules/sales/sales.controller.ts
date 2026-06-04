@@ -8,19 +8,19 @@ import { Roles } from '../../auth/decorators/roles.decorator';
 export class SalesController {
   constructor(private readonly sales: SalesService) {}
 
-  @Roles('ADMIN', 'AGENT')
+  @Roles('ADMIN', 'COMMERCIAL', 'AGENT')
   @Post()
   create(@Tenant() tenantId: string, @Body() dto: CreateSalesOrderDto) {
     return this.sales.create(tenantId, dto);
   }
 
-  @Roles('ADMIN', 'AGENT')
+  @Roles('ADMIN', 'COMMERCIAL', 'FINANCE', 'AGENT')
   @Get()
   list(@Tenant() tenantId: string) {
     return this.sales.list(tenantId);
   }
 
-  @Roles('ADMIN', 'AGENT')
+  @Roles('ADMIN', 'COMMERCIAL', 'AGENT')
   @Post(':id/confirm')
   confirm(@Tenant() tenantId: string, @Param('id') id: string) {
     return this.sales.confirm(tenantId, id);

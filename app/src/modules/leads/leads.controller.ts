@@ -9,19 +9,19 @@ import { Roles } from '../../auth/decorators/roles.decorator';
 export class LeadsController {
   constructor(private readonly leads: LeadsService) {}
 
-  @Roles('ADMIN', 'AGENT')
+  @Roles('ADMIN', 'COMMERCIAL', 'AGENT')
   @Post()
   create(@Tenant() tenantId: string, @Body() dto: CreateLeadDto) {
     return this.leads.create(tenantId, dto);
   }
 
-  @Roles('ADMIN', 'AGENT')
+  @Roles('ADMIN', 'COMMERCIAL', 'AGENT')
   @Get()
   list(@Tenant() tenantId: string) {
     return this.leads.list(tenantId);
   }
 
-  @Roles('ADMIN', 'AGENT')
+  @Roles('ADMIN', 'COMMERCIAL', 'AGENT')
   @Patch(':id/stage')
   changeStage(
     @Tenant() tenantId: string,

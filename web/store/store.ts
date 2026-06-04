@@ -7,6 +7,11 @@ import salesReducer from './salesSlice';
 import purchaseReducer from './purchaseSlice';
 import tasksReducer from './tasksSlice';
 import crmReducer from './crmSlice';
+import documentsReducer from './documentsSlice';
+import calendarReducer from './calendarSlice';
+import notificationsReducer from './notificationsSlice';
+import aiReducer from './aiSlice';
+import personalFinanceReducer from './personalFinanceSlice';
 
 export const store = configureStore({
   reducer: {
@@ -18,6 +23,11 @@ export const store = configureStore({
     purchases: purchaseReducer,
     tasks: tasksReducer,
     crm: crmReducer,
+    documents: documentsReducer,
+    calendar: calendarReducer,
+    notifications: notificationsReducer,
+    ai: aiReducer,
+    personalFinance: personalFinanceReducer,
   },
 });
 

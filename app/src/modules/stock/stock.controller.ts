@@ -8,13 +8,13 @@ import { Roles } from '../../auth/decorators/roles.decorator';
 export class StockController {
   constructor(private readonly stock: StockService) {}
 
-  @Roles('ADMIN', 'AGENT')
+  @Roles('ADMIN', 'OPERATIONS', 'AGENT')
   @Get('movements')
   movements(@Tenant() tenantId: string) {
     return this.stock.movements(tenantId);
   }
 
-  @Roles('ADMIN', 'AGENT')
+  @Roles('ADMIN', 'OPERATIONS', 'AGENT')
   @Post('adjust')
   adjust(@Tenant() tenantId: string, @Body() dto: AdjustStockDto) {
     return this.stock.adjust(tenantId, dto);

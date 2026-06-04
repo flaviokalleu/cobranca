@@ -11,6 +11,11 @@ import {
   Building2,
   Target,
   ListChecks,
+  FileCheck,
+  CalendarDays,
+  Bell,
+  Bot,
+  MessageCircle,
   Users,
   UserCog,
   Settings,
@@ -66,6 +71,16 @@ export const navSections: NavSection[] = [
   {
     title: 'Tarefas',
     items: [{ href: '/dashboard/tarefas', label: 'Checklist', icon: ListChecks }],
+  },
+  {
+    title: 'Operacao',
+    items: [
+      { href: '/dashboard/documentos', label: 'Documentos', icon: FileCheck },
+      { href: '/dashboard/calendario', label: 'Calendario', icon: CalendarDays },
+      { href: '/dashboard/notificacoes', label: 'Notificacoes', icon: Bell },
+      { href: '/dashboard/assistente', label: 'Assistente IA', icon: Bot },
+      { href: '/dashboard/whatsapp-financeiro', label: 'WhatsApp Financeiro', icon: MessageCircle },
+    ],
   },
   {
     title: 'Cadastros',

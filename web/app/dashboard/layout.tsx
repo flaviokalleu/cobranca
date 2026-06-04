@@ -10,17 +10,18 @@ import { MobileNav } from '@/components/mobile-nav';
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
   const dispatch = useAppDispatch();
-  const token = useAppSelector((s) => s.auth.token);
+  const { token, hydrated } = useAppSelector((s) => s.auth);
   const error = useAppSelector((s) => s.data.error);
 
   useEffect(() => {
+    if (!hydrated) return;
     if (!token) {
       router.push('/');
       return;
     }
     void dispatch(fetchCustomers());
     void dispatch(fetchCharges());
-  }, [token, dispatch, router]);
+  }, [token, hydrated, dispatch, router]);
 
   // some erro vira um toast que some sozinho
   useEffect(() => {
@@ -28,6 +29,10 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     const t = setTimeout(() => dispatch(clearError()), 5000);
     return () => clearTimeout(t);
   }, [error, dispatch]);
+
+  if (!hydrated) {
+    return <div className="min-h-screen bg-muted/30" />;
+  }
 
   return (
     <div className="flex min-h-screen bg-muted/30">

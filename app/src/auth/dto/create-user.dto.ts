@@ -9,6 +9,6 @@ export class CreateUserDto {
   @MinLength(6)
   password!: string;
 
-  @IsIn(['ADMIN', 'AGENT'])
+  @IsIn(['ADMIN', 'FINANCE', 'COMMERCIAL', 'OPERATIONS', 'USER', 'AGENT'])
   role!: Role;
 }

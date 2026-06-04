@@ -1,4 +1,11 @@
-export type Role = 'ADMIN' | 'AGENT' | 'SUPERADMIN';
+export type Role =
+  | 'ADMIN'
+  | 'FINANCE'
+  | 'COMMERCIAL'
+  | 'OPERATIONS'
+  | 'USER'
+  | 'AGENT'
+  | 'SUPERADMIN';
 
 /// Conteudo do JWT, anexado a requisicao apos autenticacao.
 export interface JwtUser {

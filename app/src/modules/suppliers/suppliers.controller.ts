@@ -8,13 +8,13 @@ import { Roles } from '../../auth/decorators/roles.decorator';
 export class SuppliersController {
   constructor(private readonly suppliers: SuppliersService) {}
 
-  @Roles('ADMIN', 'AGENT')
+  @Roles('ADMIN', 'FINANCE', 'OPERATIONS', 'AGENT')
   @Post()
   create(@Tenant() tenantId: string, @Body() dto: CreateSupplierDto) {
     return this.suppliers.create(tenantId, dto);
   }
 
-  @Roles('ADMIN', 'AGENT')
+  @Roles('ADMIN', 'FINANCE', 'OPERATIONS', 'AGENT')
   @Get()
   list(@Tenant() tenantId: string) {
     return this.suppliers.list(tenantId);

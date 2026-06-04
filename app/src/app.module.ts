@@ -28,6 +28,12 @@ import { PurchasesModule } from './modules/purchases/purchases.module';
 import { TasksModule } from './modules/tasks/tasks.module';
 import { LeadsModule } from './modules/leads/leads.module';
 import { TenantsModule } from './modules/tenants/tenants.module';
+import { DocumentsModule } from './modules/documents/documents.module';
+import { CalendarModule } from './modules/calendar/calendar.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
+import { AiModule } from './modules/ai/ai.module';
+import { PersonalFinanceModule } from './modules/personal-finance/personal-finance.module';
+import { BillingModule } from './modules/billing/billing.module';
 
 @Module({
   imports: [
@@ -53,6 +59,12 @@ import { TenantsModule } from './modules/tenants/tenants.module';
     TasksModule,
     LeadsModule,
     TenantsModule,
+    DocumentsModule,
+    CalendarModule,
+    NotificationsModule,
+    AiModule,
+    PersonalFinanceModule,
+    BillingModule,
   ],
   controllers: [HealthController],
   providers: [

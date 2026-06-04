@@ -4,7 +4,13 @@ import { api } from '@/lib/api';
 export interface Customer {
   id: string;
   name: string;
+  document?: string | null;
   phone: string;
+  whatsapp?: string | null;
+  email?: string | null;
+  city?: string | null;
+  profession?: string | null;
+  incomeCents?: number | null;
 }
 export interface Charge {
   id: string;
@@ -75,9 +81,55 @@ export const fetchSettings = createAsyncThunk('data/fetchSettings', async () => 
 
 export const createCustomer = createAsyncThunk(
   'data/createCustomer',
-  async (body: { name: string; phone: string }, { dispatch, rejectWithValue }) => {
+  async (
+    body: {
+      name: string;
+      document?: string;
+      phone: string;
+      whatsapp?: string;
+      email?: string;
+      city?: string;
+      profession?: string;
+      incomeCents?: number;
+    },
+    { dispatch, rejectWithValue },
+  ) => {
     const { status } = await api('POST', '/customers', body);
     if (status >= 300) return rejectWithValue('Erro ao criar cliente (telefone: 10-15 dígitos).');
+    await dispatch(fetchCustomers());
+    return true;
+  },
+);
+
+export const updateCustomer = createAsyncThunk(
+  'data/updateCustomer',
+  async (
+    body: {
+      id: string;
+      name?: string;
+      document?: string;
+      phone?: string;
+      whatsapp?: string;
+      email?: string;
+      city?: string;
+      profession?: string;
+      incomeCents?: number;
+    },
+    { dispatch, rejectWithValue },
+  ) => {
+    const { id, ...data } = body;
+    const { status } = await api('PATCH', `/customers/${id}`, data);
+    if (status >= 300) return rejectWithValue('Erro ao atualizar cliente.');
+    await dispatch(fetchCustomers());
+    return true;
+  },
+);
+
+export const deleteCustomer = createAsyncThunk(
+  'data/deleteCustomer',
+  async (id: string, { dispatch, rejectWithValue }) => {
+    const { status } = await api('DELETE', `/customers/${id}`);
+    if (status >= 300) return rejectWithValue('Erro ao excluir cliente.');
     await dispatch(fetchCustomers());
     return true;
   },
@@ -102,6 +154,31 @@ export const payCharge = createAsyncThunk(
     const { status } = await api('POST', `/charges/${id}/pay`);
     if (status === 403) return rejectWithValue('Apenas ADMIN pode dar baixa.');
     if (status >= 300) return rejectWithValue('Erro ao registrar pagamento.');
+    await dispatch(fetchCharges());
+    return true;
+  },
+);
+
+export const updateCharge = createAsyncThunk(
+  'data/updateCharge',
+  async (
+    body: { id: string; description?: string; dueDate?: string },
+    { dispatch, rejectWithValue },
+  ) => {
+    const { id, ...data } = body;
+    const { status } = await api('PATCH', `/charges/${id}`, data);
+    if (status >= 300) return rejectWithValue('Erro ao editar cobrança.');
+    await dispatch(fetchCharges());
+    return true;
+  },
+);
+
+export const deleteCharge = createAsyncThunk(
+  'data/deleteCharge',
+  async (id: string, { dispatch, rejectWithValue }) => {
+    const { status } = await api('DELETE', `/charges/${id}`);
+    if (status === 403) return rejectWithValue('Apenas ADMIN/FINANCE pode excluir.');
+    if (status >= 300) return rejectWithValue('Erro ao excluir cobrança.');
     await dispatch(fetchCharges());
     return true;
   },

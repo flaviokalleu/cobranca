@@ -10,6 +10,7 @@ import { LedgerService } from '../ledger/ledger.service';
 import { PixService } from '../pix/pix.service';
 import { SettingsService } from '../../common/settings/settings.service';
 import { CreateChargeDto } from './dto/create-charge.dto';
+import { UpdateChargeDto } from './dto/update-charge.dto';
 import { REMINDER_JOB, ReminderJobPayload } from '../reminders/reminder.types';
 
 @Injectable()
@@ -146,5 +147,53 @@ export class ChargesService {
     });
 
     return updated;
+  }
+
+  /// Edita apenas descricao/vencimento — valor nao muda para nao desbalancear o razao.
+  async update(tenantId: string, id: string, dto: UpdateChargeDto) {
+    const charge = await this.prisma.charge.findFirst({ where: { id, tenantId } });
+    if (!charge) {
+      throw new NotFoundException('Cobranca nao encontrada neste tenant.');
+    }
+    const updated = await this.prisma.charge.update({
+      where: { id: charge.id },
+      data: {
+        description: dto.description ?? undefined,
+        dueDate: dto.dueDate ? new Date(dto.dueDate) : undefined,
+      },
+    });
+    await this.audit.record({
+      tenantId,
+      actor: 'system',
+      action: 'CHARGE_UPDATED',
+      entityType: 'Charge',
+      entityId: charge.id,
+    });
+    return updated;
+  }
+
+  /// Exclui a cobranca e seus lancamentos (mantem o razao balanceado).
+  async remove(tenantId: string, id: string) {
+    const charge = await this.prisma.charge.findFirst({ where: { id, tenantId } });
+    if (!charge) {
+      throw new NotFoundException('Cobranca nao encontrada neste tenant.');
+    }
+    await this.prisma.$transaction([
+      this.prisma.ledgerEntry.deleteMany({
+        where: {
+          tenantId,
+          transactionId: { in: [`charge:${charge.id}`, `payment:${charge.id}`] },
+        },
+      }),
+      this.prisma.charge.delete({ where: { id: charge.id } }),
+    ]);
+    await this.audit.record({
+      tenantId,
+      actor: 'system',
+      action: 'CHARGE_DELETED',
+      entityType: 'Charge',
+      entityId: id,
+    });
+    return { ok: true };
   }
 }

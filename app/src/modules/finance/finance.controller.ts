@@ -7,13 +7,13 @@ import { Roles } from '../../auth/decorators/roles.decorator';
 export class FinanceController {
   constructor(private readonly finance: FinanceService) {}
 
-  @Roles('ADMIN', 'AGENT')
+  @Roles('ADMIN', 'FINANCE', 'AGENT')
   @Get('cashflow')
   cashFlow(@Tenant() tenantId: string) {
     return this.finance.cashFlow(tenantId);
   }
 
-  @Roles('ADMIN')
+  @Roles('ADMIN', 'FINANCE')
   @Get('summary')
   summary(@Tenant() tenantId: string) {
     return this.finance.summary(tenantId);
