@@ -1,0 +1,290 @@
+// Modelo de dados do nucleo de cobranca.
+// Banco: SQLite (arquivo local) para rodar sem instalar nada.
+// Dinheiro e sempre armazenado em CENTAVOS (Int) — nunca float — para integridade financeira.
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+/// Cliente devedor, sempre dentro de um tenant (empresa).
+model Customer {
+  id        String   @id @default(cuid())
+  tenantId  String
+  name      String
+  phone     String
+  email     String?
+  createdAt DateTime @default(now())
+  charges   Charge[]
+
+  @@index([tenantId])
+}
+
+/// Cobranca emitida para um cliente.
+model Charge {
+  id          String    @id @default(cuid())
+  tenantId    String
+  customerId  String
+  customer    Customer  @relation(fields: [customerId], references: [id])
+  amountCents Int
+  description String
+  dueDate     DateTime
+  status      String    @default("PENDING") // PENDING | PAID | CANCELED
+  createdAt   DateTime  @default(now())
+  paidAt      DateTime?
+  gatewayProvider String?
+  gatewayChargeId String?
+  paymentLink     String?
+  pixCode         String?
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+}
+
+/// Lancamento contabil (partida dobrada). Cada transacao gera 2+ entradas que se equilibram.
+model LedgerEntry {
+  id            String   @id @default(cuid())
+  tenantId      String
+  transactionId String
+  accountCode   String // ACCOUNTS_RECEIVABLE | REVENUE | CASH
+  direction     String // DEBIT | CREDIT
+  amountCents   Int
+  description   String
+  createdAt     DateTime @default(now())
+
+  @@index([tenantId, accountCode])
+  @@index([transactionId])
+}
+
+/// Configuracoes por tenant (dados do recebedor PIX).
+model Settings {
+  id           String   @id @default(cuid())
+  tenantId     String   @unique
+  pixKey           String
+  merchantName     String
+  merchantCity     String
+  paymentProvider  String   @default("NONE") // NONE | ASAAS | MERCADOPAGO
+  asaasApiKey      String?
+  mercadoPagoToken String?
+  updatedAt        DateTime @updatedAt
+}
+
+/// Usuario do sistema, sempre dentro de um tenant. Senha guardada como hash (bcrypt).
+model User {
+  id           String   @id @default(cuid())
+  tenantId     String
+  email        String
+  passwordHash String
+  role         String   @default("ADMIN") // ADMIN | AGENT
+  createdAt    DateTime @default(now())
+
+  @@unique([tenantId, email])
+  @@index([tenantId])
+}
+
+/// Trilha de auditoria: toda mudanca de estado relevante e registrada aqui.
+model AuditLog {
+  id         String   @id @default(cuid())
+  tenantId   String
+  actor      String
+  action     String
+  entityType String
+  entityId   String
+  metadata   String? // JSON serializado
+  createdAt  DateTime @default(now())
+
+  @@index([tenantId, createdAt])
+}
+
+// ===================== ERP =====================
+
+/// Fornecedor.
+model Supplier {
+  id        String   @id @default(cuid())
+  tenantId  String
+  name      String
+  document  String?
+  phone     String?
+  email     String?
+  createdAt DateTime @default(now())
+
+  @@index([tenantId])
+}
+
+/// Produto (com saldo de estoque embutido em stockQty).
+model Product {
+  id          String   @id @default(cuid())
+  tenantId    String
+  sku         String
+  name        String
+  description String?
+  priceCents  Int      @default(0)
+  costCents   Int      @default(0)
+  stockQty    Int      @default(0)
+  unit        String   @default("UN")
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  @@index([tenantId])
+}
+
+/// Movimentacao de estoque (historico).
+model StockMovement {
+  id        String   @id @default(cuid())
+  tenantId  String
+  productId String
+  type      String // IN | OUT | ADJUST
+  qty       Int
+  reason    String
+  refType   String?
+  refId     String?
+  createdAt DateTime @default(now())
+
+  @@index([tenantId, productId])
+  @@index([tenantId, createdAt])
+}
+
+/// Pedido de venda.
+model SalesOrder {
+  id         String   @id @default(cuid())
+  tenantId   String
+  number     Int
+  customerId String
+  status     String   @default("DRAFT") // DRAFT | CONFIRMED | CANCELED
+  totalCents Int      @default(0)
+  chargeId   String?
+  createdAt  DateTime @default(now())
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+}
+
+model SalesOrderItem {
+  id             String @id @default(cuid())
+  tenantId       String
+  orderId        String
+  productId      String
+  qty            Int
+  unitPriceCents Int
+  totalCents     Int
+
+  @@index([orderId])
+}
+
+/// Pedido de compra.
+model PurchaseOrder {
+  id         String   @id @default(cuid())
+  tenantId   String
+  number     Int
+  supplierId String
+  status     String   @default("DRAFT") // DRAFT | RECEIVED | CANCELED
+  totalCents Int      @default(0)
+  payableId  String?
+  createdAt  DateTime @default(now())
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+}
+
+model PurchaseOrderItem {
+  id            String @id @default(cuid())
+  tenantId      String
+  orderId       String
+  productId     String
+  qty           Int
+  unitCostCents Int
+  totalCents    Int
+
+  @@index([orderId])
+}
+
+/// Conta a pagar.
+model Payable {
+  id          String    @id @default(cuid())
+  tenantId    String
+  supplierId  String?
+  description String
+  amountCents Int
+  dueDate     DateTime
+  status      String    @default("PENDING") // PENDING | PAID | CANCELED
+  paidAt      DateTime?
+  category    String?
+  createdAt   DateTime  @default(now())
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+}
+
+/// Tarefa / item de checklist.
+model Task {
+  id        String    @id @default(cuid())
+  tenantId  String
+  title     String
+  notes     String?
+  done      Boolean   @default(false)
+  dueDate   DateTime?
+  priority  String    @default("MED") // LOW | MED | HIGH
+  assignee  String?
+  createdAt DateTime  @default(now())
+
+  @@index([tenantId, done])
+}
+
+/// Lead do CRM.
+model Lead {
+  id             String   @id @default(cuid())
+  tenantId       String
+  name           String
+  contact        String?
+  estimatedCents Int      @default(0)
+  stage          String   @default("NEW") // NEW | CONTACTED | PROPOSAL | WON | LOST
+  notes          String?
+  createdAt      DateTime @default(now())
+
+  @@index([tenantId, stage])
+}
+
+// ===================== SaaS / Plataforma =====================
+
+/// Empresa cliente do SaaS. tenantId dos demais registros = Tenant.id.
+model Tenant {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  status    String   @default("ACTIVE") // ACTIVE | SUSPENDED
+  createdAt DateTime @default(now())
+}
+
+/// Plano de assinatura da plataforma (editável pelo superadmin).
+model Plan {
+  id              String   @id @default(cuid())
+  code            String   @unique // FREE | PRO | BUSINESS
+  name            String
+  priceCents      Int      @default(0)
+  maxUsers        Int      @default(3)
+  maxChargesMonth Int      @default(50)
+  createdAt       DateTime @default(now())
+}
+
+/// Assinatura da empresa (a plataforma cobra a empresa).
+model Subscription {
+  id              String    @id @default(cuid())
+  tenantId        String    @unique
+  planCode        String    @default("FREE")
+  status          String    @default("TRIALING") // TRIALING | ACTIVE | PAST_DUE | CANCELED
+  currentPeriodEnd DateTime?
+  gatewayChargeId String?
+  createdAt       DateTime  @default(now())
+}
+
+/// Configuração da plataforma (chave Asaas usada para cobrar as empresas). Linha única.
+model PlatformSettings {
+  id          String   @id
+  asaasApiKey String?
+  asaasEnv    String   @default("sandbox")
+  updatedAt   DateTime @updatedAt
+}

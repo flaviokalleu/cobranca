@@ -1,0 +1,59 @@
+import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import { api } from '@/lib/api';
+
+export interface Task {
+  id: string;
+  title: string;
+  notes?: string | null;
+  done: boolean;
+  dueDate?: string | null;
+  priority: string;
+  assignee?: string | null;
+  createdAt: string;
+}
+
+const arr = <T>(d: unknown): T[] => (Array.isArray(d) ? (d as T[]) : []);
+
+export const fetchTasks = createAsyncThunk('tasks/fetch', async () =>
+  arr<Task>((await api('GET', '/tasks')).data),
+);
+
+export const createTask = createAsyncThunk(
+  'tasks/create',
+  async (
+    body: { title: string; dueDate?: string; priority?: string; notes?: string },
+    { dispatch, rejectWithValue },
+  ) => {
+    const { status } = await api('POST', '/tasks', body);
+    if (status >= 300) return rejectWithValue('Erro ao criar tarefa.');
+    await dispatch(fetchTasks());
+    return true;
+  },
+);
+
+export const toggleTask = createAsyncThunk(
+  'tasks/toggle',
+  async (id: string, { dispatch }) => {
+    await api('PATCH', `/tasks/${id}/toggle`);
+    await dispatch(fetchTasks());
+    return true;
+  },
+);
+
+interface TasksState {
+  tasks: Task[];
+}
+const initialState: TasksState = { tasks: [] };
+
+const tasksSlice = createSlice({
+  name: 'tasks',
+  initialState,
+  reducers: {},
+  extraReducers: (builder) => {
+    builder.addCase(fetchTasks.fulfilled, (s, a) => {
+      s.tasks = a.payload;
+    });
+  },
+});
+
+export default tasksSlice.reducer;

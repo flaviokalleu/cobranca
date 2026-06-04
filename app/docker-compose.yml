@@ -1,0 +1,22 @@
+# Infra para o MODO PRODUCAO (PostgreSQL + Redis).
+# Requer Docker instalado. Suba com:  docker compose up -d
+# Depois siga a secao "Modo producao" do README.
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: cobranca
+      POSTGRES_PASSWORD: cobranca
+      POSTGRES_DB: cobranca
+    ports:
+      - '5432:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - '6379:6379'
+
+volumes:
+  pgdata:
