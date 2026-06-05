@@ -4,71 +4,106 @@ import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import {
-  clearPix,
-  createCharge,
-  deleteCharge,
-  fetchPix,
-  payCharge,
-  sendChargeWhatsappReminder,
-  updateCharge,
-  type Charge,
+  clearPix, createCharge, deleteCharge, fetchPix,
+  payCharge, sendChargeWhatsappReminder, updateCharge, type Charge,
 } from '@/store/dataSlice';
-import { fetchFinancialEntries } from '@/store/financialEntriesSlice';
+import {
+  fetchFinancialEntries, updateFinancialEntry, deleteFinancialEntry,
+  type FinancialEntry,
+} from '@/store/financialEntriesSlice';
 import { PageHeader } from '@/components/page-header';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
-import { Copy, MessageCircle, Pencil, Plus, Search, Trash2 } from 'lucide-react';
+import {
+  Copy, MessageCircle, Pencil, Plus, Search, Trash2, Wallet, CheckCircle2,
+} from 'lucide-react';
 
+// ─── helpers ─────────────────────────────────────────────────────────────────
 const brl = (cents: number) =>
   (cents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-const fmtDate = (iso: string) =>
-  new Date(iso).toLocaleDateString('pt-BR', { timeZone: 'UTC' });
-const inputToCents = (value: string) => Math.round(Number(value || '0') * 100);
-const isOverdue = (charge: { status: string; dueDate: string }) =>
-  charge.status === 'PENDING' && new Date(charge.dueDate).getTime() < Date.now();
-const recurrenceLabel = (recurrence?: string | null) =>
-  recurrence === 'MONTHLY' ? 'Mensal' : 'Avulsa';
+const fmtDate = (iso?: string | null) =>
+  iso ? new Date(iso).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : '—';
+const inputToCents = (v: string) => Math.round(Number(v || '0') * 100);
+const centsToInput = (c: number) => (c / 100).toFixed(2);
+const isOverdue = (c: { status: string; dueDate: string }) =>
+  c.status === 'PENDING' && new Date(c.dueDate).getTime() < Date.now();
 
-function StatusBadge({ charge }: { charge: Charge }) {
+// ─── sub-components ──────────────────────────────────────────────────────────
+function OrigemBadge({ kind }: { kind: 'manual' | 'wa' }) {
+  return kind === 'wa'
+    ? (
+      <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold"
+        style={{ background: '#dcfce7', color: '#16a34a' }}>
+        <MessageCircle className="h-3 w-3" /> WhatsApp
+      </span>
+    ) : (
+      <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold"
+        style={{ background: '#ede9fe', color: '#7c3aed' }}>
+        Manual
+      </span>
+    );
+}
+
+function ChargeStatus({ charge }: { charge: Charge }) {
   if (charge.status === 'PAID') return <Badge variant="success">Pago</Badge>;
   if (isOverdue(charge)) return <Badge variant="destructive">Vencida</Badge>;
   if (charge.status === 'CANCELED') return <Badge variant="secondary">Cancelada</Badge>;
   return <Badge variant="warning">Pendente</Badge>;
 }
 
+function WaStatus({ confianca }: { confianca: string }) {
+  const map: Record<string, { label: string; bg: string; color: string }> = {
+    alta:  { label: 'Confirmado', bg: '#ecfdf5', color: '#059669' },
+    media: { label: 'Provável',   bg: '#fffbeb', color: '#d97706' },
+    baixa: { label: 'Revisar',    bg: '#fff1f2', color: '#e11d48' },
+  };
+  const s = map[confianca] ?? map.baixa;
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold"
+      style={{ background: s.bg, color: s.color }}>
+      <span className="h-1.5 w-1.5 rounded-full" style={{ background: s.color }} />
+      {s.label}
+    </span>
+  );
+}
+
+function SummaryCard({ label, value, sub, color }: { label: string; value: string; sub?: string; color: string }) {
+  return (
+    <div className="flex flex-col gap-1 rounded-2xl bg-white p-4"
+      style={{ border: '1px solid #f0f0f0', boxShadow: '0 1px 4px rgba(0,0,0,0.05)', borderLeft: `4px solid ${color}` }}>
+      <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: '#9ca3af' }}>{label}</p>
+      <p className="text-xl font-bold text-gray-900">{value}</p>
+      {sub && <p className="text-[11px]" style={{ color: '#9ca3af' }}>{sub}</p>}
+    </div>
+  );
+}
+
+// ─── page ─────────────────────────────────────────────────────────────────────
 export default function CobrancasPage() {
   const dispatch = useAppDispatch();
-  const { customers, charges, pix } = useAppSelector((state) => state.data);
-  const { entries: whatsappEntries } = useAppSelector((state) => state.financialEntries);
-  const whatsappReceitas = whatsappEntries.filter((e) => e.tipo === 'receita');
+  const { customers, charges, pix } = useAppSelector((s) => s.data);
+  const { entries: waEntries } = useAppSelector((s) => s.financialEntries);
 
-  const [tab, setTab] = useState<'manual' | 'whatsapp'>('manual');
-  const [open, setOpen] = useState(false);
+  // ── filters
+  const [search, setSearch] = useState('');
+  const [origemFilter, setOrigemFilter] = useState<'ALL' | 'manual' | 'wa'>('ALL');
+  const [tipoFilter, setTipoFilter] = useState('ALL');
+  const [statusFilter, setStatusFilter] = useState('ALL');
+
+  // ── create charge dialog
+  const [createOpen, setCreateOpen] = useState(false);
   const [customerId, setCustomerId] = useState('');
   const [amount, setAmount] = useState('49.90');
   const [description, setDescription] = useState('Mensalidade');
@@ -76,361 +111,388 @@ export default function CobrancasPage() {
   const [category, setCategory] = useState('');
   const [recurrence, setRecurrence] = useState('ONCE');
 
-  const [query, setQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState('ALL');
+  // ── edit charge dialog
+  const [editChargeOpen, setEditChargeOpen] = useState(false);
+  const [editCharge, setEditCharge] = useState<Charge | null>(null);
+  const [editChargeDesc, setEditChargeDesc] = useState('');
+  const [editChargeDue, setEditChargeDue] = useState('');
+  const [editChargeCategory, setEditChargeCategory] = useState('');
+  const [editChargeRecurrence, setEditChargeRecurrence] = useState('ONCE');
 
-  const [editOpen, setEditOpen] = useState(false);
-  const [editId, setEditId] = useState<string | null>(null);
-  const [editDescription, setEditDescription] = useState('');
-  const [editDueDate, setEditDueDate] = useState('');
-  const [editCategory, setEditCategory] = useState('');
-  const [editRecurrence, setEditRecurrence] = useState('ONCE');
+  // ── edit WA entry dialog
+  const [editWaOpen, setEditWaOpen] = useState(false);
+  const [editWa, setEditWa] = useState<FinancialEntry | null>(null);
+  const [editWaDesc, setEditWaDesc] = useState('');
+  const [editWaTipo, setEditWaTipo] = useState('receita');
+  const [editWaValor, setEditWaValor] = useState('');
+  const [editWaRecorrencia, setEditWaRecorrencia] = useState('AVULSO');
+  const [editWaData, setEditWaData] = useState('');
+  const [editWaPagador, setEditWaPagador] = useState('');
 
   useEffect(() => {
     void dispatch(fetchFinancialEntries());
-  }, [dispatch]);
+    if (customers[0] && !customerId) setCustomerId(customers[0].id);
+  }, [dispatch, customers, customerId]);
 
-  useEffect(() => {
-    if (!customerId && customers[0]) setCustomerId(customers[0].id);
-  }, [customers, customerId]);
+  // ── unified row type
+  type Row =
+    | { kind: 'manual'; data: Charge }
+    | { kind: 'wa'; data: FinancialEntry };
 
-  const filtered = useMemo(() => {
-    const text = query.toLowerCase();
-    return charges.filter((charge) => {
-      const matchQuery =
-        charge.description.toLowerCase().includes(text) ||
-        (charge.category ?? '').toLowerCase().includes(text);
-      const matchStatus =
-        statusFilter === 'ALL'
-          ? true
-          : statusFilter === 'OVERDUE'
-            ? isOverdue(charge)
-            : charge.status === statusFilter;
-      return matchQuery && matchStatus;
+  const rows = useMemo<Row[]>(() => {
+    const q = search.toLowerCase();
+
+    const manualRows: Row[] = charges
+      .filter((c) => {
+        if (origemFilter === 'wa') return false;
+        if (q && !c.description.toLowerCase().includes(q) &&
+          !(c.category ?? '').toLowerCase().includes(q) &&
+          !(c as { customer?: { name: string } }).customer?.name.toLowerCase().includes(q)) return false;
+        if (tipoFilter !== 'ALL' && tipoFilter !== 'receita') return false;
+        if (statusFilter === 'OVERDUE') return isOverdue(c);
+        if (statusFilter !== 'ALL' && c.status !== statusFilter) return false;
+        return true;
+      })
+      .map((c) => ({ kind: 'manual' as const, data: c }));
+
+    const waRows: Row[] = waEntries
+      .filter((e) => {
+        if (origemFilter === 'manual') return false;
+        if (q && !e.descricao.toLowerCase().includes(q) &&
+          !(e.pagadorNome ?? '').toLowerCase().includes(q)) return false;
+        if (tipoFilter !== 'ALL' && e.tipo !== tipoFilter) return false;
+        if (statusFilter !== 'ALL' && statusFilter !== 'WA') return false;
+        return true;
+      })
+      .map((e) => ({ kind: 'wa' as const, data: e }));
+
+    return [...manualRows, ...waRows].sort((a, b) => {
+      const da = a.kind === 'manual' ? a.data.dueDate : (a.data.dataTransacao ?? a.data.createdAt);
+      const db2 = b.kind === 'manual' ? b.data.dueDate : (b.data.dataTransacao ?? b.data.createdAt);
+      return new Date(db2).getTime() - new Date(da).getTime();
     });
-  }, [charges, query, statusFilter]);
+  }, [charges, waEntries, search, origemFilter, tipoFilter, statusFilter]);
 
-  function resetCreateForm() {
-    setAmount('49.90');
-    setDescription('Mensalidade');
-    setDueDate('');
-    setCategory('');
-    setRecurrence('ONCE');
+  // ── summary
+  const summary = useMemo(() => {
+    const receitaManual = charges.filter(c => c.status !== 'CANCELED').reduce((s, c) => s + c.amountCents, 0);
+    const receitaWa = waEntries.filter(e => e.tipo === 'receita').reduce((s, e) => s + e.valorCents, 0);
+    const gastoWa = waEntries.filter(e => e.tipo === 'gasto').reduce((s, e) => s + e.valorCents, 0);
+    const pagas = charges.filter(c => c.status === 'PAID').reduce((s, c) => s + c.amountCents, 0);
+    return { receitaManual, receitaWa, gastoWa, pagas };
+  }, [charges, waEntries]);
+
+  // ── create charge
+  async function onCreateCharge(e: React.FormEvent) {
+    e.preventDefault();
+    const res = await dispatch(createCharge({ customerId, amountCents: inputToCents(amount), description, dueDate, category: category || undefined, recurrence }));
+    if (createCharge.fulfilled.match(res)) { toast.success('Receita criada'); setCreateOpen(false); resetCreate(); }
+  }
+  function resetCreate() { setAmount('49.90'); setDescription('Mensalidade'); setDueDate(''); setCategory(''); setRecurrence('ONCE'); }
+
+  // ── edit charge
+  function openEditCharge(c: Charge) {
+    setEditCharge(c);
+    setEditChargeDesc(c.description);
+    setEditChargeDue(c.dueDate.slice(0, 10));
+    setEditChargeCategory(c.category ?? '');
+    setEditChargeRecurrence(c.recurrence ?? 'ONCE');
+    setEditChargeOpen(true);
+  }
+  async function onEditCharge(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editCharge) return;
+    const res = await dispatch(updateCharge({ id: editCharge.id, description: editChargeDesc, dueDate: editChargeDue || undefined, category: editChargeCategory || null, recurrence: editChargeRecurrence }));
+    if (updateCharge.fulfilled.match(res)) { toast.success('Cobrança atualizada'); setEditChargeOpen(false); }
+    else toast.error(typeof res.payload === 'string' ? res.payload : 'Erro');
+  }
+  async function onDeleteCharge(c: Charge) {
+    if (!window.confirm(`Excluir "${c.description}"?`)) return;
+    const res = await dispatch(deleteCharge(c.id));
+    if (deleteCharge.fulfilled.match(res)) toast.success('Cobrança excluída');
+    else toast.error(typeof res.payload === 'string' ? res.payload : 'Erro');
   }
 
-  async function onAdd(event: React.FormEvent) {
-    event.preventDefault();
-    const res = await dispatch(
-      createCharge({
-        customerId,
-        amountCents: inputToCents(amount),
-        description,
-        dueDate,
-        category: category || undefined,
-        recurrence,
-      }),
-    );
-    if (createCharge.fulfilled.match(res)) {
-      toast.success('Receita criada');
-      resetCreateForm();
-      setOpen(false);
-    }
+  // ── edit WA entry
+  function openEditWa(e: FinancialEntry) {
+    setEditWa(e);
+    setEditWaDesc(e.descricao);
+    setEditWaTipo(e.tipo);
+    setEditWaValor(centsToInput(e.valorCents));
+    setEditWaRecorrencia(e.recorrencia);
+    setEditWaData(e.dataTransacao ? e.dataTransacao.slice(0, 10) : '');
+    setEditWaPagador(e.pagadorNome ?? '');
+    setEditWaOpen(true);
+  }
+  async function onEditWa(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editWa) return;
+    const res = await dispatch(updateFinancialEntry({
+      id: editWa.id,
+      descricao: editWaDesc,
+      tipo: editWaTipo,
+      valorCents: inputToCents(editWaValor),
+      recorrencia: editWaRecorrencia,
+      dataTransacao: editWaData || undefined,
+      pagadorNome: editWaPagador || undefined,
+    }));
+    if (updateFinancialEntry.fulfilled.match(res)) { toast.success('Lançamento atualizado'); setEditWaOpen(false); }
+    else toast.error(typeof res.payload === 'string' ? res.payload : 'Erro');
+  }
+  async function onDeleteWa(e: FinancialEntry) {
+    if (!window.confirm(`Excluir lançamento "${e.descricao}"?`)) return;
+    const res = await dispatch(deleteFinancialEntry(e.id));
+    if (deleteFinancialEntry.fulfilled.match(res)) toast.success('Lançamento excluído');
+    else toast.error(typeof res.payload === 'string' ? res.payload : 'Erro');
   }
 
   async function onPay(id: string) {
     const res = await dispatch(payCharge(id));
     if (payCharge.fulfilled.match(res)) toast.success('Pagamento registrado');
   }
-
-  async function onSendReminder(charge: Charge) {
-    const res = await dispatch(sendChargeWhatsappReminder(charge.id));
-    if (sendChargeWhatsappReminder.fulfilled.match(res)) {
-      toast.success('Lembrete enviado para a fila do WhatsApp');
-    } else {
-      toast.error(typeof res.payload === 'string' ? res.payload : 'Erro');
-    }
-  }
-
-  function openEdit(charge: Charge) {
-    setEditId(charge.id);
-    setEditDescription(charge.description);
-    setEditDueDate(charge.dueDate.slice(0, 10));
-    setEditCategory(charge.category ?? '');
-    setEditRecurrence(charge.recurrence ?? 'ONCE');
-    setEditOpen(true);
-  }
-
-  async function onEditSubmit(event: React.FormEvent) {
-    event.preventDefault();
-    if (!editId) return;
-    const res = await dispatch(
-      updateCharge({
-        id: editId,
-        description: editDescription,
-        dueDate: editDueDate || undefined,
-        category: editCategory || null,
-        recurrence: editRecurrence,
-      }),
-    );
-    if (updateCharge.fulfilled.match(res)) {
-      toast.success('Receita atualizada');
-      setEditOpen(false);
-    } else {
-      toast.error(typeof res.payload === 'string' ? res.payload : 'Erro');
-    }
-  }
-
-  async function onDelete(charge: Charge) {
-    if (!window.confirm(`Excluir a receita "${charge.description}"?`)) return;
-    const res = await dispatch(deleteCharge(charge.id));
-    if (deleteCharge.fulfilled.match(res)) toast.success('Receita excluida');
+  async function onReminder(c: Charge) {
+    const res = await dispatch(sendChargeWhatsappReminder(c.id));
+    if (sendChargeWhatsappReminder.fulfilled.match(res)) toast.success('Lembrete enviado');
     else toast.error(typeof res.payload === 'string' ? res.payload : 'Erro');
   }
 
   return (
     <>
       <PageHeader
-        title="Receita"
-        description={`${charges.length + whatsappReceitas.length} no total`}
+        title="Receitas & Lançamentos"
+        description={`${charges.length} cobranças manuais · ${waEntries.length} via WhatsApp`}
         actions={
-          <Button onClick={() => setOpen(true)}>
+          <Button onClick={() => setCreateOpen(true)}>
             <Plus className="h-4 w-4" />
-            Nova receita
+            Nova cobrança
           </Button>
         }
       />
 
-      <div className="p-6">
-        {/* Abas */}
-        <div className="mb-4 flex gap-1 rounded-xl border bg-muted/40 p-1" style={{ width: 'fit-content' }}>
-          {(['manual', 'whatsapp'] as const).map((t) => (
-            <button
-              key={t}
-              onClick={() => setTab(t)}
-              className="rounded-lg px-4 py-1.5 text-sm font-medium transition-colors"
-              style={tab === t
-                ? { background: '#fff', boxShadow: '0 1px 4px rgba(0,0,0,0.08)', color: '#111' }
-                : { color: '#6b7280' }}
-            >
-              {t === 'manual' ? `Manual (${charges.length})` : `WhatsApp (${whatsappReceitas.length})`}
-            </button>
-          ))}
+      <div className="space-y-5 p-6">
+
+        {/* ── SUMMARY CARDS ─────────────────────────────────────────────── */}
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <SummaryCard label="Cobranças (total)" value={brl(summary.receitaManual)}
+            sub={`${charges.length} registros`} color="#4f46e5" />
+          <SummaryCard label="Cobranças pagas" value={brl(summary.pagas)}
+            sub={`${charges.filter(c => c.status === 'PAID').length} pagas`} color="#10b981" />
+          <SummaryCard label="Receitas WhatsApp" value={brl(summary.receitaWa)}
+            sub={`${waEntries.filter(e => e.tipo === 'receita').length} entradas`} color="#22c55e" />
+          <SummaryCard label="Gastos WhatsApp" value={brl(summary.gastoWa)}
+            sub={`${waEntries.filter(e => e.tipo === 'gasto').length} saídas`} color="#f43f5e" />
         </div>
 
-        {/* Tabela WhatsApp */}
-        {tab === 'whatsapp' && (
-          <Card>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Pagador</TableHead>
-                  <TableHead>Descricao</TableHead>
-                  <TableHead>Tipo</TableHead>
-                  <TableHead>Valor</TableHead>
-                  <TableHead>Data</TableHead>
-                  <TableHead>Confianca</TableHead>
-                  <TableHead>Lead</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {whatsappReceitas.map((e) => (
-                  <TableRow key={e.id}>
-                    <TableCell className="font-medium">{e.pagadorNome ?? '-'}</TableCell>
-                    <TableCell className="max-w-xs truncate">{e.descricao}</TableCell>
-                    <TableCell>
-                      <Badge variant={e.recorrencia === 'MENSAL' ? 'default' : 'secondary'}>
-                        {e.recorrencia === 'MENSAL' ? 'Mensal' : 'Avulso'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{(e.valorCents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</TableCell>
-                    <TableCell>{e.dataTransacao ? new Date(e.dataTransacao).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : '-'}</TableCell>
-                    <TableCell>
-                      <Badge variant={e.confianca === 'alta' ? 'success' : e.confianca === 'media' ? 'warning' : 'destructive'}>
-                        {e.confianca}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{e.lead?.name ?? '-'}</TableCell>
-                  </TableRow>
-                ))}
-                {whatsappReceitas.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={7} className="py-12 text-center text-muted-foreground">
-                      Nenhuma receita via WhatsApp ainda.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </Card>
-        )}
-
-        {/* Tabela Manual — só exibe quando aba = manual */}
-        {tab === 'manual' && <><div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center">
-          <div className="relative flex-1">
+        {/* ── FILTERS ───────────────────────────────────────────────────── */}
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative flex-1 min-w-[200px]">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              className="pl-9"
-              placeholder="Buscar por descricao ou categoria..."
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-            />
+            <Input className="pl-9" placeholder="Buscar por descrição, pagador ou cliente..." value={search} onChange={(e) => setSearch(e.target.value)} />
           </div>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="sm:w-48">
-              <SelectValue />
-            </SelectTrigger>
+          <Select value={origemFilter} onValueChange={(v) => setOrigemFilter(v as 'ALL' | 'manual' | 'wa')}>
+            <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="ALL">Todos os status</SelectItem>
-              <SelectItem value="PENDING">Pendentes</SelectItem>
-              <SelectItem value="OVERDUE">Vencidas</SelectItem>
-              <SelectItem value="PAID">Pagas</SelectItem>
+              <SelectItem value="ALL">Todas origens</SelectItem>
+              <SelectItem value="manual">Manual</SelectItem>
+              <SelectItem value="wa">WhatsApp</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={tipoFilter} onValueChange={setTipoFilter}>
+            <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">Todos tipos</SelectItem>
+              <SelectItem value="receita">Receita</SelectItem>
+              <SelectItem value="gasto">Gasto</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">Todos status</SelectItem>
+              <SelectItem value="PENDING">Pendente</SelectItem>
+              <SelectItem value="PAID">Pago</SelectItem>
+              <SelectItem value="OVERDUE">Vencida</SelectItem>
             </SelectContent>
           </Select>
         </div>
 
-        <Card>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Pagador</TableHead>
-                <TableHead>Descricao</TableHead>
-                <TableHead>Categoria</TableHead>
-                <TableHead>Tipo</TableHead>
-                <TableHead>Valor</TableHead>
-                <TableHead>Vencimento</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Acoes</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filtered.map((charge) => (
-                <TableRow key={charge.id}>
-                  <TableCell className="font-medium">{charge.customer?.name ?? '-'}</TableCell>
-                  <TableCell>{charge.description}</TableCell>
-                  <TableCell>{charge.category ?? '-'}</TableCell>
-                  <TableCell>{recurrenceLabel(charge.recurrence)}</TableCell>
-                  <TableCell>{brl(charge.amountCents)}</TableCell>
-                  <TableCell>{fmtDate(charge.dueDate)}</TableCell>
-                  <TableCell>
-                    <StatusBadge charge={charge} />
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex justify-end gap-1">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => dispatch(fetchPix(charge.id))}
-                      >
-                        PIX
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        title="Enviar lembrete no WhatsApp"
-                        onClick={() => void onSendReminder(charge)}
-                      >
-                        <MessageCircle className="h-4 w-4" />
-                      </Button>
-                      {charge.status === 'PENDING' && (
-                        <Button size="sm" onClick={() => void onPay(charge.id)}>
-                          Dar baixa
-                        </Button>
-                      )}
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        title="Editar"
-                        onClick={() => openEdit(charge)}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        title="Excluir"
-                        className="text-destructive"
-                        onClick={() => void onDelete(charge)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-              {filtered.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={8} className="py-12 text-center text-muted-foreground">
-                    {charges.length === 0
-                      ? 'Nenhuma receita ainda. Clique em "Nova receita".'
-                      : 'Nenhuma receita encontrada com esse filtro.'}
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </Card>
-        </>}
+        {/* ── TABLE ─────────────────────────────────────────────────────── */}
+        <Card className="overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full table-fixed text-sm">
+              <colgroup>
+                <col className="w-[110px]" />  {/* origem */}
+                <col className="w-[160px]" />  {/* pagador */}
+                <col />                         {/* descrição — flex */}
+                <col className="w-[90px]" />   {/* tipo */}
+                <col className="w-[96px]" />   {/* data */}
+                <col className="w-[110px]" />  {/* valor */}
+                <col className="w-[110px]" />  {/* status */}
+                <col className="w-[130px]" />  {/* ações */}
+              </colgroup>
+              <thead>
+                <tr className="border-b bg-muted/40 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  <th className="px-4 py-3">Origem</th>
+                  <th className="px-4 py-3">Pagador</th>
+                  <th className="px-4 py-3">Descrição</th>
+                  <th className="px-4 py-3">Tipo</th>
+                  <th className="px-4 py-3">Data</th>
+                  <th className="px-4 py-3 text-right">Valor</th>
+                  <th className="px-4 py-3">Status</th>
+                  <th className="px-4 py-3 text-right">Ações</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {rows.map((row) => {
+                  if (row.kind === 'manual') {
+                    const c = row.data;
+                    const nome = (c as { customer?: { name: string } }).customer?.name ?? '—';
+                    return (
+                      <tr key={`c-${c.id}`} className="hover:bg-muted/30 transition-colors">
+                        <td className="px-4 py-3"><OrigemBadge kind="manual" /></td>
+                        <td className="px-4 py-3">
+                          <p className="truncate font-medium text-gray-900" title={nome}>{nome}</p>
+                        </td>
+                        <td className="px-4 py-3">
+                          <p className="truncate text-gray-700" title={c.description}>{c.description}</p>
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <span className="inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium"
+                            style={c.recurrence === 'MONTHLY' ? { background: '#ede9fe', color: '#7c3aed' } : { background: '#f3f4f6', color: '#374151' }}>
+                            {c.recurrence === 'MONTHLY' ? 'Mensal' : 'Avulso'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">{fmtDate(c.dueDate)}</td>
+                        <td className="px-4 py-3 whitespace-nowrap text-right font-bold"
+                          style={{ color: c.status === 'PAID' ? '#059669' : '#111827' }}>
+                          {brl(c.amountCents)}
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap"><ChargeStatus charge={c} /></td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center justify-end gap-0.5">
+                            <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => dispatch(fetchPix(c.id))}>PIX</Button>
+                            <Button variant="ghost" size="icon" className="h-7 w-7" title="Lembrete" onClick={() => void onReminder(c)}>
+                              <MessageCircle className="h-3.5 w-3.5" />
+                            </Button>
+                            {c.status === 'PENDING' && (
+                              <Button variant="ghost" size="icon" className="h-7 w-7" title="Dar baixa" onClick={() => void onPay(c.id)}>
+                                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                              </Button>
+                            )}
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEditCharge(c)}>
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => void onDeleteCharge(c)}>
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  }
 
+                  // WhatsApp entry
+                  const e = row.data;
+                  const pagador = e.pagadorNome ?? e.recebedorNome ?? '—';
+                  return (
+                    <tr key={`wa-${e.id}`} className="hover:bg-muted/30 transition-colors">
+                      <td className="px-4 py-3"><OrigemBadge kind="wa" /></td>
+                      <td className="px-4 py-3">
+                        <p className="truncate font-medium text-gray-900" title={pagador}>{pagador}</p>
+                        {e.lead && (
+                          <p className="truncate text-[11px]" style={{ color: '#0284c7' }} title={e.lead.name}>
+                            Lead: {e.lead.name}
+                          </p>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        <p className="truncate text-gray-700" title={e.descricao}>{e.descricao}</p>
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <span className="inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium"
+                          style={e.tipo === 'receita'
+                            ? { background: '#dcfce7', color: '#16a34a' }
+                            : { background: '#fff1f2', color: '#e11d48' }}>
+                          {e.tipo === 'receita' ? 'Receita' : 'Gasto'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">{fmtDate(e.dataTransacao)}</td>
+                      <td className="px-4 py-3 whitespace-nowrap text-right font-bold"
+                        style={{ color: e.tipo === 'receita' ? '#059669' : '#e11d48' }}>
+                        {e.tipo === 'gasto' ? '−' : '+'}{brl(e.valorCents)}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap"><WaStatus confianca={e.confianca} /></td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center justify-end gap-0.5">
+                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEditWa(e)}>
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => void onDeleteWa(e)}>
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+                {rows.length === 0 && (
+                  <tr>
+                    <td colSpan={8} className="px-6 py-16 text-center">
+                      <div className="flex flex-col items-center gap-3">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+                          <Wallet className="h-6 w-6 text-muted-foreground" />
+                        </div>
+                        <p className="text-sm text-muted-foreground">Nenhum registro encontrado.</p>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </Card>
       </div>
 
-      <Dialog open={open} onOpenChange={setOpen}>
+      {/* ── CREATE CHARGE DIALOG ─────────────────────────────────────────── */}
+      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Nova receita</DialogTitle>
-            <DialogDescription>Entrada do fluxo de caixa com PIX e lembrete.</DialogDescription>
+            <DialogTitle>Nova cobrança manual</DialogTitle>
+            <DialogDescription>Gera PIX e envia lembrete por WhatsApp.</DialogDescription>
           </DialogHeader>
-          <form onSubmit={onAdd} className="grid gap-4">
+          <form onSubmit={onCreateCharge} className="grid gap-4">
             <div className="grid gap-1.5">
               <Label>Cliente</Label>
               <Select value={customerId} onValueChange={setCustomerId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione um cliente" />
-                </SelectTrigger>
+                <SelectTrigger><SelectValue placeholder="Selecione um cliente" /></SelectTrigger>
                 <SelectContent>
-                  {customers.map((customer) => (
-                    <SelectItem key={customer.id} value={customer.id}>
-                      {customer.name}
-                    </SelectItem>
-                  ))}
+                  {customers.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="grid gap-1.5">
                 <Label>Valor (R$)</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  min="0.01"
-                  value={amount}
-                  onChange={(event) => setAmount(event.target.value)}
-                />
+                <Input type="number" step="0.01" min="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} />
               </div>
               <div className="grid gap-1.5">
                 <Label>Vencimento</Label>
-                <Input
-                  type="date"
-                  value={dueDate}
-                  onChange={(event) => setDueDate(event.target.value)}
-                  required
-                />
+                <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} required />
               </div>
             </div>
             <div className="grid gap-1.5">
-              <Label>Descricao</Label>
-              <Input value={description} onChange={(event) => setDescription(event.target.value)} />
+              <Label>Descrição</Label>
+              <Input value={description} onChange={(e) => setDescription(e.target.value)} />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="grid gap-1.5">
                 <Label>Categoria</Label>
-                <Input value={category} onChange={(event) => setCategory(event.target.value)} />
+                <Input value={category} onChange={(e) => setCategory(e.target.value)} />
               </div>
               <div className="grid gap-1.5">
-                <Label>Tipo</Label>
+                <Label>Recorrência</Label>
                 <Select value={recurrence} onValueChange={setRecurrence}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="ONCE">Avulsa</SelectItem>
                     <SelectItem value="MONTHLY">Mensal</SelectItem>
@@ -438,56 +500,33 @@ export default function CobrancasPage() {
                 </Select>
               </div>
             </div>
-            {customers.length === 0 && (
-              <p className="text-sm text-muted-foreground">
-                Cadastre um cliente antes de criar uma cobranca.
-              </p>
-            )}
-            <Button type="submit" className="w-full" disabled={customers.length === 0}>
-              Criar cobranca
-            </Button>
+            {customers.length === 0 && <p className="text-sm text-muted-foreground">Cadastre um cliente primeiro.</p>}
+            <Button type="submit" className="w-full" disabled={customers.length === 0}>Criar cobrança</Button>
           </form>
         </DialogContent>
       </Dialog>
 
-      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+      {/* ── EDIT CHARGE DIALOG ───────────────────────────────────────────── */}
+      <Dialog open={editChargeOpen} onOpenChange={setEditChargeOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Editar receita</DialogTitle>
-            <DialogDescription>Atualize os dados exibidos no fluxo de caixa.</DialogDescription>
+            <DialogTitle>Editar cobrança</DialogTitle>
+            <DialogDescription>Atualize os dados da cobrança manual.</DialogDescription>
           </DialogHeader>
-          <form onSubmit={onEditSubmit} className="grid gap-4">
+          <form onSubmit={onEditCharge} className="grid gap-4">
             <div className="grid gap-1.5">
-              <Label>Descricao</Label>
-              <Input
-                value={editDescription}
-                onChange={(event) => setEditDescription(event.target.value)}
-                required
-              />
-            </div>
-            <div className="grid gap-1.5">
-              <Label>Vencimento</Label>
-              <Input
-                type="date"
-                value={editDueDate}
-                onChange={(event) => setEditDueDate(event.target.value)}
-                required
-              />
+              <Label>Descrição</Label>
+              <Input value={editChargeDesc} onChange={(e) => setEditChargeDesc(e.target.value)} required />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="grid gap-1.5">
-                <Label>Categoria</Label>
-                <Input
-                  value={editCategory}
-                  onChange={(event) => setEditCategory(event.target.value)}
-                />
+                <Label>Vencimento</Label>
+                <Input type="date" value={editChargeDue} onChange={(e) => setEditChargeDue(e.target.value)} required />
               </div>
               <div className="grid gap-1.5">
-                <Label>Tipo</Label>
-                <Select value={editRecurrence} onValueChange={setEditRecurrence}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
+                <Label>Recorrência</Label>
+                <Select value={editChargeRecurrence} onValueChange={setEditChargeRecurrence}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="ONCE">Avulsa</SelectItem>
                     <SelectItem value="MONTHLY">Mensal</SelectItem>
@@ -495,38 +534,80 @@ export default function CobrancasPage() {
                 </Select>
               </div>
             </div>
-            <Button type="submit" className="w-full">
-              Salvar
-            </Button>
+            <div className="grid gap-1.5">
+              <Label>Categoria</Label>
+              <Input value={editChargeCategory} onChange={(e) => setEditChargeCategory(e.target.value)} />
+            </div>
+            <Button type="submit" className="w-full">Salvar alterações</Button>
           </form>
         </DialogContent>
       </Dialog>
 
-      <Dialog
-        open={!!pix}
-        onOpenChange={(dialogOpen) => {
-          if (!dialogOpen) dispatch(clearPix());
-        }}
-      >
+      {/* ── EDIT WA ENTRY DIALOG ─────────────────────────────────────────── */}
+      <Dialog open={editWaOpen} onOpenChange={setEditWaOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar lançamento WhatsApp</DialogTitle>
+            <DialogDescription>Corrija os dados extraídos do comprovante.</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={onEditWa} className="grid gap-4">
+            <div className="grid gap-1.5">
+              <Label>Descrição</Label>
+              <Input value={editWaDesc} onChange={(e) => setEditWaDesc(e.target.value)} required />
+            </div>
+            <div className="grid gap-1.5">
+              <Label>Pagador / Remetente</Label>
+              <Input value={editWaPagador} onChange={(e) => setEditWaPagador(e.target.value)} />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-1.5">
+                <Label>Valor (R$)</Label>
+                <Input type="number" step="0.01" min="0.01" value={editWaValor} onChange={(e) => setEditWaValor(e.target.value)} required />
+              </div>
+              <div className="grid gap-1.5">
+                <Label>Data da transação</Label>
+                <Input type="date" value={editWaData} onChange={(e) => setEditWaData(e.target.value)} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-1.5">
+                <Label>Tipo</Label>
+                <Select value={editWaTipo} onValueChange={setEditWaTipo}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="receita">Receita</SelectItem>
+                    <SelectItem value="gasto">Gasto</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-1.5">
+                <Label>Recorrência</Label>
+                <Select value={editWaRecorrencia} onValueChange={setEditWaRecorrencia}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="AVULSO">Avulso</SelectItem>
+                    <SelectItem value="MENSAL">Mensal</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <Button type="submit" className="w-full">Salvar alterações</Button>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── PIX DIALOG ───────────────────────────────────────────────────── */}
+      <Dialog open={!!pix} onOpenChange={(o) => { if (!o) dispatch(clearPix()); }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>PIX copia-e-cola</DialogTitle>
-            <DialogDescription>Envie este codigo ao cliente para pagamento.</DialogDescription>
+            <DialogDescription>Envie este código ao cliente para pagamento.</DialogDescription>
           </DialogHeader>
-          <textarea
-            readOnly
-            value={pix?.code ?? ''}
-            className="h-28 w-full rounded-md border bg-muted/40 p-2 font-mono text-xs"
-          />
-          <Button
-            variant="secondary"
-            onClick={() => {
-              navigator.clipboard?.writeText(pix?.code ?? '');
-              toast.success('PIX copiado');
-            }}
-          >
+          <textarea readOnly value={pix?.code ?? ''}
+            className="h-28 w-full rounded-md border bg-muted/40 p-2 font-mono text-xs" />
+          <Button variant="secondary" onClick={() => { navigator.clipboard?.writeText(pix?.code ?? ''); toast.success('PIX copiado'); }}>
             <Copy className="h-4 w-4" />
-            Copiar codigo
+            Copiar código
           </Button>
         </DialogContent>
       </Dialog>

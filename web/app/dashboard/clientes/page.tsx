@@ -10,6 +10,7 @@ import {
   updateCustomer,
   type Customer,
 } from '@/store/dataSlice';
+import { api } from '@/lib/api';
 import { PageHeader } from '@/components/page-header';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -71,7 +72,10 @@ export default function ClientesPage() {
   const [stage, setStage] = useState('LEAD');
 
   useEffect(() => {
-    void dispatch(fetchCustomers());
+    // sincroniza leads sem customer e então recarrega a lista
+    api('POST', '/leads/sync-customers')
+      .then(() => dispatch(fetchCustomers()))
+      .catch(() => dispatch(fetchCustomers()));
   }, [dispatch]);
 
   function reset() {

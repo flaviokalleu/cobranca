@@ -1,5 +1,6 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { UpdateFinancialEntryDto } from './dto/update-financial-entry.dto';
 import { AuditService } from '../../common/audit/audit.service';
 import { ExtractedTransactionDto } from '../financial-extractor/dto/extracted-transaction.dto';
 import { NormalizationService } from '../financial-extractor/normalization.service';
@@ -26,6 +27,50 @@ export class FinancialEntriesService {
 
   list(tenantId: string) {
     return this.repository.listByTenant(tenantId);
+  }
+
+  async update(tenantId: string, id: string, dto: UpdateFinancialEntryDto) {
+    const entry = await this.prisma.financialEntry.findFirst({ where: { id, tenantId } });
+    if (!entry) throw new NotFoundException('Lançamento não encontrado.');
+    const updated = await this.prisma.financialEntry.update({
+      where: { id: entry.id },
+      data: {
+        ...(dto.descricao !== undefined && { descricao: dto.descricao }),
+        ...(dto.tipo !== undefined && { tipo: dto.tipo }),
+        ...(dto.valorCents !== undefined && { valorCents: dto.valorCents }),
+        ...(dto.recorrencia !== undefined && { recorrencia: dto.recorrencia }),
+        ...(dto.dataTransacao !== undefined && { dataTransacao: new Date(dto.dataTransacao) }),
+        ...(dto.pagadorNome !== undefined && { pagadorNome: dto.pagadorNome }),
+      },
+      include: { lead: { select: { id: true, name: true, whatsapp: true } } },
+    });
+    await this.audit.record({
+      tenantId,
+      actor: 'system',
+      action: 'FINANCIAL_ENTRY_UPDATED',
+      entityType: 'FinancialEntry',
+      entityId: id,
+    });
+    return updated;
+  }
+
+  async remove(tenantId: string, id: string) {
+    const entry = await this.prisma.financialEntry.findFirst({ where: { id, tenantId } });
+    if (!entry) throw new NotFoundException('Lançamento não encontrado.');
+    await this.prisma.$transaction([
+      this.prisma.ledgerEntry.deleteMany({
+        where: { tenantId, transactionId: { startsWith: `whatsapp-` }, description: entry.descricao },
+      }),
+      this.prisma.financialEntry.delete({ where: { id: entry.id } }),
+    ]);
+    await this.audit.record({
+      tenantId,
+      actor: 'system',
+      action: 'FINANCIAL_ENTRY_DELETED',
+      entityType: 'FinancialEntry',
+      entityId: id,
+    });
+    return { ok: true };
   }
 
   async saveFromWhatsapp(input: SaveWhatsappFinancialEntryInput) {
@@ -61,6 +106,17 @@ export class FinancialEntriesService {
         });
         leadId = updated.id;
       } else {
+        const customer = await this.prisma.customer.create({
+          data: {
+            tenantId: input.tenantId,
+            name: pagadorNome,
+            document: pagadorDoc,
+            phone: input.leadWhatsapp ?? '',
+            whatsapp: input.leadWhatsapp ?? null,
+            stage: 'CUSTOMER',
+          },
+          select: { id: true },
+        });
         const created = await this.prisma.lead.create({
           data: {
             tenantId: input.tenantId,
@@ -70,6 +126,7 @@ export class FinancialEntriesService {
             phone: input.leadWhatsapp ?? null,
             stage: 'CUSTOMER',
             notes: `Lead criado automaticamente via comprovante WhatsApp.`,
+            customerId: customer.id,
           },
           select: { id: true },
         });

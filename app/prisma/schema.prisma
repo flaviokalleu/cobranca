@@ -26,6 +26,7 @@ model Customer {
   stage       String   @default("LEAD") // LEAD | FIRST_CONTACT | DOCUMENTATION | ANALYSIS | APPROVED | CONTRACT | CUSTOMER | LOST
   createdAt   DateTime @default(now())
   charges     Charge[]
+  lead        Lead?
 
   @@index([tenantId])
   @@index([tenantId, stage])
@@ -261,6 +262,8 @@ model Lead {
   stage          String   @default("LEAD") // LEAD | FIRST_CONTACT | DOCUMENTATION | ANALYSIS | APPROVED | CONTRACT | CUSTOMER | LOST
   notes             String?
   createdAt         DateTime         @default(now())
+  customerId        String?          @unique
+  customer          Customer?        @relation(fields: [customerId], references: [id])
   financialEntries  FinancialEntry[]
 
   @@index([tenantId, stage])

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, HttpCode } from '@nestjs/common';
 import { LeadsService } from './leads.service';
 import { CreateLeadDto } from './dto/create-lead.dto';
 import { ChangeStageDto } from './dto/change-stage.dto';
@@ -19,6 +19,13 @@ export class LeadsController {
   @Get()
   list(@Tenant() tenantId: string) {
     return this.leads.list(tenantId);
+  }
+
+  @Roles('ADMIN', 'COMMERCIAL')
+  @Post('sync-customers')
+  @HttpCode(200)
+  syncCustomers(@Tenant() tenantId: string) {
+    return this.leads.syncCustomers(tenantId);
   }
 
   @Roles('ADMIN', 'COMMERCIAL', 'AGENT')
