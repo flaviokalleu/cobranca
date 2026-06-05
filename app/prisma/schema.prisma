@@ -24,10 +24,12 @@ model Customer {
   city        String?
   profession  String?
   incomeCents Int?
+  stage       String   @default("LEAD") // LEAD | FIRST_CONTACT | DOCUMENTATION | ANALYSIS | APPROVED | CONTRACT | CUSTOMER | LOST
   createdAt   DateTime @default(now())
   charges     Charge[]
 
   @@index([tenantId])
+  @@index([tenantId, stage])
 }
 
 /// Cobranca emitida para um cliente.
@@ -40,6 +42,8 @@ model Charge {
   description     String
   dueDate         DateTime
   status          String    @default("PENDING") // PENDING | PAID | CANCELED
+  category        String?
+  recurrence      String    @default("ONCE") // ONCE | MONTHLY
   createdAt       DateTime  @default(now())
   paidAt          DateTime?
   gatewayProvider String?
@@ -219,6 +223,7 @@ model Payable {
   status      String    @default("PENDING") // PENDING | PAID | CANCELED
   paidAt      DateTime?
   category    String?
+  recurrence  String    @default("ONCE") // ONCE | MONTHLY
   createdAt   DateTime  @default(now())
 
   @@index([tenantId])
@@ -465,7 +470,7 @@ model WhatsappConnection {
   @@index([status])
 }
 
-/// Credenciais principais da sessao Baileys, sempre criptografadas antes de persistir.
+/// Credenciais principais da sessao Whaileys, sempre criptografadas antes de persistir.
 model WhatsappSession {
   id           String              @id @default(cuid())
   connectionId String?
@@ -482,7 +487,7 @@ model WhatsappSession {
   @@index([isActive])
 }
 
-/// Chaves individuais da sessao Baileys, criptografadas e atualizadas incrementalmente.
+/// Chaves individuais da sessao Whaileys, criptografadas e atualizadas incrementalmente.
 model WhatsappSessionKey {
   id        String          @id @default(cuid())
   sessionId String

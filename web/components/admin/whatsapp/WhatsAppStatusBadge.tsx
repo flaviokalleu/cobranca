@@ -4,6 +4,7 @@ import type { WhatsappConnectionStatus } from '@/services/whatsappAdminApi';
 const labels: Record<WhatsappConnectionStatus, string> = {
   disconnected: 'Desconectado',
   waiting_qr: 'Aguardando QR',
+  qr_expired: 'QR expirado',
   connecting: 'Conectando',
   connected: 'Conectado',
   reconnecting: 'Reconectando',
@@ -15,7 +16,7 @@ export function WhatsAppStatusBadge({ status }: { status: WhatsappConnectionStat
   const variant =
     status === 'connected'
       ? 'success'
-      : status === 'error' || status === 'session_expired'
+      : status === 'error' || status === 'session_expired' || status === 'qr_expired'
         ? 'destructive'
         : status === 'waiting_qr' || status === 'connecting' || status === 'reconnecting'
           ? 'warning'

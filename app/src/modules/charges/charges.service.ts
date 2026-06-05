@@ -39,6 +39,8 @@ export class ChargesService {
         amountCents: dto.amountCents,
         description: dto.description,
         dueDate: new Date(dto.dueDate),
+        category: dto.category ?? null,
+        recurrence: dto.recurrence ?? 'ONCE',
       },
     });
 
@@ -160,6 +162,8 @@ export class ChargesService {
       data: {
         description: dto.description ?? undefined,
         dueDate: dto.dueDate ? new Date(dto.dueDate) : undefined,
+        category: dto.category === undefined ? undefined : dto.category,
+        recurrence: dto.recurrence ?? undefined,
       },
     });
     await this.audit.record({
@@ -170,6 +174,42 @@ export class ChargesService {
       entityId: charge.id,
     });
     return updated;
+  }
+
+  async sendWhatsappReminder(tenantId: string, id: string) {
+    const charge = await this.prisma.charge.findFirst({
+      where: { id, tenantId },
+      include: { customer: true },
+    });
+    if (!charge) {
+      throw new NotFoundException('Cobranca nao encontrada neste tenant.');
+    }
+
+    const phone = charge.customer.whatsapp ?? charge.customer.phone;
+    if (!phone) {
+      throw new BadRequestException('Cliente sem telefone para WhatsApp.');
+    }
+
+    const payload: ReminderJobPayload = {
+      tenantId,
+      chargeId: charge.id,
+      customerName: charge.customer.name,
+      phone,
+      amountCents: charge.amountCents,
+      dueDate: charge.dueDate.toISOString(),
+    };
+    this.queue.enqueue(REMINDER_JOB, payload);
+
+    await this.audit.record({
+      tenantId,
+      actor: 'system',
+      action: 'CHARGE_WHATSAPP_REMINDER_REQUESTED',
+      entityType: 'Charge',
+      entityId: charge.id,
+      metadata: { status: charge.status },
+    });
+
+    return { ok: true, queued: true };
   }
 
   /// Exclui a cobranca e seus lancamentos (mantem o razao balanceado).

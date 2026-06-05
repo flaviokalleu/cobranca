@@ -1,4 +1,12 @@
-import { IsDateString, IsInt, IsString, Length, Min } from 'class-validator';
+import {
+  IsDateString,
+  IsIn,
+  IsInt,
+  IsOptional,
+  IsString,
+  Length,
+  Min,
+} from 'class-validator';
 
 export class CreateChargeDto {
   @IsString()
@@ -16,4 +24,13 @@ export class CreateChargeDto {
   /// Data de vencimento em ISO-8601 (ex.: "2026-07-15").
   @IsDateString()
   dueDate!: string;
+
+  @IsOptional()
+  @IsString()
+  @Length(2, 80)
+  category?: string;
+
+  @IsOptional()
+  @IsIn(['ONCE', 'MONTHLY'])
+  recurrence?: string;
 }

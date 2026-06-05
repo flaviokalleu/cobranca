@@ -1,5 +1,6 @@
 import {
   IsEmail,
+  IsIn,
   IsInt,
   IsOptional,
   IsString,
@@ -51,4 +52,17 @@ export class CreateCustomerDto {
   @IsInt()
   @Min(0)
   incomeCents?: number;
+
+  @IsOptional()
+  @IsIn([
+    'LEAD',
+    'FIRST_CONTACT',
+    'DOCUMENTATION',
+    'ANALYSIS',
+    'APPROVED',
+    'CONTRACT',
+    'CUSTOMER',
+    'LOST',
+  ])
+  stage?: string;
 }

@@ -26,6 +26,7 @@ export class PayablesService {
         amountCents: dto.amountCents,
         dueDate: new Date(dto.dueDate),
         category: dto.category ?? null,
+        recurrence: dto.recurrence ?? 'ONCE',
       },
     });
     // Reconhece a despesa: Despesa (débito) / Contas a Pagar (crédito).
@@ -68,8 +69,9 @@ export class PayablesService {
     if (!payable) {
       throw new NotFoundException('Conta a pagar nao encontrada neste tenant.');
     }
-    if (payable.status !== 'PENDING') {
-      throw new BadRequestException('Somente contas pendentes podem ser editadas.');
+    const isPending = payable.status === 'PENDING';
+    if (!isPending && dto.amountCents !== undefined && dto.amountCents !== payable.amountCents) {
+      throw new BadRequestException('Valor de conta ja paga nao pode ser alterado.');
     }
     if (dto.supplierId) {
       const supplier = await this.prisma.supplier.findFirst({
@@ -78,16 +80,22 @@ export class PayablesService {
       if (!supplier) throw new NotFoundException('Fornecedor nao encontrado.');
     }
 
-    const amountDelta = (dto.amountCents ?? payable.amountCents) - payable.amountCents;
+    const amountDelta = isPending
+      ? (dto.amountCents ?? payable.amountCents) - payable.amountCents
+      : 0;
     const updated = await this.prisma.$transaction(async (db) => {
       const next = await db.payable.update({
         where: { id: payable.id },
         data: {
           description: dto.description,
-          amountCents: dto.amountCents,
+          amountCents: isPending ? dto.amountCents : undefined,
           dueDate: dto.dueDate ? new Date(dto.dueDate) : undefined,
           supplierId: dto.supplierId === undefined ? undefined : dto.supplierId,
           category: dto.category === undefined ? undefined : dto.category,
+          recurrence:
+            dto.recurrence === undefined || dto.recurrence === null
+              ? undefined
+              : dto.recurrence,
         },
       });
 
@@ -138,51 +146,46 @@ export class PayablesService {
     if (!payable) {
       throw new NotFoundException('Conta a pagar nao encontrada neste tenant.');
     }
-    if (payable.status !== 'PENDING') {
-      throw new BadRequestException('Somente contas pendentes podem ser canceladas.');
-    }
-    const linkedPurchase = await this.prisma.purchaseOrder.findFirst({
+    const linkedPurchases = await this.prisma.purchaseOrder.findMany({
       where: { tenantId, payableId: payable.id },
+      select: { id: true },
     });
-    if (linkedPurchase) {
-      throw new BadRequestException(
-        'Conta vinculada a pedido de compra recebido nao pode ser excluida diretamente.',
-      );
-    }
 
     await this.prisma.$transaction(async (db) => {
-      await db.payable.update({
-        where: { id: payable.id },
-        data: { status: 'CANCELED' },
+      await db.purchaseOrder.updateMany({
+        where: { tenantId, payableId: payable.id },
+        data: { payableId: null },
       });
-      await db.ledgerEntry.createMany({
-        data: [
-          {
-            tenantId,
-            transactionId: `payable-cancel:${payable.id}`,
-            accountCode: 'ACCOUNTS_PAYABLE',
-            direction: 'DEBIT',
-            amountCents: payable.amountCents,
-            description: `Cancelamento a pagar ${payable.id}`,
-          },
-          {
-            tenantId,
-            transactionId: `payable-cancel:${payable.id}`,
-            accountCode: 'EXPENSE',
-            direction: 'CREDIT',
-            amountCents: payable.amountCents,
-            description: `Cancelamento: ${payable.description}`,
-          },
-        ],
+      await db.calendarEvent.deleteMany({
+        where: { tenantId, payableId: payable.id },
       });
+      await db.notification.deleteMany({
+        where: { tenantId, entityType: 'Payable', entityId: payable.id },
+      });
+      await db.ledgerEntry.deleteMany({
+        where: {
+          tenantId,
+          OR: [
+            { transactionId: `payable:${payable.id}` },
+            { transactionId: `payable-pay:${payable.id}` },
+            { transactionId: `payable-cancel:${payable.id}` },
+            { transactionId: { startsWith: `payable-adjust:${payable.id}:` } },
+          ],
+        },
+      });
+      await db.payable.delete({ where: { id: payable.id } });
     });
 
     await this.audit.record({
       tenantId,
       actor: 'system',
-      action: 'PAYABLE_CANCELED',
+      action: 'PAYABLE_DELETED',
       entityType: 'Payable',
       entityId: payable.id,
+      metadata: {
+        previousStatus: payable.status,
+        linkedPurchaseIds: linkedPurchases.map((purchase) => purchase.id),
+      },
     });
     return { ok: true };
   }

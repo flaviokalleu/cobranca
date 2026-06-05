@@ -35,17 +35,17 @@ export class WhatsappFileService {
 
     try {
       // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const baileys = require('@whiskeysockets/baileys') as {
+      const whaileys = require('whaileys') as {
         downloadMediaMessage?: (
           message: unknown,
           type: 'buffer',
           options: Record<string, unknown>,
         ) => Promise<Buffer>;
       };
-      if (!baileys.downloadMediaMessage) {
+      if (!whaileys.downloadMediaMessage) {
         return { hasMedia: true, text, fileName, mimeType };
       }
-      const buffer = await baileys.downloadMediaMessage(rawMessage, 'buffer', {});
+      const buffer = await whaileys.downloadMediaMessage(rawMessage, 'buffer', {});
       if (buffer.byteLength > this.maxBytes) {
         return { hasMedia: true, text, fileName, mimeType, tooLarge: true };
       }

@@ -11,6 +11,7 @@ export interface Customer {
   city?: string | null;
   profession?: string | null;
   incomeCents?: number | null;
+  stage?: string | null;
 }
 export interface Charge {
   id: string;
@@ -18,6 +19,8 @@ export interface Charge {
   description: string;
   dueDate: string;
   status: string;
+  category?: string | null;
+  recurrence?: string | null;
   paidAt?: string | null;
 }
 export interface User {
@@ -91,6 +94,7 @@ export const createCustomer = createAsyncThunk(
       city?: string;
       profession?: string;
       incomeCents?: number;
+      stage?: string;
     },
     { dispatch, rejectWithValue },
   ) => {
@@ -114,6 +118,7 @@ export const updateCustomer = createAsyncThunk(
       city?: string;
       profession?: string;
       incomeCents?: number;
+      stage?: string;
     },
     { dispatch, rejectWithValue },
   ) => {
@@ -138,7 +143,14 @@ export const deleteCustomer = createAsyncThunk(
 export const createCharge = createAsyncThunk(
   'data/createCharge',
   async (
-    body: { customerId: string; amountCents: number; description: string; dueDate: string },
+    body: {
+      customerId: string;
+      amountCents: number;
+      description: string;
+      dueDate: string;
+      category?: string;
+      recurrence?: string;
+    },
     { dispatch, rejectWithValue },
   ) => {
     const { status } = await api('POST', '/charges', body);
@@ -162,13 +174,28 @@ export const payCharge = createAsyncThunk(
 export const updateCharge = createAsyncThunk(
   'data/updateCharge',
   async (
-    body: { id: string; description?: string; dueDate?: string },
+    body: {
+      id: string;
+      description?: string;
+      dueDate?: string;
+      category?: string | null;
+      recurrence?: string;
+    },
     { dispatch, rejectWithValue },
   ) => {
     const { id, ...data } = body;
     const { status } = await api('PATCH', `/charges/${id}`, data);
     if (status >= 300) return rejectWithValue('Erro ao editar cobrança.');
     await dispatch(fetchCharges());
+    return true;
+  },
+);
+
+export const sendChargeWhatsappReminder = createAsyncThunk(
+  'data/sendChargeWhatsappReminder',
+  async (id: string, { rejectWithValue }) => {
+    const { status } = await api('POST', `/charges/${id}/whatsapp-reminder`);
+    if (status >= 300) return rejectWithValue('Erro ao enviar lembrete no WhatsApp.');
     return true;
   },
 );

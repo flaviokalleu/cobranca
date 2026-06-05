@@ -34,7 +34,7 @@ export function WhatsAppActions({
     );
   }
 
-  if (status === 'waiting_qr' || status === 'session_expired') {
+  if (status === 'waiting_qr' || status === 'session_expired' || status === 'qr_expired') {
     return (
       <Button disabled={loading} onClick={onRegenerateQr}>
         <RefreshCcw className="h-4 w-4" />

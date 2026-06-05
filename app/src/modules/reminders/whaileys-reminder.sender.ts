@@ -4,11 +4,11 @@ import { ReminderSender, ReminderMessage } from './reminder-sender';
 
 /**
  * Envio via WhatsApp principal do robo.
- * A sessao Baileys e gerenciada pelo WhatsappAdminModule e persistida no banco.
+ * A sessao Whaileys e gerenciada pelo WhatsappAdminModule e persistida no banco.
  */
 @Injectable()
-export class BaileysReminderSender extends ReminderSender implements OnModuleInit {
-  private readonly logger = new Logger('WhatsApp(Baileys)');
+export class WhaileysReminderSender extends ReminderSender implements OnModuleInit {
+  private readonly logger = new Logger('WhatsApp(Whaileys)');
 
   constructor(private readonly outbound: WhatsappOutboundService) {
     super();

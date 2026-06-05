@@ -20,7 +20,7 @@ Este modulo transforma o WEBBA em um copiloto financeiro operado pelo WhatsApp. 
 
 | Dominio | Responsabilidade |
 | --- | --- |
-| WhatsApp Provider | Conexao Whaileys/Baileys, QR code, envio e recebimento |
+| WhatsApp Provider | Conexao Whaileys, QR code, envio e recebimento |
 | Conversation Bot | Interpretacao, confirmacao e execucao de comandos |
 | Personal Finance | Contas, cartoes, transacoes, limites e metas |
 | AI Classifier | Categoria, subcategoria, valor, data e confianca |

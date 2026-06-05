@@ -1,4 +1,12 @@
-import { IsDateString, IsInt, IsOptional, IsString, Length, Min } from 'class-validator';
+import {
+  IsDateString,
+  IsIn,
+  IsInt,
+  IsOptional,
+  IsString,
+  Length,
+  Min,
+} from 'class-validator';
 
 export class CreatePayableDto {
   @IsString()
@@ -19,4 +27,8 @@ export class CreatePayableDto {
   @IsOptional()
   @IsString()
   category?: string;
+
+  @IsOptional()
+  @IsIn(['ONCE', 'MONTHLY'])
+  recurrence?: string;
 }

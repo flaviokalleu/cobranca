@@ -10,11 +10,17 @@ export interface Payable {
   paidAt?: string | null;
   supplierId?: string | null;
   category?: string | null;
+  recurrence?: string | null;
 }
 export interface CashflowRow {
   id: string;
+  sourceId: string;
+  sourceType: 'RECEIVABLE' | 'PAYABLE';
   date: string;
   description: string;
+  category?: string | null;
+  recurrence?: string | null;
+  status: string;
   inCents: number;
   outCents: number;
   balanceCents: number;
@@ -55,6 +61,7 @@ export const createPayable = createAsyncThunk(
       dueDate: string;
       supplierId?: string;
       category?: string;
+      recurrence?: string;
     },
     { dispatch, rejectWithValue },
   ) => {
@@ -86,6 +93,7 @@ export const updatePayable = createAsyncThunk(
       dueDate?: string;
       supplierId?: string | null;
       category?: string | null;
+      recurrence?: string | null;
     },
     { dispatch, rejectWithValue },
   ) => {

@@ -4,27 +4,28 @@ import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import {
-  createCharge,
-  payCharge,
-  fetchPix,
   clearPix,
-  updateCharge,
+  createCharge,
   deleteCharge,
+  fetchPix,
+  payCharge,
+  sendChargeWhatsappReminder,
+  updateCharge,
+  type Charge,
 } from '@/store/dataSlice';
 import { PageHeader } from '@/components/page-header';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
@@ -33,65 +34,97 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import { Plus, Copy, Search, Pencil, Trash2 } from 'lucide-react';
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { Copy, MessageCircle, Pencil, Plus, Search, Trash2 } from 'lucide-react';
 
 const brl = (cents: number) =>
   (cents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const fmtDate = (iso: string) =>
   new Date(iso).toLocaleDateString('pt-BR', { timeZone: 'UTC' });
-const isOverdue = (c: { status: string; dueDate: string }) =>
-  c.status === 'PENDING' && new Date(c.dueDate).getTime() < Date.now();
+const inputToCents = (value: string) => Math.round(Number(value || '0') * 100);
+const isOverdue = (charge: { status: string; dueDate: string }) =>
+  charge.status === 'PENDING' && new Date(charge.dueDate).getTime() < Date.now();
+const recurrenceLabel = (recurrence?: string | null) =>
+  recurrence === 'MONTHLY' ? 'Mensal' : 'Avulsa';
+
+function StatusBadge({ charge }: { charge: Charge }) {
+  if (charge.status === 'PAID') return <Badge variant="success">Pago</Badge>;
+  if (isOverdue(charge)) return <Badge variant="destructive">Vencida</Badge>;
+  if (charge.status === 'CANCELED') return <Badge variant="secondary">Cancelada</Badge>;
+  return <Badge variant="warning">Pendente</Badge>;
+}
 
 export default function CobrancasPage() {
   const dispatch = useAppDispatch();
-  const { customers, charges, pix } = useAppSelector((s) => s.data);
+  const { customers, charges, pix } = useAppSelector((state) => state.data);
 
   const [open, setOpen] = useState(false);
   const [customerId, setCustomerId] = useState('');
-  const [reais, setReais] = useState('49.90');
-  const [desc, setDesc] = useState('Mensalidade');
-  const [due, setDue] = useState('');
+  const [amount, setAmount] = useState('49.90');
+  const [description, setDescription] = useState('Mensalidade');
+  const [dueDate, setDueDate] = useState('');
+  const [category, setCategory] = useState('');
+  const [recurrence, setRecurrence] = useState('ONCE');
 
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
 
   const [editOpen, setEditOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
-  const [editDesc, setEditDesc] = useState('');
-  const [editDue, setEditDue] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [editDueDate, setEditDueDate] = useState('');
+  const [editCategory, setEditCategory] = useState('');
+  const [editRecurrence, setEditRecurrence] = useState('ONCE');
 
   useEffect(() => {
     if (!customerId && customers[0]) setCustomerId(customers[0].id);
   }, [customers, customerId]);
 
   const filtered = useMemo(() => {
-    const q = query.toLowerCase();
-    return charges.filter((c) => {
-      const matchQuery = c.description.toLowerCase().includes(q);
+    const text = query.toLowerCase();
+    return charges.filter((charge) => {
+      const matchQuery =
+        charge.description.toLowerCase().includes(text) ||
+        (charge.category ?? '').toLowerCase().includes(text);
       const matchStatus =
         statusFilter === 'ALL'
           ? true
           : statusFilter === 'OVERDUE'
-            ? isOverdue(c)
-            : c.status === statusFilter;
+            ? isOverdue(charge)
+            : charge.status === statusFilter;
       return matchQuery && matchStatus;
     });
   }, [charges, query, statusFilter]);
 
-  async function onAdd(e: React.FormEvent) {
-    e.preventDefault();
-    const amountCents = Math.round(parseFloat(reais) * 100);
+  function resetCreateForm() {
+    setAmount('49.90');
+    setDescription('Mensalidade');
+    setDueDate('');
+    setCategory('');
+    setRecurrence('ONCE');
+  }
+
+  async function onAdd(event: React.FormEvent) {
+    event.preventDefault();
     const res = await dispatch(
-      createCharge({ customerId, amountCents, description: desc, dueDate: due }),
+      createCharge({
+        customerId,
+        amountCents: inputToCents(amount),
+        description,
+        dueDate,
+        category: category || undefined,
+        recurrence,
+      }),
     );
     if (createCharge.fulfilled.match(res)) {
-      toast.success('Cobrança criada');
+      toast.success('Cobranca criada');
+      resetCreateForm();
       setOpen(false);
     }
   }
@@ -101,61 +134,73 @@ export default function CobrancasPage() {
     if (payCharge.fulfilled.match(res)) toast.success('Pagamento registrado');
   }
 
-  function openEdit(c: { id: string; description: string; dueDate: string }) {
-    setEditId(c.id);
-    setEditDesc(c.description);
-    setEditDue(c.dueDate.slice(0, 10));
+  async function onSendReminder(charge: Charge) {
+    const res = await dispatch(sendChargeWhatsappReminder(charge.id));
+    if (sendChargeWhatsappReminder.fulfilled.match(res)) {
+      toast.success('Lembrete enviado para a fila do WhatsApp');
+    } else {
+      toast.error(typeof res.payload === 'string' ? res.payload : 'Erro');
+    }
+  }
+
+  function openEdit(charge: Charge) {
+    setEditId(charge.id);
+    setEditDescription(charge.description);
+    setEditDueDate(charge.dueDate.slice(0, 10));
+    setEditCategory(charge.category ?? '');
+    setEditRecurrence(charge.recurrence ?? 'ONCE');
     setEditOpen(true);
   }
 
-  async function onEditSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  async function onEditSubmit(event: React.FormEvent) {
+    event.preventDefault();
     if (!editId) return;
     const res = await dispatch(
-      updateCharge({ id: editId, description: editDesc, dueDate: editDue || undefined }),
+      updateCharge({
+        id: editId,
+        description: editDescription,
+        dueDate: editDueDate || undefined,
+        category: editCategory || null,
+        recurrence: editRecurrence,
+      }),
     );
     if (updateCharge.fulfilled.match(res)) {
-      toast.success('Cobrança atualizada');
+      toast.success('Cobranca atualizada');
       setEditOpen(false);
     } else {
-      const p = (res as { payload?: unknown }).payload;
-      toast.error(typeof p === 'string' ? p : 'Erro');
+      toast.error(typeof res.payload === 'string' ? res.payload : 'Erro');
     }
   }
 
-  async function onDelete(c: { id: string; description: string }) {
-    if (!window.confirm(`Excluir a cobrança "${c.description}"?`)) return;
-    const res = await dispatch(deleteCharge(c.id));
-    if (deleteCharge.fulfilled.match(res)) toast.success('Cobrança excluída');
-    else {
-      const p = (res as { payload?: unknown }).payload;
-      toast.error(typeof p === 'string' ? p : 'Erro');
-    }
+  async function onDelete(charge: Charge) {
+    if (!window.confirm(`Excluir a cobranca "${charge.description}"?`)) return;
+    const res = await dispatch(deleteCharge(charge.id));
+    if (deleteCharge.fulfilled.match(res)) toast.success('Cobranca excluida');
+    else toast.error(typeof res.payload === 'string' ? res.payload : 'Erro');
   }
 
   return (
     <>
       <PageHeader
-        title="Cobranças"
+        title="Contas a receber"
         description={`${charges.length} no total`}
         actions={
           <Button onClick={() => setOpen(true)}>
             <Plus className="h-4 w-4" />
-            Nova cobrança
+            Nova cobranca
           </Button>
         }
       />
 
       <div className="p-6">
-        {/* Barra de busca + filtro */}
         <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               className="pl-9"
-              placeholder="Buscar por descrição..."
+              placeholder="Buscar por descricao ou categoria..."
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
+              onChange={(event) => setQuery(event.target.value)}
             />
           </div>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -175,39 +220,45 @@ export default function CobrancasPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Descrição</TableHead>
+                <TableHead>Descricao</TableHead>
+                <TableHead>Categoria</TableHead>
+                <TableHead>Tipo</TableHead>
                 <TableHead>Valor</TableHead>
                 <TableHead>Vencimento</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
+                <TableHead className="text-right">Acoes</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.map((c) => (
-                <TableRow key={c.id}>
-                  <TableCell className="font-medium">{c.description}</TableCell>
-                  <TableCell>{brl(c.amountCents)}</TableCell>
-                  <TableCell>{fmtDate(c.dueDate)}</TableCell>
+              {filtered.map((charge) => (
+                <TableRow key={charge.id}>
+                  <TableCell className="font-medium">{charge.description}</TableCell>
+                  <TableCell>{charge.category ?? '-'}</TableCell>
+                  <TableCell>{recurrenceLabel(charge.recurrence)}</TableCell>
+                  <TableCell>{brl(charge.amountCents)}</TableCell>
+                  <TableCell>{fmtDate(charge.dueDate)}</TableCell>
                   <TableCell>
-                    {c.status === 'PAID' ? (
-                      <Badge variant="success">Pago</Badge>
-                    ) : isOverdue(c) ? (
-                      <Badge variant="destructive">Vencida</Badge>
-                    ) : (
-                      <Badge variant="warning">Pendente</Badge>
-                    )}
+                    <StatusBadge charge={charge} />
                   </TableCell>
                   <TableCell>
-                    <div className="flex justify-end gap-2">
+                    <div className="flex justify-end gap-1">
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => dispatch(fetchPix(c.id))}
+                        onClick={() => dispatch(fetchPix(charge.id))}
                       >
                         PIX
                       </Button>
-                      {c.status === 'PENDING' && (
-                        <Button size="sm" onClick={() => onPay(c.id)}>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        title="Enviar lembrete no WhatsApp"
+                        onClick={() => void onSendReminder(charge)}
+                      >
+                        <MessageCircle className="h-4 w-4" />
+                      </Button>
+                      {charge.status === 'PENDING' && (
+                        <Button size="sm" onClick={() => void onPay(charge.id)}>
                           Dar baixa
                         </Button>
                       )}
@@ -215,7 +266,7 @@ export default function CobrancasPage() {
                         variant="ghost"
                         size="icon"
                         title="Editar"
-                        onClick={() => openEdit(c)}
+                        onClick={() => openEdit(charge)}
                       >
                         <Pencil className="h-4 w-4" />
                       </Button>
@@ -224,7 +275,7 @@ export default function CobrancasPage() {
                         size="icon"
                         title="Excluir"
                         className="text-destructive"
-                        onClick={() => onDelete(c)}
+                        onClick={() => void onDelete(charge)}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -234,10 +285,10 @@ export default function CobrancasPage() {
               ))}
               {filtered.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={5} className="py-12 text-center text-muted-foreground">
+                  <TableCell colSpan={7} className="py-12 text-center text-muted-foreground">
                     {charges.length === 0
-                      ? 'Nenhuma cobrança ainda. Clique em “Nova cobrança”.'
-                      : 'Nenhuma cobrança encontrada com esse filtro.'}
+                      ? 'Nenhuma cobranca ainda. Clique em "Nova cobranca".'
+                      : 'Nenhuma cobranca encontrada com esse filtro.'}
                   </TableCell>
                 </TableRow>
               )}
@@ -246,12 +297,11 @@ export default function CobrancasPage() {
         </Card>
       </div>
 
-      {/* Nova cobrança */}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Nova cobrança</DialogTitle>
-            <DialogDescription>Gera lançamento no caixa e lembrete com PIX.</DialogDescription>
+            <DialogTitle>Nova cobranca</DialogTitle>
+            <DialogDescription>Entrada do fluxo de caixa com PIX e lembrete.</DialogDescription>
           </DialogHeader>
           <form onSubmit={onAdd} className="grid gap-4">
             <div className="grid gap-1.5">
@@ -261,9 +311,9 @@ export default function CobrancasPage() {
                   <SelectValue placeholder="Selecione um cliente" />
                 </SelectTrigger>
                 <SelectContent>
-                  {customers.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.name}
+                  {customers.map((customer) => (
+                    <SelectItem key={customer.id} value={customer.id}>
+                      {customer.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -276,46 +326,98 @@ export default function CobrancasPage() {
                   type="number"
                   step="0.01"
                   min="0.01"
-                  value={reais}
-                  onChange={(e) => setReais(e.target.value)}
+                  value={amount}
+                  onChange={(event) => setAmount(event.target.value)}
                 />
               </div>
               <div className="grid gap-1.5">
                 <Label>Vencimento</Label>
-                <Input type="date" value={due} onChange={(e) => setDue(e.target.value)} required />
+                <Input
+                  type="date"
+                  value={dueDate}
+                  onChange={(event) => setDueDate(event.target.value)}
+                  required
+                />
               </div>
             </div>
             <div className="grid gap-1.5">
-              <Label>Descrição</Label>
-              <Input value={desc} onChange={(e) => setDesc(e.target.value)} />
+              <Label>Descricao</Label>
+              <Input value={description} onChange={(event) => setDescription(event.target.value)} />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-1.5">
+                <Label>Categoria</Label>
+                <Input value={category} onChange={(event) => setCategory(event.target.value)} />
+              </div>
+              <div className="grid gap-1.5">
+                <Label>Tipo</Label>
+                <Select value={recurrence} onValueChange={setRecurrence}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ONCE">Avulsa</SelectItem>
+                    <SelectItem value="MONTHLY">Mensal</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
             {customers.length === 0 && (
               <p className="text-sm text-muted-foreground">
-                Cadastre um cliente antes de criar uma cobrança.
+                Cadastre um cliente antes de criar uma cobranca.
               </p>
             )}
             <Button type="submit" className="w-full" disabled={customers.length === 0}>
-              Criar cobrança
+              Criar cobranca
             </Button>
           </form>
         </DialogContent>
       </Dialog>
 
-      {/* Editar cobrança */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Editar cobrança</DialogTitle>
-            <DialogDescription>Edite descrição e vencimento (o valor não muda).</DialogDescription>
+            <DialogTitle>Editar cobranca</DialogTitle>
+            <DialogDescription>Atualize os dados exibidos no fluxo de caixa.</DialogDescription>
           </DialogHeader>
           <form onSubmit={onEditSubmit} className="grid gap-4">
             <div className="grid gap-1.5">
-              <Label>Descrição</Label>
-              <Input value={editDesc} onChange={(e) => setEditDesc(e.target.value)} required />
+              <Label>Descricao</Label>
+              <Input
+                value={editDescription}
+                onChange={(event) => setEditDescription(event.target.value)}
+                required
+              />
             </div>
             <div className="grid gap-1.5">
               <Label>Vencimento</Label>
-              <Input type="date" value={editDue} onChange={(e) => setEditDue(e.target.value)} required />
+              <Input
+                type="date"
+                value={editDueDate}
+                onChange={(event) => setEditDueDate(event.target.value)}
+                required
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-1.5">
+                <Label>Categoria</Label>
+                <Input
+                  value={editCategory}
+                  onChange={(event) => setEditCategory(event.target.value)}
+                />
+              </div>
+              <div className="grid gap-1.5">
+                <Label>Tipo</Label>
+                <Select value={editRecurrence} onValueChange={setEditRecurrence}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ONCE">Avulsa</SelectItem>
+                    <SelectItem value="MONTHLY">Mensal</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
             <Button type="submit" className="w-full">
               Salvar
@@ -324,12 +426,16 @@ export default function CobrancasPage() {
         </DialogContent>
       </Dialog>
 
-      {/* PIX */}
-      <Dialog open={!!pix} onOpenChange={(o) => { if (!o) dispatch(clearPix()); }}>
+      <Dialog
+        open={!!pix}
+        onOpenChange={(dialogOpen) => {
+          if (!dialogOpen) dispatch(clearPix());
+        }}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>PIX copia-e-cola</DialogTitle>
-            <DialogDescription>Envie este código ao cliente para pagamento.</DialogDescription>
+            <DialogDescription>Envie este codigo ao cliente para pagamento.</DialogDescription>
           </DialogHeader>
           <textarea
             readOnly
@@ -344,7 +450,7 @@ export default function CobrancasPage() {
             }}
           >
             <Copy className="h-4 w-4" />
-            Copiar código
+            Copiar codigo
           </Button>
         </DialogContent>
       </Dialog>

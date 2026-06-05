@@ -65,6 +65,7 @@ export function useWhatsappConnection() {
     const source = new EventSource(url);
     const events = [
       'whatsapp:qr',
+      'whatsapp:qr_expired',
       'whatsapp:connecting',
       'whatsapp:connected',
       'whatsapp:disconnected',

@@ -145,9 +145,6 @@ export class AuthService {
   }
 
   async deleteUser(tenantId: string, actorId: string, actor: string, id: string) {
-    if (actorId === id) {
-      throw new BadRequestException('Voce nao pode excluir o proprio usuario.');
-    }
     const user = await this.prisma.user.findFirst({ where: { id, tenantId } });
     if (!user) throw new NotFoundException('Usuario nao encontrado neste tenant.');
     if (user.role === 'ADMIN') {
@@ -160,6 +157,7 @@ export class AuthService {
       action: 'USER_DELETED',
       entityType: 'User',
       entityId: user.id,
+      metadata: { deletedOwnUser: actorId === id },
     });
     return { ok: true };
   }

@@ -19,7 +19,7 @@ import { WhatsappUserStateService } from './whatsapp-user-state.service';
 
 export const PROCESS_WHATSAPP_RECEIPT_JOB = 'PROCESS_WHATSAPP_RECEIPT';
 
-interface RawBaileysMessage {
+interface RawWhaileysMessage {
   key?: { remoteJid?: string; fromMe?: boolean };
   pushName?: string;
   message?: unknown;
@@ -69,7 +69,7 @@ export class WhatsappMessageHandler {
     );
   }
 
-  async handle(rawMessage: RawBaileysMessage): Promise<void> {
+  async handle(rawMessage: RawWhaileysMessage): Promise<void> {
     const remoteJid = rawMessage.key?.remoteJid;
     if (!remoteJid || rawMessage.key?.fromMe || remoteJid === 'status@broadcast') return;
     if (remoteJid.endsWith('@g.us')) return;

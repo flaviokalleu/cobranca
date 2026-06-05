@@ -144,11 +144,6 @@ export class StockService {
       where: { id, tenantId },
     });
     if (!movement) throw new NotFoundException('Movimentacao nao encontrada.');
-    if (movement.refType !== 'ADJUST') {
-      throw new BadRequestException(
-        'Somente ajustes manuais podem ser excluidos. Edite o documento de origem.',
-      );
-    }
     const signedQty = movement.type === 'IN' ? movement.qty : -movement.qty;
     await this.prisma.$transaction([
       this.prisma.stockMovement.delete({ where: { id: movement.id } }),
@@ -163,7 +158,11 @@ export class StockService {
       action: 'STOCK_MOVEMENT_DELETED',
       entityType: 'StockMovement',
       entityId: movement.id,
-      metadata: { revertedQty: signedQty },
+      metadata: {
+        revertedQty: signedQty,
+        refType: movement.refType,
+        refId: movement.refId,
+      },
     });
     return { ok: true };
   }

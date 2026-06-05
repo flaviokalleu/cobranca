@@ -3,6 +3,7 @@ import { API_URL, api, getToken } from '@/lib/api';
 export type WhatsappConnectionStatus =
   | 'disconnected'
   | 'waiting_qr'
+  | 'qr_expired'
   | 'connecting'
   | 'connected'
   | 'reconnecting'

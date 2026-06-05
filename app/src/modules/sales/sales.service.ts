@@ -168,19 +168,53 @@ export class SalesService {
       where: { id, tenantId },
     });
     if (!order) throw new NotFoundException('Pedido nao encontrado.');
-    if (order.status !== 'DRAFT') {
-      throw new BadRequestException('Somente pedidos em rascunho podem ser excluidos.');
-    }
-    await this.prisma.$transaction([
-      this.prisma.salesOrderItem.deleteMany({ where: { orderId: order.id } }),
-      this.prisma.salesOrder.delete({ where: { id: order.id } }),
-    ]);
+    const stockMovements = await this.prisma.stockMovement.findMany({
+      where: { tenantId, refType: 'SALE', refId: order.id },
+    });
+    await this.prisma.$transaction(async (db) => {
+      for (const movement of stockMovements) {
+        const signedQty = movement.type === 'IN' ? movement.qty : -movement.qty;
+        await db.product.updateMany({
+          where: { id: movement.productId, tenantId },
+          data: { stockQty: { increment: -signedQty } },
+        });
+      }
+      await db.stockMovement.deleteMany({
+        where: { tenantId, refType: 'SALE', refId: order.id },
+      });
+      if (order.chargeId) {
+        await db.calendarEvent.deleteMany({
+          where: { tenantId, chargeId: order.chargeId },
+        });
+        await db.notification.deleteMany({
+          where: { tenantId, entityType: 'Charge', entityId: order.chargeId },
+        });
+        await db.ledgerEntry.deleteMany({
+          where: {
+            tenantId,
+            transactionId: { in: [`charge:${order.chargeId}`, `payment:${order.chargeId}`] },
+          },
+        });
+        await db.charge.deleteMany({
+          where: { id: order.chargeId, tenantId },
+        });
+      }
+      await db.salesOrderItem.deleteMany({
+        where: { tenantId, orderId: order.id },
+      });
+      await db.salesOrder.delete({ where: { id: order.id } });
+    });
     await this.audit.record({
       tenantId,
       actor: 'system',
       action: 'SALE_DELETED',
       entityType: 'SalesOrder',
       entityId: order.id,
+      metadata: {
+        previousStatus: order.status,
+        chargeId: order.chargeId,
+        revertedStockMovements: stockMovements.length,
+      },
     });
     return { ok: true };
   }

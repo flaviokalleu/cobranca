@@ -6,13 +6,13 @@ import {
   ReminderSender,
   ConsoleReminderSender,
 } from './reminder-sender';
-import { BaileysReminderSender } from './baileys-reminder.sender';
+import { WhaileysReminderSender } from './whaileys-reminder.sender';
 import { WhatsappBotModule } from '../whatsapp-bot/whatsapp-bot.module';
 
-// console (padrao) ou baileys (WhatsApp real). Trocado por env REMINDER_SENDER.
+// console (padrao) ou whaileys (WhatsApp real). Trocado por env REMINDER_SENDER.
 const SenderImpl =
-  process.env.REMINDER_SENDER === 'baileys'
-    ? BaileysReminderSender
+  process.env.REMINDER_SENDER === 'whaileys'
+    ? WhaileysReminderSender
     : ConsoleReminderSender;
 
 @Module({

@@ -1,4 +1,4 @@
-import { QrCode } from 'lucide-react';
+import { AlertTriangle, QrCode } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { WhatsappStatus } from '@/services/whatsappAdminApi';
 
@@ -19,10 +19,15 @@ export function WhatsAppQRCode({ status }: { status: WhatsappStatus }) {
         <div className="flex aspect-square items-center justify-center rounded-md border bg-white p-4">
           {status.qrImageDataUrl ? (
             <img src={status.qrImageDataUrl} alt="QR Code do WhatsApp" className="h-full w-full" />
-          ) : (
+          ) : status.qrCode ? (
             <pre className="max-h-full overflow-auto whitespace-pre-wrap break-all text-xs text-slate-700">
-              {status.qrCode ?? 'QR Code aguardando atualizacao.'}
+              {status.qrCode}
             </pre>
+          ) : (
+            <div className="flex flex-col items-center gap-3 text-center text-sm text-slate-600">
+              <AlertTriangle className="h-8 w-8 text-amber-500" />
+              <span>QR Code indisponivel. Gere um novo QR Code.</span>
+            </div>
           )}
         </div>
         <ol className="grid content-center gap-3 text-sm text-muted-foreground">

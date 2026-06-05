@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { NotificationBell } from '@/components/notification-bell';
 
 interface PageHeaderProps {
   title: string;
@@ -15,7 +16,10 @@ export function PageHeader({ title, description, actions }: PageHeaderProps) {
           <p className="text-xs text-muted-foreground">{description}</p>
         )}
       </div>
-      <div className="flex items-center gap-2">{actions}</div>
+      <div className="flex items-center gap-2">
+        <NotificationBell />
+        {actions}
+      </div>
     </header>
   );
 }

@@ -56,11 +56,11 @@ npm test                 # unidade: partida dobrada + PIX (CRC16)
 node scripts/smoke.mjs   # E2E: auth + RBAC + cobrança + ledger + PIX + agendador (15 checagens)
 ```
 
-## WhatsApp real (Baileys) — sua ação
+## WhatsApp real (Whaileys) — sua ação
 
-1. No `.env`, mude `REMINDER_SENDER="baileys"`.
-2. `npm run start:dev` → um **QR Code** aparece no terminal.
-3. Escaneie com o WhatsApp do celular (Aparelhos conectados). A partir daí os lembretes vão pelo WhatsApp.
+1. No `.env`, mude `REMINDER_SENDER="whaileys"`.
+2. `npm run start:dev`.
+3. Abra o painel administrativo do WhatsApp, gere o QR Code e escaneie com o WhatsApp do celular (Aparelhos conectados). A partir daí os lembretes vão pelo WhatsApp.
 
 ## Modo produção (PostgreSQL + Redis) — precisa Docker
 

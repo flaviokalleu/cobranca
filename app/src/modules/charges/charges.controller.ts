@@ -35,6 +35,12 @@ export class ChargesController {
     return this.charges.getPix(tenantId, id);
   }
 
+  @Roles('ADMIN', 'FINANCE', 'COMMERCIAL', 'AGENT')
+  @Post(':id/whatsapp-reminder')
+  sendWhatsappReminder(@Tenant() tenantId: string, @Param('id') id: string) {
+    return this.charges.sendWhatsappReminder(tenantId, id);
+  }
+
   // Baixa de pagamento e acao sensivel: somente ADMIN.
   @Roles('ADMIN', 'FINANCE')
   @Post(':id/pay')

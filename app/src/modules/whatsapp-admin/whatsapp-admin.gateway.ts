@@ -4,6 +4,7 @@ import { Observable, Subject, map } from 'rxjs';
 export interface WhatsappRealtimeEvent {
   type:
     | 'whatsapp:qr'
+    | 'whatsapp:qr_expired'
     | 'whatsapp:connecting'
     | 'whatsapp:connected'
     | 'whatsapp:disconnected'

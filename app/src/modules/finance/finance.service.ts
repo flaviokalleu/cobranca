@@ -5,22 +5,55 @@ import { PrismaService } from '../../common/prisma/prisma.service';
 export class FinanceService {
   constructor(private readonly prisma: PrismaService) {}
 
-  /// Fluxo de caixa: movimentos na conta CASH com saldo acumulado.
+  /// Fluxo de caixa projetado: contas a receber e contas a pagar com saldo acumulado.
   async cashFlow(tenantId: string) {
-    const entries = await this.prisma.ledgerEntry.findMany({
-      where: { tenantId, accountCode: 'CASH' },
-      orderBy: { createdAt: 'asc' },
+    const [charges, payables] = await Promise.all([
+      this.prisma.charge.findMany({
+        where: { tenantId },
+        orderBy: { dueDate: 'asc' },
+      }),
+      this.prisma.payable.findMany({
+        where: { tenantId },
+        orderBy: { dueDate: 'asc' },
+      }),
+    ]);
+
+    const baseRows = [
+      ...charges.map((charge) => ({
+        id: `charge:${charge.id}`,
+        sourceId: charge.id,
+        sourceType: 'RECEIVABLE',
+        date: charge.status === 'PAID' && charge.paidAt ? charge.paidAt : charge.dueDate,
+        description: charge.description,
+        category: charge.category,
+        recurrence: charge.recurrence,
+        status: charge.status,
+        inCents: charge.amountCents,
+        outCents: 0,
+      })),
+      ...payables.map((payable) => ({
+        id: `payable:${payable.id}`,
+        sourceId: payable.id,
+        sourceType: 'PAYABLE',
+        date: payable.status === 'PAID' && payable.paidAt ? payable.paidAt : payable.dueDate,
+        description: payable.description,
+        category: payable.category,
+        recurrence: payable.recurrence,
+        status: payable.status,
+        inCents: 0,
+        outCents: payable.amountCents,
+      })),
+    ].sort((a, b) => {
+      const byDate = a.date.getTime() - b.date.getTime();
+      if (byDate !== 0) return byDate;
+      return a.description.localeCompare(b.description);
     });
+
     let balance = 0;
-    const rows = entries.map((e) => {
-      const isIn = e.direction === 'DEBIT';
-      balance += isIn ? e.amountCents : -e.amountCents;
+    const rows = baseRows.map((row) => {
+      balance += row.inCents - row.outCents;
       return {
-        id: e.id,
-        date: e.createdAt,
-        description: e.description,
-        inCents: isIn ? e.amountCents : 0,
-        outCents: isIn ? 0 : e.amountCents,
+        ...row,
         balanceCents: balance,
       };
     });

@@ -172,21 +172,58 @@ export class PurchasesService {
       where: { id, tenantId },
     });
     if (!order) throw new NotFoundException('Pedido de compra nao encontrado.');
-    if (order.status !== 'DRAFT') {
-      throw new BadRequestException(
-        'Somente pedidos de compra em rascunho podem ser excluidos.',
-      );
-    }
-    await this.prisma.$transaction([
-      this.prisma.purchaseOrderItem.deleteMany({ where: { orderId: order.id } }),
-      this.prisma.purchaseOrder.delete({ where: { id: order.id } }),
-    ]);
+    const stockMovements = await this.prisma.stockMovement.findMany({
+      where: { tenantId, refType: 'PURCHASE', refId: order.id },
+    });
+    await this.prisma.$transaction(async (db) => {
+      for (const movement of stockMovements) {
+        const signedQty = movement.type === 'IN' ? movement.qty : -movement.qty;
+        await db.product.updateMany({
+          where: { id: movement.productId, tenantId },
+          data: { stockQty: { increment: -signedQty } },
+        });
+      }
+      await db.stockMovement.deleteMany({
+        where: { tenantId, refType: 'PURCHASE', refId: order.id },
+      });
+      if (order.payableId) {
+        await db.calendarEvent.deleteMany({
+          where: { tenantId, payableId: order.payableId },
+        });
+        await db.notification.deleteMany({
+          where: { tenantId, entityType: 'Payable', entityId: order.payableId },
+        });
+        await db.ledgerEntry.deleteMany({
+          where: {
+            tenantId,
+            OR: [
+              { transactionId: `payable:${order.payableId}` },
+              { transactionId: `payable-pay:${order.payableId}` },
+              { transactionId: `payable-cancel:${order.payableId}` },
+              { transactionId: { startsWith: `payable-adjust:${order.payableId}:` } },
+            ],
+          },
+        });
+        await db.payable.deleteMany({
+          where: { id: order.payableId, tenantId },
+        });
+      }
+      await db.purchaseOrderItem.deleteMany({
+        where: { tenantId, orderId: order.id },
+      });
+      await db.purchaseOrder.delete({ where: { id: order.id } });
+    });
     await this.audit.record({
       tenantId,
       actor: 'system',
       action: 'PURCHASE_DELETED',
       entityType: 'PurchaseOrder',
       entityId: order.id,
+      metadata: {
+        previousStatus: order.status,
+        payableId: order.payableId,
+        revertedStockMovements: stockMovements.length,
+      },
     });
     return { ok: true };
   }

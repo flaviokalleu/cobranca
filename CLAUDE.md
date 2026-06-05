@@ -35,7 +35,7 @@ You are the core engineering intelligence of a world-class enterprise SaaS platf
 - Prisma
 - Redis
 - BullMQ
-- Baileys
+- Whaileys
 - Docker
 - Kubernetes-ready
 

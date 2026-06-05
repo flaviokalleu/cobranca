@@ -1,9 +1,11 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect } from 'react';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
-import { fetchCashflow } from '@/store/financeSlice';
+import { fetchCashflow, type CashflowRow } from '@/store/financeSlice';
 import { PageHeader } from '@/components/page-header';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -19,10 +21,22 @@ import { Pencil, Trash2 } from 'lucide-react';
 const brl = (cents: number) =>
   (cents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const fmt = (iso: string) => new Date(iso).toLocaleString('pt-BR');
+const recurrenceLabel = (recurrence?: string | null) =>
+  recurrence === 'MONTHLY' ? 'Mensal' : 'Avulsa';
+const sourceLabel = (sourceType: CashflowRow['sourceType']) =>
+  sourceType === 'RECEIVABLE' ? 'A receber' : 'A pagar';
+const sourcePath = (sourceType: CashflowRow['sourceType']) =>
+  sourceType === 'RECEIVABLE' ? '/dashboard/cobrancas' : '/dashboard/financeiro/pagar';
+
+function StatusBadge({ status }: { status: string }) {
+  if (status === 'PAID') return <Badge variant="success">Pago</Badge>;
+  if (status === 'CANCELED') return <Badge variant="secondary">Cancelada</Badge>;
+  return <Badge variant="warning">Pendente</Badge>;
+}
 
 export default function FluxoCaixaPage() {
   const dispatch = useAppDispatch();
-  const { cashflow } = useAppSelector((s) => s.finance);
+  const { cashflow } = useAppSelector((state) => state.finance);
 
   useEffect(() => {
     void dispatch(fetchCashflow());
@@ -30,12 +44,15 @@ export default function FluxoCaixaPage() {
 
   return (
     <>
-      <PageHeader title="Fluxo de caixa" description="Entradas e saidas do caixa" />
+      <PageHeader
+        title="Fluxo de caixa"
+        description="Entradas e saidas de contas a receber e contas a pagar"
+      />
       <div className="space-y-6 p-6">
         <Card className="max-w-xs">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Saldo em caixa
+              Saldo projetado
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -48,7 +65,10 @@ export default function FluxoCaixaPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Quando</TableHead>
+                <TableHead>Origem</TableHead>
                 <TableHead>Descricao</TableHead>
+                <TableHead>Categoria</TableHead>
+                <TableHead>Status</TableHead>
                 <TableHead className="text-right">Entrada</TableHead>
                 <TableHead className="text-right">Saida</TableHead>
                 <TableHead className="text-right">Saldo</TableHead>
@@ -61,7 +81,19 @@ export default function FluxoCaixaPage() {
                   <TableCell className="whitespace-nowrap text-muted-foreground">
                     {fmt(row.date)}
                   </TableCell>
-                  <TableCell>{row.description}</TableCell>
+                  <TableCell>{sourceLabel(row.sourceType)}</TableCell>
+                  <TableCell className="font-medium">{row.description}</TableCell>
+                  <TableCell>
+                    <div className="flex flex-col">
+                      <span>{row.category ?? '-'}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {recurrenceLabel(row.recurrence)}
+                      </span>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <StatusBadge status={row.status} />
+                  </TableCell>
                   <TableCell className="text-right text-emerald-600">
                     {row.inCents ? brl(row.inCents) : '-'}
                   </TableCell>
@@ -73,21 +105,21 @@ export default function FluxoCaixaPage() {
                   </TableCell>
                   <TableCell>
                     <div className="flex justify-end gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        title="Relatorio derivado; edite a origem"
-                        disabled
-                      >
-                        <Pencil className="h-4 w-4" />
+                      <Button asChild variant="ghost" size="icon" title="Editar na origem">
+                        <Link href={sourcePath(row.sourceType)}>
+                          <Pencil className="h-4 w-4" />
+                        </Link>
                       </Button>
                       <Button
+                        asChild
                         variant="ghost"
                         size="icon"
-                        title="Relatorio derivado; exclua pela origem"
-                        disabled
+                        title="Excluir na origem"
+                        className="text-destructive"
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Link href={sourcePath(row.sourceType)}>
+                          <Trash2 className="h-4 w-4" />
+                        </Link>
                       </Button>
                     </div>
                   </TableCell>
@@ -95,8 +127,8 @@ export default function FluxoCaixaPage() {
               ))}
               {cashflow.rows.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={6} className="py-12 text-center text-muted-foreground">
-                    Sem movimentacoes de caixa ainda.
+                  <TableCell colSpan={9} className="py-12 text-center text-muted-foreground">
+                    Sem entradas ou saidas ainda.
                   </TableCell>
                 </TableRow>
               )}

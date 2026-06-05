@@ -10,7 +10,7 @@ import { JwtService } from '@nestjs/jwt';
 import { Request } from 'express';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
-import { JwtUser } from '../jwt-user.interface';
+import { JwtUser, Role } from '../jwt-user.interface';
 
 /**
  * Exige um JWT valido (Bearer). Em rotas @Public(), libera sem token.
@@ -48,16 +48,30 @@ export class JwtAuthGuard implements CanActivate {
       throw new UnauthorizedException('Token de acesso invalido ou expirado.');
     }
 
-    req.user = payload;
-    req.tenantId = payload.tenantId;
-
     // Bloqueia acesso de empresa suspensa (superadmin/plataforma nao e afetado).
-    const tenant = await this.prisma.tenant.findUnique({
-      where: { id: payload.tenantId },
-    });
+    const [tenant, user] = await Promise.all([
+      this.prisma.tenant.findUnique({
+        where: { id: payload.tenantId },
+      }),
+      this.prisma.user.findFirst({
+        where: { id: payload.sub, tenantId: payload.tenantId },
+        select: { id: true, tenantId: true, email: true, role: true },
+      }),
+    ]);
     if (tenant && tenant.status === 'SUSPENDED') {
       throw new ForbiddenException('Empresa suspensa. Contate o suporte.');
     }
+    if (!user) {
+      throw new UnauthorizedException('Usuario nao encontrado ou removido.');
+    }
+
+    req.user = {
+      sub: user.id,
+      tenantId: user.tenantId,
+      role: user.role as Role,
+      email: user.email,
+    };
+    req.tenantId = user.tenantId;
 
     return true;
   }

@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { AuditService } from '../../common/audit/audit.service';
 import { CreateSupplierDto } from './dto/create-supplier.dto';
@@ -67,18 +67,20 @@ export class SuppliersService {
       this.prisma.purchaseOrder.count({ where: { tenantId, supplierId: existing.id } }),
       this.prisma.payable.count({ where: { tenantId, supplierId: existing.id } }),
     ]);
-    if (purchaseOrders > 0 || payables > 0) {
-      throw new BadRequestException(
-        'Fornecedor possui pedidos ou contas vinculadas e nao pode ser excluido.',
-      );
-    }
-    await this.prisma.supplier.delete({ where: { id: existing.id } });
+    await this.prisma.$transaction([
+      this.prisma.payable.updateMany({
+        where: { tenantId, supplierId: existing.id },
+        data: { supplierId: null },
+      }),
+      this.prisma.supplier.delete({ where: { id: existing.id } }),
+    ]);
     await this.audit.record({
       tenantId,
       actor: 'system',
       action: 'SUPPLIER_DELETED',
       entityType: 'Supplier',
       entityId: existing.id,
+      metadata: { linkedPurchaseOrders: purchaseOrders, unlinkedPayables: payables },
     });
     return { ok: true };
   }

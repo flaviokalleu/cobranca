@@ -10,7 +10,7 @@ export interface ReminderMessage {
 
 /**
  * Porta de saida do lembrete (padrao Strategy).
- * Trocar a implementacao por Baileys/WhatsApp ou um provedor de SMS NAO afeta o negocio.
+ * Trocar a implementacao por Whaileys/WhatsApp ou um provedor de SMS NAO afeta o negocio.
  */
 export abstract class ReminderSender {
   abstract send(message: ReminderMessage): Promise<void>;
@@ -18,7 +18,7 @@ export abstract class ReminderSender {
 
 /**
  * Implementacao SUBSTITUTA (stand-in): escreve a mensagem no log em vez de enviar.
- * Em producao, troque por um BaileysReminderSender (WhatsApp real).
+ * Em producao, troque por um WhaileysReminderSender (WhatsApp real).
  */
 @Injectable()
 export class ConsoleReminderSender extends ReminderSender {

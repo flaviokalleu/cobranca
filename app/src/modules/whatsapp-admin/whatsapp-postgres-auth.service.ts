@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { WhatsappCryptoService } from './whatsapp-crypto.service';
 
-interface BaileysAuthState {
+interface WhaileysAuthState {
   creds: Record<string, unknown>;
   keys: {
     get(type: string, ids: string[]): Promise<Record<string, unknown>>;
@@ -18,12 +18,12 @@ export class WhatsappPostgresAuthService {
   ) {}
 
   async loadAuthState(sessionName: string): Promise<{
-    state: BaileysAuthState;
+    state: WhaileysAuthState;
     saveCreds: () => Promise<void>;
   }> {
-    const baileys = this.baileys();
-    const creds = (await this.loadCreds(sessionName)) ?? baileys.initAuthCreds();
-    const state: BaileysAuthState = {
+    const whaileys = this.whaileys();
+    const creds = (await this.loadCreds(sessionName)) ?? whaileys.initAuthCreds();
+    const state: WhaileysAuthState = {
       creds,
       keys: {
         get: async (type, ids) => {
@@ -32,8 +32,8 @@ export class WhatsappPostgresAuthService {
             const value = await this.getKey(sessionName, type, id);
             if (!value) continue;
             values[id] =
-              type === 'app-state-sync-key' && baileys.proto?.Message?.AppStateSyncKeyData
-                ? baileys.proto.Message.AppStateSyncKeyData.fromObject(value)
+              type === 'app-state-sync-key' && whaileys.proto?.Message?.AppStateSyncKeyData
+                ? whaileys.proto.Message.AppStateSyncKeyData.fromObject(value)
                 : value;
           }
           return values;
@@ -60,7 +60,7 @@ export class WhatsappPostgresAuthService {
 
   async saveCreds(sessionName: string, creds: unknown): Promise<void> {
     const connection = await this.ensureConnection();
-    const { BufferJSON } = this.baileys();
+    const { BufferJSON } = this.whaileys();
     const serialized = JSON.stringify(creds, BufferJSON?.replacer);
     const encrypted = this.crypto.encrypt(serialized);
     const active = await this.activeSession(sessionName);
@@ -88,13 +88,13 @@ export class WhatsappPostgresAuthService {
       where: { sessionId: session.id, keyType: type, keyId: id },
     });
     if (!key) return null;
-    const { BufferJSON } = this.baileys();
+    const { BufferJSON } = this.whaileys();
     return JSON.parse(this.crypto.decrypt(key.keyValue), BufferJSON?.reviver) as unknown;
   }
 
   async setKey(sessionName: string, type: string, id: string, value: unknown): Promise<void> {
     const session = await this.ensureSession(sessionName);
-    const { BufferJSON } = this.baileys();
+    const { BufferJSON } = this.whaileys();
     const encrypted = this.crypto.encrypt(JSON.stringify(value, BufferJSON?.replacer));
     await this.prisma.whatsappSessionKey.upsert({
       where: {
@@ -147,7 +147,7 @@ export class WhatsappPostgresAuthService {
   private async loadCreds(sessionName: string): Promise<Record<string, unknown> | null> {
     const active = await this.activeSession(sessionName);
     if (!active) return null;
-    const { BufferJSON } = this.baileys();
+    const { BufferJSON } = this.whaileys();
     return JSON.parse(this.crypto.decrypt(active.creds), BufferJSON?.reviver) as Record<
       string,
       unknown
@@ -157,7 +157,7 @@ export class WhatsappPostgresAuthService {
   private async ensureSession(sessionName: string) {
     const active = await this.activeSession(sessionName);
     if (active) return active;
-    const creds = this.baileys().initAuthCreds();
+    const creds = this.whaileys().initAuthCreds();
     await this.saveCreds(sessionName, creds);
     const created = await this.activeSession(sessionName);
     if (!created) throw new Error('Nao foi possivel criar sessao WhatsApp.');
@@ -179,12 +179,12 @@ export class WhatsappPostgresAuthService {
     return this.prisma.whatsappConnection.create({ data: { status: 'disconnected' } });
   }
 
-  private baileys(): {
+  private whaileys(): {
     initAuthCreds: () => Record<string, unknown>;
     BufferJSON?: { replacer?: (key: string, value: unknown) => unknown; reviver?: (key: string, value: unknown) => unknown };
     proto?: { Message?: { AppStateSyncKeyData?: { fromObject(value: unknown): unknown } } };
   } {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
-    return require('@whiskeysockets/baileys');
+    return require('whaileys');
   }
 }
