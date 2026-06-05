@@ -13,6 +13,7 @@ import {
   updateCharge,
   type Charge,
 } from '@/store/dataSlice';
+import { fetchFinancialEntries } from '@/store/financialEntriesSlice';
 import { PageHeader } from '@/components/page-header';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -63,7 +64,10 @@ function StatusBadge({ charge }: { charge: Charge }) {
 export default function CobrancasPage() {
   const dispatch = useAppDispatch();
   const { customers, charges, pix } = useAppSelector((state) => state.data);
+  const { entries: whatsappEntries } = useAppSelector((state) => state.financialEntries);
+  const whatsappReceitas = whatsappEntries.filter((e) => e.tipo === 'receita');
 
+  const [tab, setTab] = useState<'manual' | 'whatsapp'>('manual');
   const [open, setOpen] = useState(false);
   const [customerId, setCustomerId] = useState('');
   const [amount, setAmount] = useState('49.90');
@@ -81,6 +85,10 @@ export default function CobrancasPage() {
   const [editDueDate, setEditDueDate] = useState('');
   const [editCategory, setEditCategory] = useState('');
   const [editRecurrence, setEditRecurrence] = useState('ONCE');
+
+  useEffect(() => {
+    void dispatch(fetchFinancialEntries());
+  }, [dispatch]);
 
   useEffect(() => {
     if (!customerId && customers[0]) setCustomerId(customers[0].id);
@@ -183,7 +191,7 @@ export default function CobrancasPage() {
     <>
       <PageHeader
         title="Receita"
-        description={`${charges.length} no total`}
+        description={`${charges.length + whatsappReceitas.length} no total`}
         actions={
           <Button onClick={() => setOpen(true)}>
             <Plus className="h-4 w-4" />
@@ -193,7 +201,71 @@ export default function CobrancasPage() {
       />
 
       <div className="p-6">
-        <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center">
+        {/* Abas */}
+        <div className="mb-4 flex gap-1 rounded-xl border bg-muted/40 p-1" style={{ width: 'fit-content' }}>
+          {(['manual', 'whatsapp'] as const).map((t) => (
+            <button
+              key={t}
+              onClick={() => setTab(t)}
+              className="rounded-lg px-4 py-1.5 text-sm font-medium transition-colors"
+              style={tab === t
+                ? { background: '#fff', boxShadow: '0 1px 4px rgba(0,0,0,0.08)', color: '#111' }
+                : { color: '#6b7280' }}
+            >
+              {t === 'manual' ? `Manual (${charges.length})` : `WhatsApp (${whatsappReceitas.length})`}
+            </button>
+          ))}
+        </div>
+
+        {/* Tabela WhatsApp */}
+        {tab === 'whatsapp' && (
+          <Card>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Pagador</TableHead>
+                  <TableHead>Descricao</TableHead>
+                  <TableHead>Tipo</TableHead>
+                  <TableHead>Valor</TableHead>
+                  <TableHead>Data</TableHead>
+                  <TableHead>Confianca</TableHead>
+                  <TableHead>Lead</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {whatsappReceitas.map((e) => (
+                  <TableRow key={e.id}>
+                    <TableCell className="font-medium">{e.pagadorNome ?? '-'}</TableCell>
+                    <TableCell className="max-w-xs truncate">{e.descricao}</TableCell>
+                    <TableCell>
+                      <Badge variant={e.recorrencia === 'MENSAL' ? 'default' : 'secondary'}>
+                        {e.recorrencia === 'MENSAL' ? 'Mensal' : 'Avulso'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>{(e.valorCents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</TableCell>
+                    <TableCell>{e.dataTransacao ? new Date(e.dataTransacao).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : '-'}</TableCell>
+                    <TableCell>
+                      <Badge variant={e.confianca === 'alta' ? 'success' : e.confianca === 'media' ? 'warning' : 'destructive'}>
+                        {e.confianca}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>{e.lead?.name ?? '-'}</TableCell>
+                  </TableRow>
+                ))}
+                {whatsappReceitas.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={7} className="py-12 text-center text-muted-foreground">
+                      Nenhuma receita via WhatsApp ainda.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </Card>
+        )}
+
+        {/* Tabela Manual — só exibe quando aba = manual */}
+        {tab === 'manual' && <><div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -297,6 +369,8 @@ export default function CobrancasPage() {
             </TableBody>
           </Table>
         </Card>
+        </>}
+
       </div>
 
       <Dialog open={open} onOpenChange={setOpen}>

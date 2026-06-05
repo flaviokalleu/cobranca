@@ -259,8 +259,9 @@ model Lead {
   incomeCents    Int?
   estimatedCents Int      @default(0)
   stage          String   @default("LEAD") // LEAD | FIRST_CONTACT | DOCUMENTATION | ANALYSIS | APPROVED | CONTRACT | CUSTOMER | LOST
-  notes          String?
-  createdAt      DateTime @default(now())
+  notes             String?
+  createdAt         DateTime         @default(now())
+  financialEntries  FinancialEntry[]
 
   @@index([tenantId, stage])
 }
@@ -623,6 +624,7 @@ model FinancialEntry {
   jsonOriginal         String?
   recorrencia          String    @default("AVULSO") // AVULSO | MENSAL
   leadId               String?
+  lead                 Lead?     @relation(fields: [leadId], references: [id])
   status               String    @default("pending_confirmation") // pending_confirmation | saved | corrected | cancelled | error
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt

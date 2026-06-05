@@ -187,7 +187,7 @@ export default function PainelPage() {
                   <YAxis tickLine={false} axisLine={false} fontSize={11} tick={{ fill: '#9ca3af' }} width={48} />
                   <Tooltip
                     contentStyle={{ borderRadius: 12, border: '1px solid #f0f0f0', fontSize: 12, boxShadow: '0 4px 16px rgba(0,0,0,0.08)' }}
-                    formatter={(v: number, name: string) => [brl(Math.round(v * 100)), name === 'receita' ? 'Receita' : 'Despesa']}
+                    formatter={(v: unknown, name: unknown) => [brl(Math.round(Number(v ?? 0) * 100)), name === 'receita' ? 'Receita' : 'Despesa']}
                   />
                   <Area type="monotone" dataKey="receita" stroke="#4f46e5" strokeWidth={2} fill="url(#gReceita)" dot={false} activeDot={{ r: 4, fill: '#4f46e5' }} />
                   <Area type="monotone" dataKey="despesa" stroke="#e53935" strokeWidth={2} fill="url(#gDespesa)" dot={false} activeDot={{ r: 4, fill: '#e53935' }} />

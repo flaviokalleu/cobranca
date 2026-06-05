@@ -12,6 +12,7 @@ import calendarReducer from './calendarSlice';
 import notificationsReducer from './notificationsSlice';
 import aiReducer from './aiSlice';
 import personalFinanceReducer from './personalFinanceSlice';
+import financialEntriesReducer from './financialEntriesSlice';
 
 export const store = configureStore({
   reducer: {
@@ -28,6 +29,7 @@ export const store = configureStore({
     notifications: notificationsReducer,
     ai: aiReducer,
     personalFinance: personalFinanceReducer,
+    financialEntries: financialEntriesReducer,
   },
 });
 
