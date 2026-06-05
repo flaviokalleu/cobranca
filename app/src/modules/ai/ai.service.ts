@@ -1,10 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { AskAiDto } from './dto/ask-ai.dto';
+import { DeepSeekService } from './deepseek.service';
 
 @Injectable()
 export class AiService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly deepseek: DeepSeekService,
+  ) {}
 
   suggestions() {
     return [
@@ -21,35 +25,99 @@ export class AiService {
   }
 
   async ask(tenantId: string, dto: AskAiDto) {
-    const question = this.normalize(dto.question);
-    if (this.hasAny(question, ['devendo', 'deve', 'devedor', 'atrasad'])) {
+    if (this.deepseek.isConfigured) {
+      return this.askWithDeepSeek(tenantId, dto.question);
+    }
+    return this.askWithRules(tenantId, dto.question);
+  }
+
+  private async askWithDeepSeek(tenantId: string, question: string) {
+    const ctx = await this.buildContext(tenantId);
+    const answer = await this.deepseek.chat([
+      {
+        role: 'system',
+        content: `Voce e um assistente financeiro e empresarial. Responda em portugues brasileiro de forma clara e objetiva.
+Contexto atual do negocio:
+${ctx}`,
+      },
+      { role: 'user', content: question },
+    ]);
+    return this.answer('deepseek', answer);
+  }
+
+  private async askWithRules(tenantId: string, question: string) {
+    const normalized = this.normalize(question);
+    if (this.hasAny(normalized, ['devendo', 'deve', 'devedor', 'atrasad'])) {
       return this.whoOwes(tenantId);
     }
-    if (this.hasAny(question, ['receber', 'recebivel', 'receita futura'])) {
+    if (this.hasAny(normalized, ['receber', 'recebivel', 'receita futura'])) {
       return this.totalReceivable(tenantId);
     }
-    if (this.hasAny(question, ['pagar', 'contas a pagar', 'despesa futura'])) {
+    if (this.hasAny(normalized, ['pagar', 'contas a pagar', 'despesa futura'])) {
       return this.totalPayable(tenantId);
     }
-    if (this.hasAny(question, ['documentacao', 'documento', 'documentos faltam'])) {
+    if (this.hasAny(normalized, ['documentacao', 'documento', 'documentos faltam'])) {
       return this.missingDocuments(tenantId);
     }
-    if (this.hasAny(question, ['tarefa', 'tarefas'])) {
+    if (this.hasAny(normalized, ['tarefa', 'tarefas'])) {
       return this.tasksToday(tenantId);
     }
-    if (this.hasAny(question, ['vence hoje', 'vencem hoje', 'hoje'])) {
+    if (this.hasAny(normalized, ['vence hoje', 'vencem hoje', 'hoje'])) {
       return this.dueToday(tenantId);
     }
-    if (this.hasAny(question, ['lucro', 'resultado'])) {
+    if (this.hasAny(normalized, ['lucro', 'resultado'])) {
       return this.profitThisMonth(tenantId);
     }
-    if (this.hasAny(question, ['gastei', 'gasto', 'despesas do mes'])) {
+    if (this.hasAny(normalized, ['gastei', 'gasto', 'despesas do mes'])) {
       return this.spentThisMonth(tenantId);
     }
-    if (this.hasAny(question, ['fecharam negocio', 'ganho', 'cliente fechado'])) {
+    if (this.hasAny(normalized, ['fecharam negocio', 'ganho', 'cliente fechado'])) {
       return this.closedDeals(tenantId);
     }
     return this.overview(tenantId);
+  }
+
+  private async buildContext(tenantId: string): Promise<string> {
+    const { start, end } = this.monthRange();
+    const today = this.todayRange();
+
+    const [receivable, payable, pendingDocs, openTasks, charges, ledger] = await Promise.all([
+      this.prisma.charge.aggregate({
+        where: { tenantId, status: 'PENDING' },
+        _sum: { amountCents: true },
+        _count: true,
+      }),
+      this.prisma.payable.aggregate({
+        where: { tenantId, status: 'PENDING' },
+        _sum: { amountCents: true },
+        _count: true,
+      }),
+      this.prisma.customerDocument.count({ where: { tenantId, status: { not: 'APPROVED' } } }),
+      this.prisma.task.count({ where: { tenantId, done: false } }),
+      this.prisma.charge.findMany({
+        where: { tenantId, status: 'PENDING', dueDate: { gte: today.start, lte: today.end } },
+        include: { customer: true },
+        take: 5,
+      }),
+      this.prisma.ledgerEntry.findMany({
+        where: { tenantId, createdAt: { gte: start, lte: end } },
+      }),
+    ]);
+
+    const revenue = ledger.filter((e) => e.accountCode === 'REVENUE').reduce((s, e) => s + e.amountCents, 0);
+    const expense = ledger.filter((e) => e.accountCode === 'EXPENSE').reduce((s, e) => s + e.amountCents, 0);
+    const dueToday = charges.map((c) => `${c.customer.name}: ${this.money(c.amountCents)}`).join(', ');
+
+    return [
+      `A receber: ${this.money(receivable._sum.amountCents ?? 0)} em ${receivable._count} cobranca(s) pendente(s)`,
+      `A pagar: ${this.money(payable._sum.amountCents ?? 0)} em ${payable._count} conta(s) pendente(s)`,
+      `Documentos pendentes: ${pendingDocs}`,
+      `Tarefas abertas: ${openTasks}`,
+      `Vence hoje: ${dueToday || 'nenhum'}`,
+      `Receita do mes: ${this.money(revenue)}`,
+      `Despesa do mes: ${this.money(expense)}`,
+      `Resultado do mes: ${this.money(revenue - expense)}`,
+    ].join('\n');
   }
 
   private async whoOwes(tenantId: string) {

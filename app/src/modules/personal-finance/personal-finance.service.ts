@@ -1,6 +1,7 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { AuditService } from '../../common/audit/audit.service';
+import { DeepSeekService } from '../ai/deepseek.service';
 import { CreatePersonalFinanceAccountDto } from './dto/create-personal-finance-account.dto';
 import { CreatePersonalCreditCardDto } from './dto/create-personal-credit-card.dto';
 import { CreatePersonalTransactionDto } from './dto/create-personal-transaction.dto';
@@ -32,9 +33,12 @@ interface TransactionBalanceInput {
 
 @Injectable()
 export class PersonalFinanceService {
+  private readonly logger = new Logger(PersonalFinanceService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
+    private readonly deepseek: DeepSeekService,
   ) {}
 
   async createAccount(tenantId: string, dto: CreatePersonalFinanceAccountDto) {
@@ -236,10 +240,28 @@ export class PersonalFinanceService {
   }
 
   async ingestMessage(tenantId: string, dto: IngestFinanceMessageDto) {
-    const classified = this.classify(dto.message);
+    let classified: ClassifiedMessage;
+    let classifierName: string;
+
+    if (this.deepseek.isConfigured) {
+      try {
+        const result = await this.deepseek.classifyTransaction(dto.message);
+        classified = result;
+        classifierName = 'DEEPSEEK';
+      } catch (err) {
+        this.logger.warn(`DeepSeek falhou, usando regras: ${String(err)}`);
+        classified = this.classify(dto.message);
+        classifierName = 'RULES';
+      }
+    } else {
+      classified = this.classify(dto.message);
+      classifierName = 'RULES';
+    }
+
     if (classified.amountCents <= 0) {
       throw new BadRequestException('Nao encontrei um valor financeiro na mensagem.');
     }
+
     const transaction = await this.createTransaction(tenantId, {
       type: classified.type,
       amountCents: classified.amountCents,
@@ -253,11 +275,12 @@ export class PersonalFinanceService {
     });
     await this.prisma.personalFinanceTransaction.update({
       where: { id: transaction.id },
-      data: { classifier: 'RULES', confidence: classified.confidence },
+      data: { classifier: classifierName, confidence: classified.confidence },
     });
+    const label = classified.type === 'INCOME' ? 'Receita' : classified.type === 'TRANSFER' ? 'Transferencia' : 'Gasto';
     return {
       transaction: { ...transaction, confidence: classified.confidence },
-      reply: `${classified.type === 'INCOME' ? 'Receita' : 'Gasto'} registrado: ${this.money(classified.amountCents)} em ${classified.category}.`,
+      reply: `${label} registrado: ${this.money(classified.amountCents)} em ${classified.category}.`,
     };
   }
 

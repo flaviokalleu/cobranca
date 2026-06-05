@@ -12,6 +12,7 @@ import {
 import { FinancialExtractorService } from '../financial-extractor/financial-extractor.service';
 import { NormalizationService } from '../financial-extractor/normalization.service';
 import { FinancialEntriesService } from '../financial-entries/financial-entries.service';
+import { DeepSeekConsultantService } from './deepseek-consultant.service';
 import { WhatsappButtonHandler, CorrectionField } from './whatsapp-button.handler';
 import { WhatsappFileService } from './whatsapp-file.service';
 import { WhatsappOutboundService } from './whatsapp-outbound.service';
@@ -69,6 +70,7 @@ export class WhatsappMessageHandler {
     private readonly extractor: FinancialExtractorService,
     private readonly financialEntries: FinancialEntriesService,
     private readonly normalization: NormalizationService,
+    private readonly consultant: DeepSeekConsultantService,
   ) {}
 
   registerQueueHandlers(): void {
@@ -128,19 +130,20 @@ export class WhatsappMessageHandler {
       return;
     }
 
-    // Chatbot: saudacoes e comandos gerais (usuario autorizado)
-    if (this.buttons.parseGreeting(text)) {
-      await this.outbound.sendMenu(remoteJid, rawMessage.pushName);
-      return;
-    }
+    // Comandos de controle sempre funcionam
     const chatbotCmd = this.buttons.parseChatbotCommand(text);
-    if (chatbotCmd === 'menu') {
-      await this.outbound.sendMenu(remoteJid, rawMessage.pushName);
-      return;
-    }
     if (chatbotCmd === 'cancelar') {
       await this.states.clear(phone);
-      await this.outbound.sendText(remoteJid, 'Operacao cancelada. Pode enviar um novo comprovante quando quiser.');
+      this.consultant.clearSession(phone);
+      await this.outbound.sendText(remoteJid, 'Operacao cancelada.');
+      return;
+    }
+
+    // Saudacoes e comando "menu": vai para o consultor se disponivel, senao exibe menu classico
+    const isGreeting = this.buttons.parseGreeting(text);
+    const isMenuCmd = chatbotCmd === 'menu';
+    if ((isGreeting || isMenuCmd) && !this.consultant.isAvailable) {
+      await this.outbound.sendMenu(remoteJid, rawMessage.pushName);
       return;
     }
 
@@ -234,7 +237,7 @@ export class WhatsappMessageHandler {
       return;
     }
 
-    if (file.hasMedia || this.looksLikeReceiptText(text)) {
+    if (file.hasMedia || (!this.consultant.isAvailable && this.looksLikeReceiptText(text))) {
       await this.states.set<ReceiptDraftPayload>({
         tenantId: tenant.id,
         whatsappUserId: whatsappUser.id,
@@ -254,9 +257,16 @@ export class WhatsappMessageHandler {
       return;
     }
 
+    // Mensagem de texto sem comprovante → consultor AI (DeepSeek)
+    if (this.consultant.isAvailable && text) {
+      const reply = await this.consultant.chat(phone, tenant.id, text);
+      await this.outbound.sendText(remoteJid, reply);
+      return;
+    }
+
     await this.outbound.sendText(
       remoteJid,
-      'Nao entendi. 🤔\n\nEnvie um *comprovante* (imagem ou PDF) para registrar um lancamento, ou digite *menu* para ver as opcoes.',
+      'Nao entendi.\n\nEnvie um *comprovante* (imagem ou PDF) para registrar um lancamento, ou digite *menu* para ver as opcoes.',
     );
   }
 
