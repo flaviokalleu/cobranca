@@ -322,44 +322,40 @@ FORMATACAO (mensagens vao para WhatsApp — NAO use markdown):
       };
     }
 
-    // INCOME: salva em PersonalFinanceTransaction
-    const account = await this.prisma.personalFinanceAccount.findFirst({
-      where: { tenantId, active: true },
-      orderBy: { createdAt: 'asc' },
-    });
+    // INCOME: cria Charge com status PAID (aparece no fluxo de caixa e DRE)
+    // Usa um customer generico "Receita Avulsa" do tenant, ou cria se nao existir
+    const description = String(args.description ?? 'Receita').slice(0, 200);
+    const category = String(args.category ?? 'Renda');
 
-    const tx = await this.prisma.$transaction(async (db) => {
-      const created = await db.personalFinanceTransaction.create({
-        data: {
-          tenantId,
-          accountId: account?.id ?? null,
-          type: 'INCOME',
-          amountCents,
-          description: String(args.description ?? '').slice(0, 200),
-          category: String(args.category ?? 'Renda'),
-          occurredAt: paidAt,
-          source: 'WHATSAPP_TEXT',
-          rawInput: null,
-          classifier: 'DEEPSEEK',
-          confidence: 95,
-        },
+    let customer = await this.prisma.customer.findFirst({
+      where: { tenantId, name: 'Receita Avulsa' },
+    });
+    if (!customer) {
+      customer = await this.prisma.customer.create({
+        data: { tenantId, name: 'Receita Avulsa', phone: '00000000000', stage: 'CUSTOMER' },
       });
-      if (account) {
-        await db.personalFinanceAccount.update({
-          where: { id: account.id },
-          data: { balanceCents: { increment: amountCents } },
-        });
-      }
-      return created;
+    }
+
+    const charge = await this.prisma.charge.create({
+      data: {
+        tenantId,
+        customerId: customer.id,
+        amountCents,
+        description,
+        dueDate: paidAt,
+        status: 'PAID',
+        paidAt,
+        category,
+      },
     });
 
     return {
       ok: true,
       type: 'INCOME',
       amountCents,
-      category: tx.category,
-      description: tx.description,
-      occurredAt: tx.occurredAt.toISOString(),
+      category: charge.category,
+      description: charge.description,
+      paidAt: charge.paidAt?.toISOString(),
     };
   }
 
