@@ -70,6 +70,50 @@ export class WhatsappOutboundService {
     });
   }
 
+  async sendRecorrenciaButtons(to: string, pagadorNome: string): Promise<void> {
+    const text = `Este pagamento de *${pagadorNome}* e avulso ou recorrente (mensal)?`;
+    if (!this.socket) return this.sendText(to, text + '\n\nResponda: *avulso* ou *mensal*');
+    await this.socket.sendMessage(this.toJid(to), {
+      text,
+      footer: 'Isso ajuda a organizar o fluxo financeiro.',
+      buttons: [
+        { buttonId: 'receipt:recorrencia:avulso', buttonText: { displayText: 'Avulso' }, type: 1 },
+        { buttonId: 'receipt:recorrencia:mensal', buttonText: { displayText: 'Mensal' }, type: 1 },
+      ],
+      headerType: 1,
+    });
+  }
+
+  async sendLeadWhatsappRequest(to: string, pagadorNome: string): Promise<void> {
+    await this.sendText(
+      to,
+      `Otimo! Para enviar lembretes mensais a *${pagadorNome}*, qual e o numero de WhatsApp dele?\n\n` +
+      `Envie no formato *5511999998888* (codigo do pais + DDD + numero, sem espacos).\n` +
+      `Ou envie *pular* para salvar sem o numero.`,
+    );
+  }
+
+  async sendMenu(to: string, name?: string): Promise<void> {
+    const greeting = name ? `Ola, *${name}*!` : 'Ola!';
+    const text =
+      `${greeting} Sou o assistente *WEBBA ERP*. 🤖\n\n` +
+      `Veja o que posso fazer por voce:\n\n` +
+      `📎 *Comprovante* — Envie uma imagem ou PDF para registrar um lancamento financeiro\n` +
+      `✅ *salvar* — Confirmar um lancamento pendente\n` +
+      `✏️ *corrigir* — Corrigir um lancamento pendente\n` +
+      `❌ *cancelar* — Cancelar a operacao atual\n` +
+      `💬 *menu* ou *ajuda* — Ver este menu novamente`;
+    await this.sendText(to, text);
+  }
+
+  async sendUnknownWelcome(to: string): Promise<void> {
+    const text =
+      `Ola! 👋 Sou o assistente *WEBBA ERP*.\n\n` +
+      `Se voce e um colaborador, peca o *codigo de ativacao* ao administrador e envie aqui para liberar seu acesso.\n\n` +
+      `Exemplo: envie apenas o codigo recebido (ex: *ABC-1234*).`;
+    await this.sendText(to, text);
+  }
+
   private toJid(value: string): string {
     if (value.includes('@')) return value;
     return `${value.replace(/\D/g, '')}@s.whatsapp.net`;

@@ -61,6 +61,27 @@ export class WhatsappButtonHandler {
     return this.normalize(text) === 'cancelar';
   }
 
+  parseRecorrencia(text: string): 'AVULSO' | 'MENSAL' | null {
+    const n = this.normalize(text);
+    if (n.includes('receipt:recorrencia:avulso') || n === 'avulso' || n === 'avulsa' || n === '1') return 'AVULSO';
+    if (n.includes('receipt:recorrencia:mensal') || n === 'mensal' || n === 'recorrente' || n === '2') return 'MENSAL';
+    return null;
+  }
+
+  parseGreeting(text: string): boolean {
+    const n = this.normalize(text);
+    const greetings = ['oi', 'ola', 'oi!', 'ola!', 'hello', 'hi', 'ei', 'e ai', 'eai',
+      'bom dia', 'boa tarde', 'boa noite', 'boas', 'oi tudo', 'tudo bem', 'oi boa', 'hey'];
+    return greetings.some((g) => n === g || n.startsWith(g + ' ') || n.startsWith(g + ','));
+  }
+
+  parseChatbotCommand(text: string): 'menu' | 'cancelar' | null {
+    const n = this.normalize(text);
+    if (n === 'ajuda' || n === 'menu' || n === '/ajuda' || n === '/menu' || n === '?') return 'menu';
+    if (n === 'cancelar' || n === 'sair' || n === 'voltar' || n === '/cancelar') return 'cancelar';
+    return null;
+  }
+
   private messageNode(rawMessage: unknown): Record<string, any> | undefined {
     const raw = rawMessage as { message?: Record<string, any> };
     return raw.message;

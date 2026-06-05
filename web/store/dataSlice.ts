@@ -22,6 +22,7 @@ export interface Charge {
   category?: string | null;
   recurrence?: string | null;
   paidAt?: string | null;
+  customer?: { id: string; name: string } | null;
 }
 export interface User {
   id: string;

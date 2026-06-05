@@ -34,8 +34,8 @@ export const navSections: NavSection[] = [
   {
     title: 'Financeiro',
     items: [
-      { href: '/dashboard/cobrancas', label: 'Contas a receber', icon: Wallet },
-      { href: '/dashboard/financeiro/pagar', label: 'Contas a pagar', icon: Banknote },
+      { href: '/dashboard/cobrancas', label: 'Receita', icon: Wallet },
+      { href: '/dashboard/financeiro/pagar', label: 'Despesas', icon: Banknote },
       { href: '/dashboard/financeiro/fluxo', label: 'Fluxo de caixa', icon: LineChart },
       { href: '/dashboard/financeiro/dre', label: 'DRE', icon: FileText, adminOnly: true },
     ],

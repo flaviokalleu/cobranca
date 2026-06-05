@@ -64,7 +64,19 @@ export class NormalizationService {
       dezembro: '12',
     };
     const cleaned = this.lower(value);
-    const named = cleaned.match(/\b(\d{1,2})\s+([a-z]+)\s+(\d{2,4})\b/);
+    // Fix OCR digit misreads in "DD MMM YYYY" context: "OS JUN 2026" → "03 JUN 2026"
+    const ocrFixed = cleaned.replace(
+      /\b([0-9oOiIlsS]{1,2})\s+([a-z]{3,9})\s+(\d{4})\b/g,
+      (_, d: string, m: string, y: string) => {
+        const fixedDay = d
+          .replace(/o/gi, '0')
+          .replace(/i/gi, '1')
+          .replace(/l/g, '1')
+          .replace(/s/gi, '3');
+        return `${fixedDay} ${m} ${y}`;
+      },
+    );
+    const named = (ocrFixed !== cleaned ? ocrFixed : cleaned).match(/\b(\d{1,2})\s+([a-z]+)\s+(\d{2,4})\b/);
     if (!named) return null;
     const month = months[named[2]];
     if (!month) return null;

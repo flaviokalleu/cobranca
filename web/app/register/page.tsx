@@ -6,9 +6,7 @@ import Link from 'next/link';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { register } from '@/store/authSlice';
 import { AuthShell } from '@/components/auth-shell';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { ArrowRight, Building2, Lock, Mail } from 'lucide-react';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -30,53 +28,82 @@ export default function RegisterPage() {
   }
 
   return (
-    <AuthShell
-      title="Criar conta"
-      subtitle="O primeiro usuário da empresa entra como administrador."
-    >
-      <form onSubmit={onSubmit} className="grid gap-4">
-        <div className="grid gap-1.5">
-          <Label htmlFor="company">Nome da empresa</Label>
-          <Input
-            id="company"
-            placeholder="ex: Minha Loja"
-            value={companyName}
-            onChange={(e) => setCompanyName(e.target.value)}
-            required
-          />
+    <AuthShell title="Criar conta" subtitle="O primeiro usuário entra como administrador.">
+      <form onSubmit={onSubmit} className="grid gap-5">
+        <div className="grid gap-2">
+          <label className="auth-field-label">Nome da empresa</label>
+          <div className="auth-field-wrap">
+            <Building2 className="auth-field-icon" />
+            <input
+              className="auth-input"
+              placeholder="Minha Empresa Ltda"
+              value={companyName}
+              onChange={(e) => setCompanyName(e.target.value)}
+              required
+            />
+          </div>
         </div>
-        <div className="grid gap-1.5">
-          <Label htmlFor="email">E-mail</Label>
-          <Input
-            id="email"
-            type="email"
-            placeholder="voce@empresa.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
+
+        <div className="grid gap-2">
+          <label className="auth-field-label">E-mail</label>
+          <div className="auth-field-wrap">
+            <Mail className="auth-field-icon" />
+            <input
+              type="email"
+              className="auth-input"
+              placeholder="voce@empresa.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+          </div>
         </div>
-        <div className="grid gap-1.5">
-          <Label htmlFor="password">Senha</Label>
-          <Input
-            id="password"
-            type="password"
-            placeholder="mínimo 6 caracteres"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
+
+        <div className="grid gap-2">
+          <label className="auth-field-label">Senha</label>
+          <div className="auth-field-wrap">
+            <Lock className="auth-field-icon" />
+            <input
+              type="password"
+              className="auth-input"
+              placeholder="mínimo 6 caracteres"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+          </div>
         </div>
-        {error && <p className="text-sm text-destructive">{error}</p>}
-        <Button type="submit" className="w-full" disabled={status === 'loading'}>
-          {status === 'loading' ? 'Criando...' : 'Criar conta'}
-        </Button>
+
+        {error && <div className="auth-error">{error}</div>}
+
+        <button
+          type="submit"
+          className="auth-btn mt-1"
+          disabled={status === 'loading'}
+        >
+          {status === 'loading' ? (
+            <>
+              <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+              </svg>
+              Criando...
+            </>
+          ) : (
+            <>
+              Criar minha conta
+              <ArrowRight className="h-4 w-4" />
+            </>
+          )}
+        </button>
       </form>
 
-      <p className="mt-6 text-center text-sm text-muted-foreground">
+      <div className="auth-divider" />
+
+      <p className="text-center text-sm text-gray-500">
         Já tem conta?{' '}
-        <Link href="/" className="font-medium text-primary hover:underline">
-          Entrar
+        <Link href="/" className="font-semibold text-red-600 hover:text-red-700">
+          Fazer login
         </Link>
       </p>
     </AuthShell>

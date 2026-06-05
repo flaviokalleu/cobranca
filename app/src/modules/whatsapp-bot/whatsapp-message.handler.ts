@@ -40,6 +40,14 @@ interface CorrectionPayload extends PendingReceiptPayload {
   field?: CorrectionField;
 }
 
+interface AwaitingRecorrenciaPayload extends PendingReceiptPayload {
+  recorrencia?: 'AVULSO' | 'MENSAL';
+}
+
+interface AwaitingLeadWhatsappPayload extends PendingReceiptPayload {
+  recorrencia: 'MENSAL';
+}
+
 interface ProcessReceiptJob extends ReceiptDraftPayload {
   tenantId: string;
   whatsappUserId: string;
@@ -98,17 +106,41 @@ export class WhatsappMessageHandler {
 
     const resolution = await this.resolver.resolveByWhatsappPhone(phone);
     if (!resolution.ok || !resolution.tenant || !resolution.whatsappUser) {
-      await this.outbound.sendText(remoteJid, resolution.message ?? 'Nao foi possivel identificar a empresa.');
+      if (this.buttons.parseGreeting(text)) {
+        await this.outbound.sendUnknownWelcome(remoteJid);
+      } else {
+        await this.outbound.sendText(remoteJid, resolution.message ?? 'Nao foi possivel identificar a empresa.');
+      }
       return;
     }
     const tenant = resolution.tenant;
     const whatsappUser = resolution.whatsappUser;
 
     if (!this.whatsappUsers.hasPermission(whatsappUser, 'financial_entries:create')) {
-      await this.outbound.sendText(
-        remoteJid,
-        'Seu usuario nao tem permissao para criar lancamentos financeiros.',
-      );
+      if (this.buttons.parseGreeting(text)) {
+        await this.outbound.sendMenu(remoteJid, rawMessage.pushName);
+      } else {
+        await this.outbound.sendText(
+          remoteJid,
+          'Seu usuario nao tem permissao para criar lancamentos financeiros.',
+        );
+      }
+      return;
+    }
+
+    // Chatbot: saudacoes e comandos gerais (usuario autorizado)
+    if (this.buttons.parseGreeting(text)) {
+      await this.outbound.sendMenu(remoteJid, rawMessage.pushName);
+      return;
+    }
+    const chatbotCmd = this.buttons.parseChatbotCommand(text);
+    if (chatbotCmd === 'menu') {
+      await this.outbound.sendMenu(remoteJid, rawMessage.pushName);
+      return;
+    }
+    if (chatbotCmd === 'cancelar') {
+      await this.states.clear(phone);
+      await this.outbound.sendText(remoteJid, 'Operacao cancelada. Pode enviar um novo comprovante quando quiser.');
       return;
     }
 
@@ -116,6 +148,40 @@ export class WhatsappMessageHandler {
     const confirmation = this.buttons.parseConfirmation(text);
     if (confirmation && state?.state === 'pending_confirmation' && state.payload) {
       await this.handleConfirmation(remoteJid, phone, whatsappUser.id, state.payload, confirmation);
+      return;
+    }
+
+    // Recorrência: AVULSO ou MENSAL
+    if (state?.state === 'awaiting_recorrencia' && state.payload) {
+      const recorrencia = this.buttons.parseRecorrencia(text);
+      if (!recorrencia) {
+        await this.outbound.sendText(remoteJid, 'Responda *avulso* ou *mensal*.');
+        return;
+      }
+      const payload = state.payload as AwaitingRecorrenciaPayload;
+      if (recorrencia === 'MENSAL') {
+        const pagadorNome = payload.extracted?.pagador?.nome ?? 'pagador';
+        await this.states.set<AwaitingLeadWhatsappPayload>({
+          tenantId: tenant.id,
+          whatsappUserId: whatsappUser.id,
+          phone,
+          state: 'awaiting_lead_whatsapp',
+          payload: { ...payload, recorrencia: 'MENSAL' },
+          ttlMinutes: 10,
+        });
+        await this.outbound.sendLeadWhatsappRequest(remoteJid, pagadorNome);
+      } else {
+        await this.saveAndConfirm(remoteJid, phone, whatsappUser.id, payload, 'AVULSO', null);
+      }
+      return;
+    }
+
+    // WhatsApp do lead (só para MENSAL)
+    if (state?.state === 'awaiting_lead_whatsapp' && state.payload) {
+      const payload = state.payload as AwaitingLeadWhatsappPayload;
+      const normalized = text.replace(/\D/g, '');
+      const leadWhatsapp = (normalized.length >= 10 && text.toLowerCase() !== 'pular') ? normalized : null;
+      await this.saveAndConfirm(remoteJid, phone, whatsappUser.id, payload, 'MENSAL', leadWhatsapp);
       return;
     }
 
@@ -190,7 +256,7 @@ export class WhatsappMessageHandler {
 
     await this.outbound.sendText(
       remoteJid,
-      'Envie uma imagem ou PDF de comprovante, ou envie seu codigo de ativacao se ainda nao ativou este numero.',
+      'Nao entendi. 🤔\n\nEnvie um *comprovante* (imagem ou PDF) para registrar um lancamento, ou digite *menu* para ver as opcoes.',
     );
   }
 
@@ -236,19 +302,54 @@ export class WhatsappMessageHandler {
       return;
     }
 
+    // Antes de salvar, perguntar recorrência
+    try {
+      await this.states.set<AwaitingRecorrenciaPayload>({
+        tenantId: payload.tenantId ?? '',
+        whatsappUserId,
+        phone,
+        state: 'awaiting_recorrencia',
+        payload,
+        ttlMinutes: 10,
+      });
+      const pagadorNome = payload.extracted?.pagador?.nome ?? 'pagador';
+      await this.outbound.sendRecorrenciaButtons(remoteJid, pagadorNome);
+      return;
+    } catch {
+      await this.outbound.sendText(
+        remoteJid,
+        'Nao consegui salvar esse lancamento. Corrija os campos principais e tente novamente.',
+      );
+    }
+  }
+
+  private async saveAndConfirm(
+    remoteJid: string,
+    phone: string,
+    whatsappUserId: string,
+    payload: PendingReceiptPayload,
+    recorrencia: 'AVULSO' | 'MENSAL',
+    leadWhatsapp: string | null,
+  ): Promise<void> {
     try {
       await this.financialEntries.saveFromWhatsapp({
         tenantId: payload.tenantId ?? '',
         whatsappUserId,
         userWhatsapp: phone,
         extracted: payload.extracted,
+        recorrencia,
+        leadWhatsapp,
       });
       await this.states.clear(phone);
-      await this.outbound.sendText(remoteJid, 'Lancamento salvo com sucesso.');
+      const leadMsg = payload.extracted?.pagador?.nome
+        ? ` Lead *${payload.extracted.pagador.nome}* registrado no CRM.`
+        : '';
+      const recMsg = recorrencia === 'MENSAL' ? ' Pagamento recorrente mensal configurado.' : '';
+      await this.outbound.sendText(remoteJid, `✅ Lancamento salvo com sucesso!${recMsg}${leadMsg}`);
     } catch {
       await this.outbound.sendText(
         remoteJid,
-        'Nao consegui salvar esse lancamento. Corrija os campos principais e tente novamente.',
+        'Nao consegui salvar esse lancamento. Tente novamente.',
       );
     }
   }

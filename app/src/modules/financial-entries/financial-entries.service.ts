@@ -11,6 +11,8 @@ export interface SaveWhatsappFinancialEntryInput {
   userWhatsapp: string;
   extracted: ExtractedTransactionDto;
   arquivoUrl?: string | null;
+  recorrencia?: 'AVULSO' | 'MENSAL';
+  leadWhatsapp?: string | null;
 }
 
 @Injectable()
@@ -35,6 +37,46 @@ export class FinancialEntriesService {
     const occurredAt = this.parseDate(input.extracted.data_transacao);
     const transactionId = `whatsapp-${Date.now()}`;
 
+    const pagadorNome = this.nullIfUnknown(input.extracted.pagador.nome);
+    const pagadorDoc  = this.nullIfUnknown(input.extracted.pagador.documento);
+
+    // Upsert Lead usando nome+documento do pagador (receita) ou recebedor (gasto)
+    let leadId: string | null = null;
+    if (pagadorNome) {
+      const existing = await this.prisma.lead.findFirst({
+        where: {
+          tenantId: input.tenantId,
+          name: pagadorNome,
+          ...(pagadorDoc ? { document: pagadorDoc } : {}),
+        },
+        select: { id: true },
+      });
+      if (existing) {
+        const updated = await this.prisma.lead.update({
+          where: { id: existing.id },
+          data: {
+            ...(input.leadWhatsapp ? { whatsapp: input.leadWhatsapp, phone: input.leadWhatsapp } : {}),
+          },
+          select: { id: true },
+        });
+        leadId = updated.id;
+      } else {
+        const created = await this.prisma.lead.create({
+          data: {
+            tenantId: input.tenantId,
+            name: pagadorNome,
+            document: pagadorDoc,
+            whatsapp: input.leadWhatsapp ?? null,
+            phone: input.leadWhatsapp ?? null,
+            stage: 'CUSTOMER',
+            notes: `Lead criado automaticamente via comprovante WhatsApp.`,
+          },
+          select: { id: true },
+        });
+        leadId = created.id;
+      }
+    }
+
     const saved = await this.prisma.$transaction(async (db) => {
       const entry = await db.financialEntry.create({
         data: {
@@ -48,8 +90,8 @@ export class FinancialEntriesService {
           horaTransacao: this.identified(input.extracted.hora_transacao)
             ? input.extracted.hora_transacao
             : null,
-          pagadorNome: this.nullIfUnknown(input.extracted.pagador.nome),
-          pagadorDocumento: this.nullIfUnknown(input.extracted.pagador.documento),
+          pagadorNome,
+          pagadorDocumento: pagadorDoc,
           pagadorInstituicao: this.nullIfUnknown(input.extracted.pagador.instituicao),
           recebedorNome: this.nullIfUnknown(input.extracted.recebedor.nome),
           recebedorDocumento: this.nullIfUnknown(input.extracted.recebedor.documento),
@@ -66,6 +108,8 @@ export class FinancialEntriesService {
           fonteExtracao: input.extracted.fonte_extracao,
           arquivoUrl: input.arquivoUrl ?? null,
           jsonOriginal: JSON.stringify(input.extracted),
+          recorrencia: input.recorrencia ?? 'AVULSO',
+          leadId,
           status: 'saved',
         },
       });

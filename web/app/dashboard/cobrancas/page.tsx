@@ -123,7 +123,7 @@ export default function CobrancasPage() {
       }),
     );
     if (createCharge.fulfilled.match(res)) {
-      toast.success('Cobranca criada');
+      toast.success('Receita criada');
       resetCreateForm();
       setOpen(false);
     }
@@ -165,7 +165,7 @@ export default function CobrancasPage() {
       }),
     );
     if (updateCharge.fulfilled.match(res)) {
-      toast.success('Cobranca atualizada');
+      toast.success('Receita atualizada');
       setEditOpen(false);
     } else {
       toast.error(typeof res.payload === 'string' ? res.payload : 'Erro');
@@ -173,21 +173,21 @@ export default function CobrancasPage() {
   }
 
   async function onDelete(charge: Charge) {
-    if (!window.confirm(`Excluir a cobranca "${charge.description}"?`)) return;
+    if (!window.confirm(`Excluir a receita "${charge.description}"?`)) return;
     const res = await dispatch(deleteCharge(charge.id));
-    if (deleteCharge.fulfilled.match(res)) toast.success('Cobranca excluida');
+    if (deleteCharge.fulfilled.match(res)) toast.success('Receita excluida');
     else toast.error(typeof res.payload === 'string' ? res.payload : 'Erro');
   }
 
   return (
     <>
       <PageHeader
-        title="Contas a receber"
+        title="Receita"
         description={`${charges.length} no total`}
         actions={
           <Button onClick={() => setOpen(true)}>
             <Plus className="h-4 w-4" />
-            Nova cobranca
+            Nova receita
           </Button>
         }
       />
@@ -220,6 +220,7 @@ export default function CobrancasPage() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead>Pagador</TableHead>
                 <TableHead>Descricao</TableHead>
                 <TableHead>Categoria</TableHead>
                 <TableHead>Tipo</TableHead>
@@ -232,7 +233,8 @@ export default function CobrancasPage() {
             <TableBody>
               {filtered.map((charge) => (
                 <TableRow key={charge.id}>
-                  <TableCell className="font-medium">{charge.description}</TableCell>
+                  <TableCell className="font-medium">{charge.customer?.name ?? '-'}</TableCell>
+                  <TableCell>{charge.description}</TableCell>
                   <TableCell>{charge.category ?? '-'}</TableCell>
                   <TableCell>{recurrenceLabel(charge.recurrence)}</TableCell>
                   <TableCell>{brl(charge.amountCents)}</TableCell>
@@ -285,10 +287,10 @@ export default function CobrancasPage() {
               ))}
               {filtered.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={7} className="py-12 text-center text-muted-foreground">
+                  <TableCell colSpan={8} className="py-12 text-center text-muted-foreground">
                     {charges.length === 0
-                      ? 'Nenhuma cobranca ainda. Clique em "Nova cobranca".'
-                      : 'Nenhuma cobranca encontrada com esse filtro.'}
+                      ? 'Nenhuma receita ainda. Clique em "Nova receita".'
+                      : 'Nenhuma receita encontrada com esse filtro.'}
                   </TableCell>
                 </TableRow>
               )}
@@ -300,7 +302,7 @@ export default function CobrancasPage() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Nova cobranca</DialogTitle>
+            <DialogTitle>Nova receita</DialogTitle>
             <DialogDescription>Entrada do fluxo de caixa com PIX e lembrete.</DialogDescription>
           </DialogHeader>
           <form onSubmit={onAdd} className="grid gap-4">
@@ -377,7 +379,7 @@ export default function CobrancasPage() {
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Editar cobranca</DialogTitle>
+            <DialogTitle>Editar receita</DialogTitle>
             <DialogDescription>Atualize os dados exibidos no fluxo de caixa.</DialogDescription>
           </DialogHeader>
           <form onSubmit={onEditSubmit} className="grid gap-4">

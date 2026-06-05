@@ -43,7 +43,9 @@ export class WhatsappAdminService implements OnModuleInit, OnModuleDestroy {
     await this.ensureMainBot();
     const sessionName = this.sessionName();
     if (await this.auth.hasActiveSession(sessionName)) {
-      void this.connect({ restore: true }).catch((err) =>
+      // force: true ensures a fresh socket is always opened on startup.
+      // Without it, DB status "connected" causes connect() to return early with no socket.
+      void this.connect({ restore: true, force: true }).catch((err) =>
         this.logger.warn(`Nao foi possivel restaurar WhatsApp: ${(err as Error).message}`),
       );
     }

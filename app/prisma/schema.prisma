@@ -1,9 +1,8 @@
 // Modelo de dados do nucleo de cobranca.
-// Banco: SQLite (arquivo local) para rodar sem instalar nada.
-// Dinheiro e sempre armazenado em CENTAVOS (Int) — nunca float — para integridade financeira.
+// Banco: PostgreSQL. Dinheiro sempre em CENTAVOS (Int) — nunca float.
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -622,12 +621,15 @@ model FinancialEntry {
   fonteExtracao        String
   arquivoUrl           String?
   jsonOriginal         String?
+  recorrencia          String    @default("AVULSO") // AVULSO | MENSAL
+  leadId               String?
   status               String    @default("pending_confirmation") // pending_confirmation | saved | corrected | cancelled | error
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
 
   @@index([tenantId, createdAt])
   @@index([tenantId, status])
+  @@index([tenantId, recorrencia])
   @@index([tenantId, whatsappUserId])
 }
 

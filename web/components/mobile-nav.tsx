@@ -1,11 +1,12 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { logout } from '@/store/authSlice';
 import { cn } from '@/lib/utils';
-import { Wallet, LogOut } from 'lucide-react';
+import { LogOut } from 'lucide-react';
 import { navSections } from './nav';
 
 export function MobileNav() {
@@ -24,12 +25,9 @@ export function MobileNav() {
     .filter((item) => !item.adminOnly || role === 'ADMIN' || role === 'SUPERADMIN');
 
   return (
-    <header className="flex items-center gap-2 border-b bg-card px-4 py-3 md:hidden">
-      <div className="flex shrink-0 items-center gap-2 font-semibold">
-        <div className="brand-gradient flex h-7 w-7 items-center justify-center rounded-lg text-white">
-          <Wallet className="h-4 w-4" />
-        </div>
-        Cobrança
+    <header className="flex items-center gap-2 border-b bg-card px-4 py-2 md:hidden">
+      <div className="flex shrink-0 items-center">
+        <Image src="/logo.png" alt="WEBBA ERP" width={110} height={36} priority />
       </div>
       <nav className="flex flex-1 items-center gap-1 overflow-x-auto">
         {items.map((item) => {

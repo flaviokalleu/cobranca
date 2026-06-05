@@ -7,9 +7,10 @@ export class FinancialEntriesRepository {
 
   listByTenant(tenantId: string) {
     return this.prisma.financialEntry.findMany({
-      where: { tenantId },
+      where: { tenantId, status: 'saved' },
       orderBy: { createdAt: 'desc' },
-      take: 100,
+      take: 200,
+      include: { lead: { select: { id: true, name: true, whatsapp: true } } },
     });
   }
 }

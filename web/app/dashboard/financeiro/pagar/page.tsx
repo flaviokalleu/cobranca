@@ -147,7 +147,7 @@ export default function ContasPagarPage() {
       ? updatePayable.fulfilled.match(res)
       : createPayable.fulfilled.match(res);
     if (ok) {
-      toast.success(editingId ? 'Conta atualizada' : 'Conta a pagar criada');
+      toast.success(editingId ? 'Despesa atualizada' : 'Despesa criada');
       resetForm();
       setOpen(false);
     } else {
@@ -157,26 +157,26 @@ export default function ContasPagarPage() {
 
   async function onPay(id: string) {
     const res = await dispatch(payPayable(id));
-    if (payPayable.fulfilled.match(res)) toast.success('Conta paga');
+    if (payPayable.fulfilled.match(res)) toast.success('Despesa paga');
     else toast.error(typeof res.payload === 'string' ? res.payload : 'Erro');
   }
 
   async function onDelete(payable: Payable) {
-    if (!window.confirm(`Excluir conta "${payable.description}"?`)) return;
+    if (!window.confirm(`Excluir despesa "${payable.description}"?`)) return;
     const res = await dispatch(deletePayable(payable.id));
-    if (deletePayable.fulfilled.match(res)) toast.success('Conta excluida');
+    if (deletePayable.fulfilled.match(res)) toast.success('Despesa excluida');
     else toast.error(typeof res.payload === 'string' ? res.payload : 'Erro');
   }
 
   return (
     <>
       <PageHeader
-        title="Contas a pagar"
+        title="Despesas"
         description={`${payables.length} no total`}
         actions={
           <Button onClick={openCreate}>
             <Plus className="h-4 w-4" />
-            Nova conta
+            Nova despesa
           </Button>
         }
       />
@@ -252,7 +252,7 @@ export default function ContasPagarPage() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editingId ? 'Editar conta a pagar' : 'Nova conta a pagar'}</DialogTitle>
+            <DialogTitle>{editingId ? 'Editar despesa' : 'Nova despesa'}</DialogTitle>
             <DialogDescription>Saida do fluxo de caixa com categoria e recorrencia.</DialogDescription>
           </DialogHeader>
           <form onSubmit={onSubmit} className="grid gap-4">

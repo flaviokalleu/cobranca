@@ -85,6 +85,7 @@ export class ChargesService {
     return this.prisma.charge.findMany({
       where: { tenantId },
       orderBy: { createdAt: 'desc' },
+      include: { customer: { select: { id: true, name: true } } },
     });
   }
 

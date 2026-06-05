@@ -29,8 +29,11 @@ export interface ExtractedTransactionDto {
   campos_duvidosos: string[];
 }
 
+export type Recorrencia = 'AVULSO' | 'MENSAL';
+
 export interface ExtractReceiptInput {
   tipo: ReceiptType;
+  recorrencia?: Recorrencia;
   text?: string;
   fileName?: string;
   mimeType?: string;
