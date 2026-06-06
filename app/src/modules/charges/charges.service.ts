@@ -68,6 +68,26 @@ export class ChargesService {
       metadata: { amountCents: charge.amountCents },
     });
 
+    // Auto-cria Lead no CRM se ainda nao existir para este cliente
+    const existingLead = await this.prisma.lead.findFirst({
+      where: { tenantId, customerId: customer.id },
+    });
+    if (!existingLead) {
+      await this.prisma.lead.create({
+        data: {
+          tenantId,
+          customerId: customer.id,
+          name: customer.name,
+          phone: customer.phone ?? null,
+          whatsapp: customer.whatsapp ?? null,
+          email: customer.email ?? null,
+          city: customer.city ?? null,
+          estimatedCents: charge.amountCents,
+          stage: customer.stage ?? 'LEAD',
+        },
+      });
+    }
+
     const payload: ReminderJobPayload = {
       tenantId,
       chargeId: charge.id,

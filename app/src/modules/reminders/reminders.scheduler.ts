@@ -2,6 +2,8 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { QueueService } from '../../common/queue/queue.service';
+import { LedgerService } from '../ledger/ledger.service';
+import { AuditService } from '../../common/audit/audit.service';
 import { WhatsappOutboundService } from '../whatsapp-bot/whatsapp-outbound.service';
 import { REMINDER_JOB, ReminderJobPayload } from './reminder.types';
 
@@ -12,6 +14,8 @@ export class RemindersScheduler {
   constructor(
     private readonly prisma: PrismaService,
     private readonly queue: QueueService,
+    private readonly ledger: LedgerService,
+    private readonly audit: AuditService,
     private readonly outbound: WhatsappOutboundService,
   ) {}
 
@@ -133,6 +137,89 @@ export class RemindersScheduler {
     const tomorrowEnd = new Date(todayEnd);
     tomorrowEnd.setDate(tomorrowEnd.getDate() + 1);
     return { todayStart, todayEnd, tomorrowEnd };
+  }
+
+  // Roda no dia 1 de cada mes: gera proxima cobranca/conta para recorrencias MONTHLY.
+  @Cron('0 6 1 * *')
+  async createMonthlyRecurrences(): Promise<void> {
+    const now = new Date();
+    const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, now.getDate());
+
+    const [charges, payables] = await Promise.all([
+      this.prisma.charge.findMany({
+        where: { recurrence: 'MONTHLY', status: 'PAID' },
+        include: { customer: true },
+        orderBy: { dueDate: 'desc' },
+      }),
+      this.prisma.payable.findMany({
+        where: { recurrence: 'MONTHLY', status: 'PAID' },
+        orderBy: { dueDate: 'desc' },
+      }),
+    ]);
+
+    // Deduplica: apenas a cobranca mais recente por cliente+descricao
+    const seenCharges = new Set<string>();
+    let chargesCreated = 0;
+    for (const c of charges) {
+      const key = `${c.tenantId}:${c.customerId}:${c.description}`;
+      if (seenCharges.has(key)) continue;
+      seenCharges.add(key);
+
+      const dueDate = new Date(c.dueDate);
+      dueDate.setMonth(dueDate.getMonth() + 1);
+      if (dueDate < now) dueDate.setTime(nextMonth.getTime());
+
+      const newCharge = await this.prisma.charge.create({
+        data: {
+          tenantId: c.tenantId,
+          customerId: c.customerId,
+          amountCents: c.amountCents,
+          description: c.description,
+          category: c.category,
+          recurrence: 'MONTHLY',
+          dueDate,
+        },
+      });
+      await this.ledger.post(c.tenantId, `charge:${newCharge.id}`, [
+        { accountCode: 'ACCOUNTS_RECEIVABLE', direction: 'DEBIT', amountCents: newCharge.amountCents, description: `Cobranca mensal ${newCharge.id}` },
+        { accountCode: 'REVENUE', direction: 'CREDIT', amountCents: newCharge.amountCents, description: `Receita mensal ${newCharge.id}` },
+      ]);
+      await this.audit.record({ tenantId: c.tenantId, actor: 'scheduler', action: 'CHARGE_CREATED', entityType: 'Charge', entityId: newCharge.id, metadata: { recurrence: 'MONTHLY' } });
+      this.queue.enqueue(REMINDER_JOB, { tenantId: c.tenantId, chargeId: newCharge.id, customerName: c.customer.name, phone: c.customer.phone, amountCents: newCharge.amountCents, dueDate: newCharge.dueDate.toISOString() } as ReminderJobPayload);
+      chargesCreated++;
+    }
+
+    // Deduplica payables por descricao+tenant
+    const seenPayables = new Set<string>();
+    let payablesCreated = 0;
+    for (const p of payables) {
+      const key = `${p.tenantId}:${p.description}`;
+      if (seenPayables.has(key)) continue;
+      seenPayables.add(key);
+
+      const dueDate = new Date(p.dueDate);
+      dueDate.setMonth(dueDate.getMonth() + 1);
+      if (dueDate < now) dueDate.setTime(nextMonth.getTime());
+
+      const newPayable = await this.prisma.payable.create({
+        data: {
+          tenantId: p.tenantId,
+          description: p.description,
+          amountCents: p.amountCents,
+          dueDate,
+          supplierId: p.supplierId,
+          category: p.category,
+          recurrence: 'MONTHLY',
+        },
+      });
+      await this.ledger.post(p.tenantId, `payable:${newPayable.id}`, [
+        { accountCode: 'EXPENSE', direction: 'DEBIT', amountCents: newPayable.amountCents, description: `Despesa mensal ${newPayable.id}` },
+        { accountCode: 'ACCOUNTS_PAYABLE', direction: 'CREDIT', amountCents: newPayable.amountCents, description: `Conta a pagar mensal ${newPayable.id}` },
+      ]);
+      payablesCreated++;
+    }
+
+    this.logger.log(`Recorrencias mensais: ${chargesCreated} cobrancas + ${payablesCreated} despesas criadas`);
   }
 
   private money(cents: number) {

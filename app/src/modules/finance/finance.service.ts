@@ -5,15 +5,16 @@ import { PrismaService } from '../../common/prisma/prisma.service';
 export class FinanceService {
   constructor(private readonly prisma: PrismaService) {}
 
-  /// Fluxo de caixa projetado: contas a receber e contas a pagar com saldo acumulado.
-  async cashFlow(tenantId: string) {
+  async cashFlow(tenantId: string, from?: string, to?: string) {
+    const dateFilter = this.buildDateFilter(from, to);
+
     const [charges, payables] = await Promise.all([
       this.prisma.charge.findMany({
-        where: { tenantId },
+        where: { tenantId, ...(dateFilter ? { dueDate: dateFilter } : {}) },
         orderBy: { dueDate: 'asc' },
       }),
       this.prisma.payable.findMany({
-        where: { tenantId },
+        where: { tenantId, ...(dateFilter ? { dueDate: dateFilter } : {}) },
         orderBy: { dueDate: 'asc' },
       }),
     ]);
@@ -52,32 +53,36 @@ export class FinanceService {
     let balance = 0;
     const rows = baseRows.map((row) => {
       balance += row.inCents - row.outCents;
-      return {
-        ...row,
-        balanceCents: balance,
-      };
+      return { ...row, balanceCents: balance };
     });
     return { balanceCents: balance, rows: rows.reverse() };
   }
 
-  /// DRE simplificado + totais a receber/a pagar.
-  async summary(tenantId: string) {
-    const entries = await this.prisma.ledgerEntry.findMany({ where: { tenantId } });
+  async summary(tenantId: string, from?: string, to?: string) {
+    const dateFilter = this.buildDateFilter(from, to);
+
+    const entries = await this.prisma.ledgerEntry.findMany({
+      where: {
+        tenantId,
+        ...(dateFilter ? { createdAt: dateFilter } : {}),
+      },
+    });
+
     const acc: Record<string, number> = {};
     for (const e of entries) {
       const sign = e.direction === 'DEBIT' ? 1 : -1;
       acc[e.accountCode] = (acc[e.accountCode] ?? 0) + sign * e.amountCents;
     }
-    const revenueCents = -(acc['REVENUE'] ?? 0); // conta credora
-    const expenseCents = acc['EXPENSE'] ?? 0; // conta devedora
+    const revenueCents = -(acc['REVENUE'] ?? 0);
+    const expenseCents = acc['EXPENSE'] ?? 0;
     const cashCents = acc['CASH'] ?? 0;
 
     const recv = await this.prisma.charge.aggregate({
-      where: { tenantId, status: 'PENDING' },
+      where: { tenantId, status: 'PENDING', ...(dateFilter ? { dueDate: dateFilter } : {}) },
       _sum: { amountCents: true },
     });
     const pay = await this.prisma.payable.aggregate({
-      where: { tenantId, status: 'PENDING' },
+      where: { tenantId, status: 'PENDING', ...(dateFilter ? { dueDate: dateFilter } : {}) },
       _sum: { amountCents: true },
     });
 
@@ -89,5 +94,17 @@ export class FinanceService {
       aReceberCents: recv._sum.amountCents ?? 0,
       aPagarCents: pay._sum.amountCents ?? 0,
     };
+  }
+
+  private buildDateFilter(from?: string, to?: string) {
+    if (!from && !to) return null;
+    const filter: { gte?: Date; lte?: Date } = {};
+    if (from) filter.gte = new Date(from);
+    if (to) {
+      const end = new Date(to);
+      end.setHours(23, 59, 59, 999);
+      filter.lte = end;
+    }
+    return filter;
   }
 }

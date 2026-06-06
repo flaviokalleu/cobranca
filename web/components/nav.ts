@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   LineChart,
   ListChecks,
+  PiggyBank,
   QrCode,
   Settings,
   Target,
@@ -38,6 +39,7 @@ export const navSections: NavSection[] = [
       { href: '/dashboard/financeiro/pagar', label: 'Despesas', icon: Banknote },
       { href: '/dashboard/financeiro/fluxo', label: 'Fluxo de caixa', icon: LineChart },
       { href: '/dashboard/financeiro/dre', label: 'DRE', icon: FileText, adminOnly: true },
+      { href: '/dashboard/financeiro/pessoal', label: 'Financas pessoais', icon: PiggyBank },
     ],
   },
   {

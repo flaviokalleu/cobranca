@@ -1,12 +1,22 @@
 'use client';
 
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { fetchCashflow, type CashflowRow } from '@/store/financeSlice';
 import { fetchFinancialEntries } from '@/store/financialEntriesSlice';
 import {
-  TrendingUp, TrendingDown, CircleDollarSign, MessageCircle, ArrowUpRight, ArrowDownRight,
+  TrendingUp, TrendingDown, CircleDollarSign, MessageCircle, ArrowUpRight, ArrowDownRight, CalendarDays,
 } from 'lucide-react';
+
+function firstOfMonth() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
+}
+function lastOfMonth() {
+  const d = new Date();
+  const last = new Date(d.getFullYear(), d.getMonth() + 1, 0);
+  return `${last.getFullYear()}-${String(last.getMonth() + 1).padStart(2, '0')}-${String(last.getDate()).padStart(2, '0')}`;
+}
 
 const brl = (cents: number) =>
   (cents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -53,10 +63,13 @@ export default function FluxoCaixaPage() {
   const { cashflow } = useAppSelector((s) => s.finance);
   const { entries: waEntries } = useAppSelector((s) => s.financialEntries);
 
+  const [from, setFrom] = useState('');
+  const [to, setTo] = useState('');
+
   useEffect(() => {
-    void dispatch(fetchCashflow());
+    void dispatch(fetchCashflow(from || to ? { from: from || undefined, to: to || undefined } : undefined));
     void dispatch(fetchFinancialEntries());
-  }, [dispatch]);
+  }, [dispatch, from, to]);
 
   // Unifica cashflow manual + entradas WhatsApp
   const { rows, totalIn, totalOut, balance } = useMemo(() => {
@@ -124,7 +137,40 @@ export default function FluxoCaixaPage() {
         </div>
       </div>
 
-      <div className="mx-auto max-w-7xl space-y-4 p-4 sm:p-6">
+      {/* Filtro de periodo */}
+      <div className="mx-auto max-w-7xl px-4 pt-4 sm:px-6">
+        <div className="flex flex-wrap items-center gap-3 rounded-2xl bg-white px-5 py-3" style={{ border: '1px solid #e5e7eb' }}>
+          <div className="flex items-center gap-2 text-xs font-semibold text-gray-500">
+            <CalendarDays className="h-4 w-4 text-gray-400" />
+            Periodo
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-1.5">
+              <label className="text-[11px] text-gray-400">De</label>
+              <input type="date" value={from} onChange={(e) => setFrom(e.target.value)}
+                className="rounded-lg border border-gray-200 bg-gray-50 px-2.5 py-1.5 text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-200" />
+            </div>
+            <div className="flex items-center gap-1.5">
+              <label className="text-[11px] text-gray-400">Ate</label>
+              <input type="date" value={to} onChange={(e) => setTo(e.target.value)}
+                className="rounded-lg border border-gray-200 bg-gray-50 px-2.5 py-1.5 text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-200" />
+            </div>
+          </div>
+          <div className="ml-auto flex gap-2">
+            {[
+              { label: 'Este mes', f: firstOfMonth(), t: lastOfMonth() },
+              { label: 'Tudo', f: '', t: '' },
+            ].map((opt) => (
+              <button key={opt.label} onClick={() => { setFrom(opt.f); setTo(opt.t); }}
+                className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${from === opt.f && to === opt.t ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="mx-auto max-w-7xl space-y-4 px-4 pb-4 pt-4 sm:px-6 sm:pb-6">
 
         {/* KPI cards */}
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">

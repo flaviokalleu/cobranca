@@ -39,6 +39,7 @@ import { FinancialEntriesModule } from './modules/financial-entries/financial-en
 import { FinancialExtractorModule } from './modules/financial-extractor/financial-extractor.module';
 import { WhatsappAdminModule } from './modules/whatsapp-admin/whatsapp-admin.module';
 import { WhatsappBotModule } from './modules/whatsapp-bot/whatsapp-bot.module';
+import { WebhookModule } from './modules/webhook/webhook.module';
 
 @Module({
   imports: [
@@ -75,6 +76,7 @@ import { WhatsappBotModule } from './modules/whatsapp-bot/whatsapp-bot.module';
     FinancialEntriesModule,
     WhatsappBotModule,
     WhatsappAdminModule,
+    WebhookModule,
   ],
   controllers: [HealthController],
   providers: [

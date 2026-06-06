@@ -43,14 +43,28 @@ const arr = <T>(d: unknown): T[] => (Array.isArray(d) ? (d as T[]) : []);
 export const fetchPayables = createAsyncThunk('finance/fetchPayables', async () =>
   arr<Payable>((await api('GET', '/payables')).data),
 );
-export const fetchCashflow = createAsyncThunk('finance/fetchCashflow', async () => {
-  const { data } = await api<Cashflow>('GET', '/finance/cashflow');
-  return data;
-});
-export const fetchSummary = createAsyncThunk('finance/fetchSummary', async () => {
-  const { data } = await api<FinanceSummary>('GET', '/finance/summary');
-  return data;
-});
+export const fetchCashflow = createAsyncThunk(
+  'finance/fetchCashflow',
+  async (period?: { from?: string; to?: string }) => {
+    const params = new URLSearchParams();
+    if (period?.from) params.set('from', period.from);
+    if (period?.to) params.set('to', period.to);
+    const qs = params.toString();
+    const { data } = await api<Cashflow>('GET', `/finance/cashflow${qs ? `?${qs}` : ''}`);
+    return data;
+  },
+);
+export const fetchSummary = createAsyncThunk(
+  'finance/fetchSummary',
+  async (period?: { from?: string; to?: string }) => {
+    const params = new URLSearchParams();
+    if (period?.from) params.set('from', period.from);
+    if (period?.to) params.set('to', period.to);
+    const qs = params.toString();
+    const { data } = await api<FinanceSummary>('GET', `/finance/summary${qs ? `?${qs}` : ''}`);
+    return data;
+  },
+);
 
 export const createPayable = createAsyncThunk(
   'finance/createPayable',
