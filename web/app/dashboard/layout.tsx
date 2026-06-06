@@ -31,13 +31,13 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   }, [error, dispatch]);
 
   if (!hydrated) {
-    return <div className="min-h-screen" style={{ background: '#f8f9fb' }} />;
+    return <div className="min-h-screen bg-gray-50" />;
   }
 
   return (
-    <div className="flex min-h-screen" style={{ background: '#f8f9fb' }}>
+    <div className="flex min-h-screen bg-gray-50">
       <Sidebar />
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="flex min-w-0 flex-1 flex-col pb-16 md:pb-0">
         <MobileNav />
         {children}
       </div>
