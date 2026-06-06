@@ -139,6 +139,42 @@ export class RemindersScheduler {
     return { todayStart, todayEnd, tomorrowEnd };
   }
 
+  // Roda no dia 1 de cada mes as 8h: envia resumo financeiro pessoal por WhatsApp.
+  @Cron('0 8 1 * *')
+  async sendMonthlyPersonalReport(): Promise<void> {
+    const tenants = await this.prisma.whatsappUser.findMany({
+      where: { status: 'ACTIVE' },
+      select: { tenantId: true, phone: true },
+    });
+    const byTenant = new Map<string, string>();
+    for (const u of tenants) {
+      if (!byTenant.has(u.tenantId)) byTenant.set(u.tenantId, u.phone);
+    }
+    let sent = 0;
+    for (const [, phone] of byTenant) {
+      try {
+        const now = new Date();
+        const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        const start = new Date(prev.getFullYear(), prev.getMonth(), 1);
+        const end = new Date(prev.getFullYear(), prev.getMonth() + 1, 0, 23, 59, 59, 999);
+        const tenantId = [...byTenant.entries()].find(([, p]) => p === phone)?.[0] ?? '';
+        const txs = await this.prisma.personalFinanceTransaction.findMany({
+          where: { tenantId, occurredAt: { gte: start, lte: end } },
+        });
+        const income = txs.filter(t => t.type === 'INCOME').reduce((s, t) => s + t.amountCents, 0);
+        const expense = txs.filter(t => t.type === 'EXPENSE').reduce((s, t) => s + t.amountCents, 0);
+        const result = income - expense;
+        const monthName = prev.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+        const msg = `📊 *Resumo de ${monthName}*\n💰 Receitas: ${this.money(income)}\n💸 Gastos: ${this.money(expense)}\n${result >= 0 ? '✅' : '⚠️'} Resultado: ${this.money(result)}`;
+        await this.outbound.sendText(phone, msg);
+        sent++;
+      } catch (err) {
+        this.logger.warn(`Falha ao enviar relatorio mensal: ${String(err)}`);
+      }
+    }
+    this.logger.log(`Relatorios mensais enviados: ${sent}`);
+  }
+
   // Roda no dia 1 de cada mes: gera proxima cobranca/conta para recorrencias MONTHLY.
   @Cron('0 6 1 * *')
   async createMonthlyRecurrences(): Promise<void> {

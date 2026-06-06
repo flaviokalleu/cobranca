@@ -2,6 +2,8 @@ import { BadRequestException, Injectable, Logger, NotFoundException } from '@nes
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { AuditService } from '../../common/audit/audit.service';
 import { DeepSeekService } from '../ai/deepseek.service';
+import { WhatsappOutboundService } from '../whatsapp-bot/whatsapp-outbound.service';
+import { parseOFX } from './ofx-parser';
 import { CreatePersonalFinanceAccountDto } from './dto/create-personal-finance-account.dto';
 import { CreatePersonalCreditCardDto } from './dto/create-personal-credit-card.dto';
 import { CreatePersonalTransactionDto } from './dto/create-personal-transaction.dto';
@@ -39,6 +41,7 @@ export class PersonalFinanceService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly deepseek: DeepSeekService,
+    private readonly outbound: WhatsappOutboundService,
   ) {}
 
   async createAccount(tenantId: string, dto: CreatePersonalFinanceAccountDto) {
@@ -694,6 +697,110 @@ export class PersonalFinanceService {
     return date;
   }
 
+  async importOFX(tenantId: string, content: string): Promise<{ imported: number; skipped: number }> {
+    const transactions = parseOFX(content);
+    let imported = 0;
+    let skipped = 0;
+
+    for (const tx of transactions) {
+      // Evita duplicata por fitId (salvo no rawInput)
+      const exists = await this.prisma.personalFinanceTransaction.findFirst({
+        where: { tenantId, rawInput: `ofx:${tx.fitId}` },
+      });
+      if (exists) { skipped++; continue; }
+
+      const category = tx.type === 'INCOME' ? 'Renda' : 'Outros';
+      await this.prisma.personalFinanceTransaction.create({
+        data: {
+          tenantId,
+          type: tx.type,
+          amountCents: tx.amountCents,
+          description: tx.description,
+          category,
+          occurredAt: tx.occurredAt,
+          source: 'IMPORT',
+          rawInput: `ofx:${tx.fitId}`,
+          classifier: 'RULES',
+          confidence: 70,
+        },
+      });
+      imported++;
+    }
+
+    await this.audit.record({
+      tenantId,
+      actor: 'system',
+      action: 'OFX_IMPORT',
+      entityType: 'PersonalFinanceTransaction',
+      entityId: tenantId,
+      metadata: { imported, skipped },
+    });
+
+    return { imported, skipped };
+  }
+
+  async exportCsv(tenantId: string): Promise<string> {
+    const transactions = await this.prisma.personalFinanceTransaction.findMany({
+      where: { tenantId },
+      orderBy: { occurredAt: 'desc' },
+    });
+    const header = 'Data,Tipo,Descricao,Categoria,Subcategoria,Valor (R$),Conta,Cartao,Origem\n';
+    const rows = transactions.map((t) => {
+      const date = new Date(t.occurredAt).toLocaleDateString('pt-BR');
+      const value = (t.amountCents / 100).toFixed(2).replace('.', ',');
+      const safe = (s: string | null | undefined) => `"${(s ?? '').replace(/"/g, '""')}"`;
+      return [date, t.type, safe(t.description), safe(t.category), safe(t.subcategory), value, t.accountId ?? '', t.cardId ?? '', t.source].join(',');
+    });
+    return header + rows.join('\n');
+  }
+
+  listCategories(tenantId: string) {
+    const DEFAULT_CATEGORIES = [
+      'Alimentacao','Transporte','Combustivel','Moradia','Saude','Internet',
+      'Energia','Agua','Educacao','Lazer','Viagem','Vestuario','Streaming',
+      'Marketing','Impostos','Salario','Renda','Freelance','Investimento','Outros',
+    ];
+    return this.prisma.personalFinanceTransaction.findMany({
+      where: { tenantId },
+      select: { category: true, subcategory: true },
+      distinct: ['category'],
+    }).then((rows) => {
+      const custom = rows.map((r) => r.category).filter(Boolean);
+      return [...new Set([...DEFAULT_CATEGORIES, ...custom])].sort();
+    });
+  }
+
+  async monthlyReport(tenantId: string): Promise<string> {
+    const { start, end } = this.monthRange();
+    const transactions = await this.prisma.personalFinanceTransaction.findMany({
+      where: { tenantId, occurredAt: { gte: start, lte: end } },
+    });
+    const income = transactions.filter((t) => t.type === 'INCOME').reduce((s, t) => s + t.amountCents, 0);
+    const expense = transactions.filter((t) => t.type === 'EXPENSE').reduce((s, t) => s + t.amountCents, 0);
+    const result = income - expense;
+
+    const byCategory = new Map<string, number>();
+    for (const t of transactions.filter((t) => t.type === 'EXPENSE')) {
+      byCategory.set(t.category, (byCategory.get(t.category) ?? 0) + t.amountCents);
+    }
+    const topCategories = [...byCategory.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5);
+
+    const now = new Date();
+    const monthName = now.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+
+    const lines = [
+      `*📊 Resumo Financeiro — ${monthName}*\n`,
+      `💰 Receitas: ${this.money(income)}`,
+      `💸 Gastos: ${this.money(expense)}`,
+      `${result >= 0 ? '✅' : '⚠️'} Resultado: ${this.money(result)}\n`,
+      '*Top categorias de gasto:*',
+      ...topCategories.map(([cat, val]) => `  • ${cat}: ${this.money(val)}`),
+    ];
+    return lines.join('\n');
+  }
+
   private async checkSpendingLimit(tenantId: string, category: string) {
     const limit = await this.prisma.spendingLimit.findFirst({
       where: { tenantId, category, active: true },
@@ -701,16 +808,16 @@ export class PersonalFinanceService {
     if (!limit) return;
     const { start, end } = this.monthRange();
     const spent = await this.prisma.personalFinanceTransaction.aggregate({
-      where: {
-        tenantId,
-        type: 'EXPENSE',
-        category,
-        occurredAt: { gte: start, lte: end },
-      },
+      where: { tenantId, type: 'EXPENSE', category, occurredAt: { gte: start, lte: end } },
       _sum: { amountCents: true },
     });
     const usedCents = spent._sum.amountCents ?? 0;
-    if (usedCents < (limit.limitCents * limit.alertThresholdPercent) / 100) return;
+    const threshold = (limit.limitCents * limit.alertThresholdPercent) / 100;
+    if (usedCents < threshold) return;
+
+    const pct = Math.round((usedCents / limit.limitCents) * 100);
+    const msg = `⚠️ *Alerta de limite!*\nCategoria: ${category}\nGasto: ${this.money(usedCents)} (${pct}% de ${this.money(limit.limitCents)})`;
+
     await this.prisma.notification.create({
       data: {
         tenantId,
@@ -722,6 +829,15 @@ export class PersonalFinanceService {
         entityId: limit.id,
       },
     });
+
+    // Envia alerta no WhatsApp para usuarios ativos do tenant
+    const waUsers = await this.prisma.whatsappUser.findMany({
+      where: { tenantId, status: 'ACTIVE' },
+      select: { phone: true },
+    });
+    for (const u of waUsers.slice(0, 1)) {
+      try { await this.outbound.sendText(u.phone, msg); } catch {}
+    }
   }
 
   private monthRange() {

@@ -1,4 +1,6 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, Get, Param, Patch, Post, Res, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import type { Response } from 'express';
 import { Roles } from '../../auth/decorators/roles.decorator';
 import { Tenant } from '../../common/tenant/tenant.decorator';
 import { PersonalFinanceService } from './personal-finance.service';
@@ -23,6 +25,33 @@ export class PersonalFinanceController {
   @Get('summary')
   summary(@Tenant() tenantId: string) {
     return this.personalFinance.summary(tenantId);
+  }
+
+  @Roles('ADMIN', 'FINANCE', 'USER', 'AGENT')
+  @Get('export')
+  async exportCsv(@Tenant() tenantId: string, @Res() res: Response) {
+    const csv = await this.personalFinance.exportCsv(tenantId);
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="financas-pessoais.csv"');
+    res.send('﻿' + csv);
+  }
+
+  @Roles('ADMIN', 'FINANCE', 'COMMERCIAL', 'OPERATIONS', 'USER', 'AGENT')
+  @Get('categories')
+  listCategories(@Tenant() tenantId: string) {
+    return this.personalFinance.listCategories(tenantId);
+  }
+
+  @Roles('ADMIN', 'FINANCE', 'USER', 'AGENT')
+  @Post('import-ofx')
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 5 * 1024 * 1024 } }))
+  importOFX(
+    @Tenant() tenantId: string,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    if (!file) throw new BadRequestException('Arquivo OFX nao enviado.');
+    const content = file.buffer.toString('utf-8');
+    return this.personalFinance.importOFX(tenantId, content);
   }
 
   @Roles('ADMIN', 'FINANCE', 'COMMERCIAL', 'OPERATIONS', 'USER', 'AGENT')
