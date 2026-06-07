@@ -1,3 +1,8 @@
 image.png
 app/por.traineddata
 app/eng.traineddata
+AUDITORIA_SISTEMA.md
+backend.log
+frontend.log
+*.err.log
+app/logs/

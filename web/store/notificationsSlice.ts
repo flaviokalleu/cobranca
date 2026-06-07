@@ -1,11 +1,13 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 import { api } from '@/lib/api';
+import { asArray } from '@/lib/pagination';
 
 export interface NotificationItem {
   id: string;
   channel: string;
   title: string;
   message: string;
+  recipientEmail?: string | null;
   status: string;
   entityType?: string | null;
   scheduledAt?: string | null;
@@ -13,16 +15,20 @@ export interface NotificationItem {
   createdAt: string;
 }
 
-const arr = <T>(data: unknown): T[] => (Array.isArray(data) ? (data as T[]) : []);
-
 export const fetchNotifications = createAsyncThunk('notifications/fetch', async () =>
-  arr<NotificationItem>((await api('GET', '/notifications')).data),
+  asArray<NotificationItem>((await api('GET', '/notifications')).data),
 );
 
 export const createNotification = createAsyncThunk(
   'notifications/create',
   async (
-    body: { channel?: string; title: string; message: string; scheduledAt?: string },
+    body: {
+      channel?: string;
+      title: string;
+      message: string;
+      recipientEmail?: string | null;
+      scheduledAt?: string;
+    },
     { dispatch, rejectWithValue },
   ) => {
     const { status } = await api('POST', '/notifications', body);
@@ -50,6 +56,7 @@ export const updateNotification = createAsyncThunk(
       channel?: string;
       title?: string;
       message?: string;
+      recipientEmail?: string | null;
       status?: string;
       entityType?: string | null;
       entityId?: string | null;

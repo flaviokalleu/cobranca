@@ -1,4 +1,4 @@
-import { IsDateString, IsIn, IsOptional, IsString, Length } from 'class-validator';
+import { IsDateString, IsEmail, IsIn, IsOptional, IsString, Length } from 'class-validator';
 
 export class CreateNotificationDto {
   @IsOptional()
@@ -12,6 +12,10 @@ export class CreateNotificationDto {
   @IsString()
   @Length(2, 1000)
   message!: string;
+
+  @IsOptional()
+  @IsEmail()
+  recipientEmail?: string;
 
   @IsOptional()
   @IsString()

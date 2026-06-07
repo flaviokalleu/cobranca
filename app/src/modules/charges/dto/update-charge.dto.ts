@@ -1,9 +1,11 @@
 import {
   IsDateString,
   IsIn,
+  IsInt,
   IsOptional,
   IsString,
   Length,
+  Min,
 } from 'class-validator';
 
 export class UpdateChargeDto {
@@ -24,4 +26,22 @@ export class UpdateChargeDto {
   @IsOptional()
   @IsIn(['ONCE', 'MONTHLY'])
   recurrence?: string;
+
+  @IsOptional()
+  @IsDateString()
+  nextDueAt?: string | null;
+
+  @IsOptional()
+  @IsIn(['NONE', 'DAILY', 'WEEKLY', 'MONTHLY'])
+  interestMode?: string;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  interestRateBps?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  interestGraceDays?: number;
 }

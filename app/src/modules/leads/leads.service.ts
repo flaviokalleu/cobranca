@@ -1,14 +1,23 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { CreateLeadDto } from './dto/create-lead.dto';
 import { ChangeStageDto } from './dto/change-stage.dto';
+import {
+  paginated,
+  paginationArgs,
+  PaginationDto,
+} from '../../common/dto/pagination.dto';
 
 @Injectable()
 export class LeadsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly events: EventEmitter2,
+  ) {}
 
   async create(tenantId: string, dto: CreateLeadDto) {
-    return this.prisma.$transaction(async (tx) => {
+    const lead = await this.prisma.$transaction(async (tx) => {
       const customer = await tx.customer.create({
         data: {
           tenantId,
@@ -42,13 +51,35 @@ export class LeadsService {
         },
       });
     });
+    this.events.emit('notification.realtime', {
+      tenantId,
+      type: 'lead.created',
+      payload: { leadId: lead.id, name: lead.name },
+    });
+    return lead;
   }
 
-  list(tenantId: string) {
-    return this.prisma.lead.findMany({
-      where: { tenantId },
-      orderBy: { createdAt: 'desc' },
-    });
+  async list(tenantId: string, query: PaginationDto) {
+    const { skip, take } = paginationArgs(query);
+    const search = query.search?.trim();
+    const where = {
+      tenantId,
+      ...(search
+        ? {
+            OR: [
+              { name: { contains: search, mode: 'insensitive' as const } },
+              { contact: { contains: search, mode: 'insensitive' as const } },
+              { phone: { contains: search, mode: 'insensitive' as const } },
+              { email: { contains: search, mode: 'insensitive' as const } },
+            ],
+          }
+        : {}),
+    };
+    const [data, total] = await this.prisma.$transaction([
+      this.prisma.lead.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take }),
+      this.prisma.lead.count({ where }),
+    ]);
+    return paginated(data, total, query);
   }
 
   async syncCustomers(tenantId: string) {

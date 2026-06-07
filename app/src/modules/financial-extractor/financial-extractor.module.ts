@@ -7,8 +7,10 @@ import { ImageOcrService } from './image-ocr.service';
 import { LocalExtractorService } from './local-extractor.service';
 import { NormalizationService } from './normalization.service';
 import { PdfExtractorService } from './pdf-extractor.service';
+import { FinancialExtractorController } from './financial-extractor.controller';
 
 @Module({
+  controllers: [FinancialExtractorController],
   providers: [
     ConfidenceService,
     FinancialExtractorService,

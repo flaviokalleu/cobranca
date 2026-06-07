@@ -10,6 +10,7 @@ import {
   type User,
   updateUser,
 } from '@/store/dataSlice';
+import { api } from '@/lib/api';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -38,7 +39,17 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Pencil, Trash2, UserPlus } from 'lucide-react';
+import { Copy, MailPlus, Pencil, Trash2, UserPlus, X } from 'lucide-react';
+
+interface Invitation {
+  id: string;
+  email: string;
+  role: string;
+  acceptUrl?: string;
+  usedAt?: string | null;
+  revokedAt?: string | null;
+  expiresAt: string;
+}
 
 export default function UsuariosPage() {
   const dispatch = useAppDispatch();
@@ -50,10 +61,21 @@ export default function UsuariosPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [newRole, setNewRole] = useState('USER');
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteRole, setInviteRole] = useState('USER');
+  const [invitations, setInvitations] = useState<Invitation[]>([]);
 
   useEffect(() => {
-    if (role === 'ADMIN') void dispatch(fetchUsers());
+    if (role === 'ADMIN') {
+      void dispatch(fetchUsers());
+      void loadInvitations();
+    }
   }, [role, dispatch]);
+
+  async function loadInvitations() {
+    const res = await api<Invitation[]>('GET', '/invitations');
+    if (res.status < 400) setInvitations(res.data);
+  }
 
   function resetForm() {
     setEditingId(null);
@@ -79,7 +101,7 @@ export default function UsuariosPage() {
     return (
       <>
         <PageHeader title="Usuarios" />
-        <div className="p-6">
+        <div className="p-4 md:p-6">
           <Card className="p-6 text-sm text-muted-foreground">
             Acesso restrito a administradores.
           </Card>
@@ -117,6 +139,29 @@ export default function UsuariosPage() {
     else toast.error(typeof res.payload === 'string' ? res.payload : 'Erro');
   }
 
+  async function createInvitation(event: React.FormEvent) {
+    event.preventDefault();
+    const res = await api<Invitation>('POST', '/invitations', { email: inviteEmail, role: inviteRole });
+    if (res.status < 400) {
+      toast.success('Convite enviado');
+      setInviteEmail('');
+      await loadInvitations();
+      if (res.data.acceptUrl) await navigator.clipboard.writeText(res.data.acceptUrl);
+    } else {
+      toast.error('Nao foi possivel criar convite');
+    }
+  }
+
+  async function revokeInvitation(invitation: Invitation) {
+    const res = await api('DELETE', `/invitations/${invitation.id}`);
+    if (res.status < 400) {
+      toast.success('Convite revogado');
+      await loadInvitations();
+    } else {
+      toast.error('Nao foi possivel revogar convite');
+    }
+  }
+
   return (
     <>
       <PageHeader
@@ -130,7 +175,7 @@ export default function UsuariosPage() {
         }
       />
 
-      <div className="p-6">
+      <div className="space-y-4 p-4 md:space-y-6 md:p-6">
         <Card>
           <Table>
             <TableHeader>
@@ -181,6 +226,91 @@ export default function UsuariosPage() {
             </TableBody>
           </Table>
         </Card>
+
+        <div className="grid gap-4 lg:grid-cols-[360px_1fr]">
+          <Card className="p-4">
+            <form onSubmit={createInvitation} className="space-y-4">
+              <div>
+                <h2 className="font-semibold">Convites</h2>
+                <p className="text-xs text-muted-foreground">Envie acesso com aceite publico e senha propria.</p>
+              </div>
+              <div className="grid gap-1.5">
+                <Label>E-mail</Label>
+                <Input type="email" value={inviteEmail} onChange={(event) => setInviteEmail(event.target.value)} required />
+              </div>
+              <div className="grid gap-1.5">
+                <Label>Papel</Label>
+                <Select value={inviteRole} onValueChange={setInviteRole}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="USER">Usuario</SelectItem>
+                    <SelectItem value="OPERATIONS">Operacional</SelectItem>
+                    <SelectItem value="COMMERCIAL">Comercial</SelectItem>
+                    <SelectItem value="FINANCE">Financeiro</SelectItem>
+                    <SelectItem value="ADMIN">Administrador</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button type="submit" className="w-full">
+                <MailPlus className="h-4 w-4" />
+                Enviar convite
+              </Button>
+            </form>
+          </Card>
+
+          <Card>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>E-mail</TableHead>
+                  <TableHead>Papel</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Acoes</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {invitations.map((invitation) => {
+                  const status = invitation.usedAt ? 'Aceito' : invitation.revokedAt ? 'Revogado' : 'Pendente';
+                  return (
+                    <TableRow key={invitation.id}>
+                      <TableCell className="font-medium">{invitation.email}</TableCell>
+                      <TableCell>{invitation.role}</TableCell>
+                      <TableCell><Badge variant="outline">{status}</Badge></TableCell>
+                      <TableCell>
+                        <div className="flex justify-end gap-1">
+                          {invitation.acceptUrl && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              title="Copiar link"
+                              onClick={() => void navigator.clipboard.writeText(invitation.acceptUrl ?? '')}
+                            >
+                              <Copy className="h-4 w-4" />
+                            </Button>
+                          )}
+                          {!invitation.usedAt && !invitation.revokedAt && (
+                            <Button variant="ghost" size="icon" title="Revogar" onClick={() => void revokeInvitation(invitation)}>
+                              <X className="h-4 w-4 text-destructive" />
+                            </Button>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+                {invitations.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={4} className="py-10 text-center text-sm text-muted-foreground">
+                      Nenhum convite pendente.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </Card>
+        </div>
       </div>
 
       <Dialog open={open} onOpenChange={setOpen}>

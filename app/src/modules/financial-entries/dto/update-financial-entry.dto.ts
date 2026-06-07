@@ -25,4 +25,8 @@ export class UpdateFinancialEntryDto {
   @IsOptional()
   @IsString()
   pagadorNome?: string;
+
+  @IsOptional()
+  @IsIn(['pending_confirmation', 'saved', 'corrected', 'cancelled', 'error'])
+  status?: string;
 }

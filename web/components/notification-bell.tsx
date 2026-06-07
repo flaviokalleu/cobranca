@@ -9,6 +9,7 @@ import {
   markNotificationRead,
   type NotificationItem,
 } from '@/store/notificationsSlice';
+import { useRealtimeNotifications } from '@/hooks/useRealtimeNotifications';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -43,6 +44,7 @@ function notificationPreview(item: NotificationItem) {
 export function NotificationBell() {
   const dispatch = useAppDispatch();
   const notifications = useAppSelector((state) => state.notifications.items);
+  const realtime = useRealtimeNotifications();
 
   useEffect(() => {
     void dispatch(fetchNotifications());
@@ -53,8 +55,9 @@ export function NotificationBell() {
   }, [dispatch]);
 
   const unread = useMemo(
-    () => notifications.filter((item) => item.status === 'UNREAD').length,
-    [notifications],
+    () =>
+      notifications.filter((item) => item.status === 'UNREAD').length + realtime.realtimeUnread,
+    [notifications, realtime.realtimeUnread],
   );
   const recent = useMemo(() => notifications.slice(0, 5), [notifications]);
 
@@ -64,10 +67,17 @@ export function NotificationBell() {
   }
 
   return (
-    <DropdownMenu>
+    <DropdownMenu onOpenChange={(open) => open && realtime.resetRealtimeUnread()}>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="icon" className="relative" title="Notificacoes">
           <Bell className="h-4 w-4" />
+          <span
+            className={
+              realtime.connected
+                ? 'absolute bottom-1 right-1 h-2 w-2 rounded-full bg-green-500'
+                : 'absolute bottom-1 right-1 h-2 w-2 rounded-full bg-red-500'
+            }
+          />
           {unread > 0 && (
             <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-semibold leading-none text-destructive-foreground">
               {unread > 9 ? '9+' : unread}

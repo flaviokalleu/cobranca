@@ -4,6 +4,8 @@ import { AuditService } from '../../common/audit/audit.service';
 import { CreateCalendarEventDto } from './dto/create-calendar-event.dto';
 import { UpdateCalendarEventStatusDto } from './dto/update-calendar-event-status.dto';
 import { UpdateCalendarEventDto } from './dto/update-calendar-event.dto';
+import { ListCalendarEventsDto } from './dto/list-calendar-events.dto';
+import { paginated, paginationArgs } from '../../common/dto/pagination.dto';
 
 @Injectable()
 export class CalendarService {
@@ -42,21 +44,34 @@ export class CalendarService {
     return event;
   }
 
-  list(tenantId: string, from?: string, to?: string) {
-    return this.prisma.calendarEvent.findMany({
-      where: {
-        tenantId,
-        ...(from || to
-          ? {
-              startsAt: {
-                ...(from ? { gte: new Date(from) } : {}),
-                ...(to ? { lte: new Date(to) } : {}),
-              },
-            }
-          : {}),
-      },
-      orderBy: { startsAt: 'asc' },
-    });
+  async list(tenantId: string, query: ListCalendarEventsDto) {
+    const { skip, take } = paginationArgs(query);
+    const search = query.search?.trim();
+    const where = {
+      tenantId,
+      ...(query.from || query.to
+        ? {
+            startsAt: {
+              ...(query.from ? { gte: new Date(query.from) } : {}),
+              ...(query.to ? { lte: new Date(query.to) } : {}),
+            },
+          }
+        : {}),
+      ...(search
+        ? {
+            OR: [
+              { title: { contains: search, mode: 'insensitive' as const } },
+              { notes: { contains: search, mode: 'insensitive' as const } },
+              { type: { contains: search, mode: 'insensitive' as const } },
+            ],
+          }
+        : {}),
+    };
+    const [data, total] = await this.prisma.$transaction([
+      this.prisma.calendarEvent.findMany({ where, orderBy: { startsAt: 'asc' }, skip, take }),
+      this.prisma.calendarEvent.count({ where }),
+    ]);
+    return paginated(data, total, query);
   }
 
   async updateStatus(

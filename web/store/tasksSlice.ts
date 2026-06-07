@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { api } from '@/lib/api';
+import { asArray } from '@/lib/pagination';
 
 export interface Task {
   id: string;
@@ -12,10 +13,8 @@ export interface Task {
   createdAt: string;
 }
 
-const arr = <T>(d: unknown): T[] => (Array.isArray(d) ? (d as T[]) : []);
-
 export const fetchTasks = createAsyncThunk('tasks/fetch', async () =>
-  arr<Task>((await api('GET', '/tasks')).data),
+  asArray<Task>((await api('GET', '/tasks')).data),
 );
 
 export const createTask = createAsyncThunk(

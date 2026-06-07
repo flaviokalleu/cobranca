@@ -3,6 +3,11 @@ import { PrismaService } from '../../common/prisma/prisma.service';
 import { AuditService } from '../../common/audit/audit.service';
 import { CreateSupplierDto } from './dto/create-supplier.dto';
 import { UpdateSupplierDto } from './dto/update-supplier.dto';
+import {
+  paginated,
+  paginationArgs,
+  PaginationDto,
+} from '../../common/dto/pagination.dto';
 
 @Injectable()
 export class SuppliersService {
@@ -31,11 +36,27 @@ export class SuppliersService {
     return supplier;
   }
 
-  list(tenantId: string) {
-    return this.prisma.supplier.findMany({
-      where: { tenantId },
-      orderBy: { createdAt: 'desc' },
-    });
+  async list(tenantId: string, query: PaginationDto) {
+    const { skip, take } = paginationArgs(query);
+    const search = query.search?.trim();
+    const where = {
+      tenantId,
+      ...(search
+        ? {
+            OR: [
+              { name: { contains: search, mode: 'insensitive' as const } },
+              { document: { contains: search, mode: 'insensitive' as const } },
+              { phone: { contains: search, mode: 'insensitive' as const } },
+              { email: { contains: search, mode: 'insensitive' as const } },
+            ],
+          }
+        : {}),
+    };
+    const [data, total] = await this.prisma.$transaction([
+      this.prisma.supplier.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take }),
+      this.prisma.supplier.count({ where }),
+    ]);
+    return paginated(data, total, query);
   }
 
   async update(tenantId: string, id: string, dto: UpdateSupplierDto) {

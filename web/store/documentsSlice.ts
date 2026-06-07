@@ -1,5 +1,6 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 import { api } from '@/lib/api';
+import { asArray } from '@/lib/pagination';
 
 export interface DocumentRequirement {
   id: string;
@@ -20,10 +21,8 @@ export interface CustomerDocument {
   updatedAt: string;
 }
 
-const arr = <T>(data: unknown): T[] => (Array.isArray(data) ? (data as T[]) : []);
-
 export const fetchRequirements = createAsyncThunk('documents/requirements', async () =>
-  arr<DocumentRequirement>((await api('GET', '/documents/requirements')).data),
+  asArray<DocumentRequirement>((await api('GET', '/documents/requirements')).data),
 );
 
 export const createRequirement = createAsyncThunk(
@@ -66,7 +65,7 @@ export const deleteRequirement = createAsyncThunk(
 export const fetchCustomerDocuments = createAsyncThunk(
   'documents/customerDocuments',
   async (customerId: string) =>
-    arr<CustomerDocument>((await api('GET', `/documents/customers/${customerId}`)).data),
+    asArray<CustomerDocument>((await api('GET', `/documents/customers/${customerId}`)).data),
 );
 
 export const createCustomerDocument = createAsyncThunk(

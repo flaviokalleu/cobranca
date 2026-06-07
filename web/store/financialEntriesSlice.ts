@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { api } from '@/lib/api';
+import { asArray } from '@/lib/pagination';
 
 export interface FinancialEntry {
   id: string;
@@ -22,8 +23,6 @@ interface State {
 }
 
 const initialState: State = { entries: [], loading: false };
-
-const asArray = <T>(data: unknown): T[] => (Array.isArray(data) ? (data as T[]) : []);
 
 export const fetchFinancialEntries = createAsyncThunk('financialEntries/fetch', async () =>
   asArray<FinancialEntry>((await api('GET', '/financial-entries')).data),

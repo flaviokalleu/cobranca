@@ -3,6 +3,7 @@ import { CompaniesModule } from '../companies/companies.module';
 import { FinancialEntriesModule } from '../financial-entries/financial-entries.module';
 import { FinancialExtractorModule } from '../financial-extractor/financial-extractor.module';
 import { AiModule } from '../ai/ai.module';
+import { PushModule } from '../push/push.module';
 import { DeepSeekConsultantService } from './deepseek-consultant.service';
 import { MainWhatsappBotService } from './main-whatsapp-bot.service';
 import { WhatsappButtonHandler } from './whatsapp-button.handler';
@@ -12,7 +13,7 @@ import { WhatsappOutboundService } from './whatsapp-outbound.service';
 import { WhatsappUserStateService } from './whatsapp-user-state.service';
 
 @Module({
-  imports: [CompaniesModule, FinancialEntriesModule, FinancialExtractorModule, AiModule],
+  imports: [CompaniesModule, FinancialEntriesModule, FinancialExtractorModule, AiModule, PushModule],
   providers: [
     MainWhatsappBotService,
     WhatsappButtonHandler,

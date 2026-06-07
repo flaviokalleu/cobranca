@@ -26,6 +26,7 @@ model Customer {
   stage       String   @default("LEAD") // LEAD | FIRST_CONTACT | DOCUMENTATION | ANALYSIS | APPROVED | CONTRACT | CUSTOMER | LOST
   createdAt   DateTime @default(now())
   charges     Charge[]
+  loans       Loan[]
   lead        Lead?
 
   @@index([tenantId])
@@ -38,21 +39,242 @@ model Charge {
   tenantId        String
   customerId      String
   customer        Customer  @relation(fields: [customerId], references: [id])
+  salesOrderId    String?
+  accountPlanId   String?
   amountCents     Int
   description     String
   dueDate         DateTime
   status          String    @default("PENDING") // PENDING | PAID | CANCELED
   category        String?
   recurrence      String    @default("ONCE") // ONCE | MONTHLY
+  nextDueAt       DateTime?
   createdAt       DateTime  @default(now())
   paidAt          DateTime?
+  paidAmountCents Int?
   gatewayProvider String?
   gatewayChargeId String?
   paymentLink     String?
   pixCode         String?
+  publicToken     String?   @unique
+  interestMode    String    @default("NONE") // NONE | DAILY | WEEKLY | MONTHLY
+  interestRateBps Int       @default(0)
+  interestGraceDays Int     @default(0)
+  nfe             NFe?
 
   @@index([tenantId])
   @@index([tenantId, status])
+  @@index([tenantId, recurrence, nextDueAt])
+}
+
+/// Emprestimo ou credito pessoal formalizado para um cliente.
+model Loan {
+  id                String            @id @default(cuid())
+  tenantId          String
+  customerId        String
+  customer          Customer          @relation(fields: [customerId], references: [id])
+  principalCents    Int
+  totalCents        Int
+  cetPercent        Float
+  interestRate      Float
+  interestType      LoanInterest
+  installments      Int
+  firstDueAt        DateTime
+  lateFeePercent    Float             @default(2.0)
+  lateInterestDaily Float             @default(0.033)
+  status            LoanStatus        @default(DRAFT)
+  contractSignedAt  DateTime?
+  contractUrl       String?
+  disbursedAt       DateTime?
+  quitedAt          DateTime?
+  installmentsList  LoanInstallment[]
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+}
+
+enum LoanStatus {
+  DRAFT
+  PENDING_SIGNATURE
+  ACTIVE
+  PAID
+  DEFAULTED
+  CANCELED
+}
+
+enum LoanInterest {
+  MONTHLY
+  YEARLY
+}
+
+model LoanInstallment {
+  id              String            @id @default(cuid())
+  tenantId        String
+  loanId          String
+  loan            Loan              @relation(fields: [loanId], references: [id], onDelete: Cascade)
+  number          Int
+  principalCents  Int
+  interestCents   Int
+  totalCents      Int
+  dueAt           DateTime
+  paidAt          DateTime?
+  paidAmountCents Int?
+  status          InstallmentStatus @default(PENDING)
+  chargeId        String?
+
+  @@index([loanId])
+  @@index([tenantId, dueAt])
+}
+
+enum InstallmentStatus {
+  PENDING
+  PAID
+  OVERDUE
+  WAIVED
+}
+
+/// Template reutilizavel para criar cobrancas rapidamente.
+model ChargeTemplate {
+  id           String   @id @default(cuid())
+  tenantId     String
+  name         String
+  description  String
+  amountCents  Int
+  recurrence   String   @default("ONCE")
+  daysUntilDue Int      @default(30)
+  category     String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+/// Nota fiscal emitida ou simulada para uma cobranca.
+model NFe {
+  id             String   @id @default(cuid())
+  tenantId       String
+  chargeId       String   @unique
+  charge         Charge   @relation(fields: [chargeId], references: [id], onDelete: Cascade)
+  provider       String   @default("nuvem-fiscal")
+  externalId     String?
+  status         String   @default("PENDING") // PENDING | PROCESSING | AUTHORIZED | REJECTED | CANCELED | SANDBOX
+  xml            String?
+  pdfUrl         String?
+  error          String?
+  payload        Json?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+}
+
+/// Plano de contas configuravel para DRE e lancamentos.
+model AccountPlan {
+  id        String        @id @default(cuid())
+  tenantId  String
+  code      String
+  name      String
+  type      String        // REVENUE | EXPENSE | ASSET | LIABILITY
+  parentId  String?
+  parent    AccountPlan?  @relation("AccountPlanChildren", fields: [parentId], references: [id])
+  children  AccountPlan[] @relation("AccountPlanChildren")
+  active    Boolean       @default(true)
+  createdAt DateTime      @default(now())
+
+  @@unique([tenantId, code])
+  @@index([tenantId, type])
+}
+
+/// Resultado persistido de reconciliacao bancaria.
+model ReconciliationResult {
+  id                String   @id @default(cuid())
+  tenantId          String
+  accountId         String
+  period            String
+  matchedCount      Int      @default(0)
+  suspectCount      Int      @default(0)
+  unmatchedCount    Int      @default(0)
+  totalMatchedCents Int      @default(0)
+  details           Json
+  createdAt         DateTime @default(now())
+
+  @@index([tenantId, period])
+  @@index([tenantId, accountId])
+}
+
+/// Calculo tributario estimado.
+model TaxCalculation {
+  id                  String   @id @default(cuid())
+  tenantId            String
+  regime              String
+  period              String
+  revenue12mCents     Int
+  revenueMonthCents   Int
+  dasCents            Int
+  effectiveRateBps    Int
+  breakdown           Json
+  createdAt           DateTime @default(now())
+
+  @@index([tenantId, period])
+}
+
+/// Convite para usuario entrar no tenant.
+model Invitation {
+  id        String    @id @default(cuid())
+  tenantId  String
+  email     String
+  role      String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([tenantId])
+  @@index([tenantId, email])
+}
+
+/// Permissoes configuraveis por role e recurso.
+model Permission {
+  id        String   @id @default(cuid())
+  tenantId  String?
+  role      String
+  resource  String
+  actions   String[]
+  createdAt DateTime @default(now())
+
+  @@unique([tenantId, role, resource])
+}
+
+/// Assinatura Web Push do navegador.
+model PushSubscription {
+  id        String   @id @default(cuid())
+  tenantId  String
+  userId    String?
+  endpoint  String   @unique
+  p256dh     String
+  auth      String
+  createdAt DateTime @default(now())
+
+  @@index([tenantId])
+}
+
+/// Log de mensagens processadas pelo bot principal.
+model BotMessageLog {
+  id          String   @id @default(cuid())
+  tenantId    String
+  from        String
+  messageType String
+  content     String?
+  processedAs String?
+  confidence  Float?
+  entryId     String?
+  error       String?
+  processedAt DateTime @default(now())
+
+  @@index([tenantId, processedAt])
 }
 
 /// Lancamento contabil (partida dobrada). Cada transacao gera 2+ entradas que se equilibram.
@@ -61,6 +283,7 @@ model LedgerEntry {
   tenantId      String
   transactionId String
   accountCode   String // ACCOUNTS_RECEIVABLE | REVENUE | CASH
+  accountPlanId String?
   direction     String // DEBIT | CREDIT
   amountCents   Int
   description   String
@@ -77,6 +300,27 @@ model Settings {
   pixKey           String
   merchantName     String
   merchantCity     String
+  companyName      String?
+  companyCnpj      String?
+  companyPhone     String?
+  companyEmail     String?
+  companyAddress   String?
+  companyCity      String?
+  companyState     String?
+  logoUrl          String?
+  businessHoursStart String?
+  businessHoursEnd   String?
+  reminderDaysBefore Int    @default(3)
+  defaultDueDays     Int    @default(30)
+  notifyByEmail      Boolean @default(false)
+  notifyByWhatsapp   Boolean @default(true)
+  timezone           String  @default("America/Sao_Paulo")
+  nfeEnabled       Boolean  @default(false)
+  nfeCnpj          String?
+  nfeRazaoSocial   String?
+  nfeCodServico    String?
+  nfeCodMunicipio  String?
+  theme            String   @default("system")
   paymentProvider  String   @default("NONE") // NONE | ASAAS | MERCADOPAGO
   asaasApiKey      String?
   mercadoPagoToken String?
@@ -85,12 +329,15 @@ model Settings {
 
 /// Usuario do sistema, sempre dentro de um tenant. Senha guardada como hash (bcrypt).
 model User {
-  id           String   @id @default(cuid())
-  tenantId     String
-  email        String
-  passwordHash String
-  role         String   @default("ADMIN") // ADMIN | FINANCE | COMMERCIAL | OPERATIONS | USER | SUPERADMIN
-  createdAt    DateTime @default(now())
+  id                   String   @id @default(cuid())
+  tenantId             String
+  email                String
+  passwordHash         String
+  role                 String   @default("ADMIN") // ADMIN | FINANCE | COMMERCIAL | OPERATIONS | USER | SUPERADMIN
+  twoFactorSecret      String?
+  twoFactorEnabled     Boolean  @default(false)
+  twoFactorBackupCodes String[] @default([])
+  createdAt            DateTime @default(now())
 
   @@unique([tenantId, email])
   @@index([tenantId])
@@ -167,6 +414,7 @@ model SalesOrder {
   status     String   @default("DRAFT") // DRAFT | CONFIRMED | CANCELED
   totalCents Int      @default(0)
   chargeId   String?
+  deliveryAt DateTime?
   createdAt  DateTime @default(now())
 
   @@index([tenantId])
@@ -223,6 +471,7 @@ model Payable {
   status      String    @default("PENDING") // PENDING | PAID | CANCELED
   paidAt      DateTime?
   category    String?
+  accountPlanId String?
   recurrence  String    @default("ONCE") // ONCE | MONTHLY
   createdAt   DateTime  @default(now())
 
@@ -234,15 +483,24 @@ model Payable {
 model Task {
   id        String    @id @default(cuid())
   tenantId  String
+  parentId  String?
   title     String
   notes     String?
   done      Boolean   @default(false)
   dueDate   DateTime?
   priority  String    @default("MED") // LOW | MED | HIGH
   assignee  String?
+  assigneeId String?
+  recurrence String    @default("NONE") // NONE | DAILY | WEEKLY | MONTHLY
+  nextOccurrenceAt DateTime?
+  estimatedMinutes Int?
+  completedAt DateTime?
   createdAt DateTime  @default(now())
+  parent    Task?     @relation("TaskSubtasks", fields: [parentId], references: [id])
+  subtasks  Task[]    @relation("TaskSubtasks")
 
   @@index([tenantId, done])
+  @@index([tenantId, parentId])
 }
 
 /// Lead do CRM.
@@ -329,6 +587,7 @@ model Notification {
   channel     String    @default("SYSTEM") // SYSTEM | WHATSAPP | EMAIL
   title       String
   message     String
+  recipientEmail String?
   status      String    @default("UNREAD") // UNREAD | READ | QUEUED | SENT | FAILED
   entityType  String?
   entityId    String?
@@ -444,6 +703,8 @@ model MainWhatsappBot {
   profilePictureUrl String?
   status            String    @default("disconnected") // active | inactive | blocked | disconnected | connected | error | session_expired
   isActive          Boolean   @default(true)
+  welcomeMessage    String?
+  alertPhone        String?
   connectedAt       DateTime?
   disconnectedAt    DateTime?
   createdAt         DateTime  @default(now())
@@ -520,6 +781,23 @@ model WhatsappConnectionLog {
 
   @@index([connectionId])
   @@index([createdAt])
+}
+
+/// Logs operacionais de mensagens do WhatsApp principal, sem persistir conteudo sensivel completo.
+model WhatsappMessageLog {
+  id          String   @id @default(cuid())
+  direction   String   @default("INBOUND") // INBOUND | OUTBOUND
+  jid         String?
+  phone       String?
+  messageType String?
+  status      String   @default("received") // received | processed | sent | ignored | error
+  description String?
+  metadata    String?
+  createdAt   DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([status])
+  @@index([direction])
 }
 
 /// Codigo de ativacao emitido para uma empresa (Tenant). O codigo puro nunca e armazenado.
@@ -627,6 +905,7 @@ model FinancialEntry {
   jsonOriginal         String?
   recorrencia          String    @default("AVULSO") // AVULSO | MENSAL
   leadId               String?
+  accountPlanId        String?
   lead                 Lead?     @relation(fields: [leadId], references: [id])
   status               String    @default("pending_confirmation") // pending_confirmation | saved | corrected | cancelled | error
   createdAt            DateTime  @default(now())
@@ -636,6 +915,73 @@ model FinancialEntry {
   @@index([tenantId, status])
   @@index([tenantId, recorrencia])
   @@index([tenantId, whatsappUserId])
+}
+
+// ===================== Open Finance =====================
+
+/// Conexao com uma instituicao financeira via Open Finance (Pluggy).
+model OpenFinanceConnection {
+  id           String    @id @default(cuid())
+  tenantId     String
+  itemId       String    @unique // Pluggy item ID
+  connector    String    // Nome da instituicao (ex: "Nubank", "Itau")
+  connectorId  Int       // Pluggy connector ID
+  status       String    @default("UPDATING") // UPDATING | UPDATED | WAITING_USER_INPUT | LOGIN_ERROR | OUTDATED | ERROR
+  lastSyncAt   DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  accounts     OpenFinanceBankAccount[]
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+}
+
+/// Conta bancaria sincronizada via Open Finance.
+model OpenFinanceBankAccount {
+  id            String                  @id @default(cuid())
+  tenantId      String
+  connectionId  String
+  connection    OpenFinanceConnection   @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  externalId    String                  @unique // Pluggy account ID
+  type          String                  // BANK | CREDIT | INVESTMENT
+  subtype       String?                 // CHECKING | SAVINGS | CREDIT_CARD
+  name          String
+  number        String?
+  agency        String?
+  currency      String                  @default("BRL")
+  balanceCents  Int                     @default(0)
+  creditLimitCents Int?
+  lastSyncAt    DateTime?
+  createdAt     DateTime                @default(now())
+  updatedAt     DateTime                @updatedAt
+
+  transactions  OpenFinanceTransaction[]
+
+  @@index([tenantId])
+  @@index([connectionId])
+}
+
+/// Transacao sincronizada de uma conta bancaria via Open Finance.
+model OpenFinanceTransaction {
+  id               String                 @id @default(cuid())
+  tenantId         String
+  accountId        String
+  account          OpenFinanceBankAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  externalId       String                 @unique // Pluggy transaction ID
+  type             String                 // DEBIT | CREDIT
+  amountCents      Int
+  description      String
+  category         String?
+  date             DateTime
+  balance          Int?
+  counterpartyName String?
+  paymentMethod    String?                // PIX | TED | DOC | BOLETO | CREDIT_CARD
+  createdAt        DateTime               @default(now())
+
+  @@index([tenantId, date])
+  @@index([tenantId, category])
+  @@index([accountId])
 }
 
 // ===================== SaaS / Plataforma =====================

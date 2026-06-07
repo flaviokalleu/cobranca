@@ -9,6 +9,11 @@ import { StockService } from '../stock/stock.service';
 import { ChargesService } from '../charges/charges.service';
 import { CreateSalesOrderDto } from './dto/create-sales-order.dto';
 import { UpdateSalesOrderDto } from './dto/update-sales-order.dto';
+import {
+  paginated,
+  paginationArgs,
+  PaginationDto,
+} from '../../common/dto/pagination.dto';
 
 @Injectable()
 export class SalesService {
@@ -37,7 +42,13 @@ export class SalesService {
 
     const number = (await this.prisma.salesOrder.count({ where: { tenantId } })) + 1;
     const order = await this.prisma.salesOrder.create({
-      data: { tenantId, number, customerId: customer.id, totalCents: 0 },
+      data: {
+        tenantId,
+        number,
+        customerId: customer.id,
+        totalCents: 0,
+        deliveryAt: dto.deliveryAt ? new Date(dto.deliveryAt) : null,
+      },
     });
 
     for (const item of dto.items) {
@@ -75,22 +86,44 @@ export class SalesService {
     return updated;
   }
 
-  async list(tenantId: string) {
+  async list(tenantId: string, query: PaginationDto) {
+    const { skip, take } = paginationArgs(query);
+    const search = query.search?.trim();
+    const where = {
+      tenantId,
+      ...(search
+        ? {
+            OR: [
+              { status: { contains: search, mode: 'insensitive' as const } },
+              { customer: { name: { contains: search, mode: 'insensitive' as const } } },
+            ],
+          }
+        : {}),
+    };
     const orders = await this.prisma.salesOrder.findMany({
-      where: { tenantId },
+      where,
       orderBy: { createdAt: 'desc' },
+      skip,
+      take,
     });
-    const items = await this.prisma.salesOrderItem.findMany({
-      where: { tenantId, orderId: { in: orders.map((order) => order.id) } },
-    });
+    const [items, total] = await Promise.all([
+      this.prisma.salesOrderItem.findMany({
+        where: { tenantId, orderId: { in: orders.map((order) => order.id) } },
+      }),
+      this.prisma.salesOrder.count({ where }),
+    ]);
     const itemsByOrder = new Map<string, typeof items>();
     for (const item of items) {
       itemsByOrder.set(item.orderId, [...(itemsByOrder.get(item.orderId) ?? []), item]);
     }
-    return orders.map((order) => ({
-      ...order,
-      items: itemsByOrder.get(order.id) ?? [],
-    }));
+    return paginated(
+      orders.map((order) => ({
+        ...order,
+        items: itemsByOrder.get(order.id) ?? [],
+      })),
+      total,
+      query,
+    );
   }
 
   async update(tenantId: string, id: string, dto: UpdateSalesOrderDto) {
@@ -148,6 +181,7 @@ export class SalesService {
         data: {
           customerId: dto.customerId,
           totalCents: total,
+          deliveryAt: dto.deliveryAt ? new Date(dto.deliveryAt) : undefined,
         },
       });
     });
@@ -258,6 +292,30 @@ export class SalesService {
     const updated = await this.prisma.salesOrder.update({
       where: { id: order.id },
       data: { status: 'CONFIRMED', chargeId: charge.id },
+    });
+    if (order.deliveryAt) {
+      await this.prisma.calendarEvent.create({
+        data: {
+          tenantId,
+          title: `Entrega Pedido #${order.number}`,
+          type: 'TASK',
+          startsAt: order.deliveryAt,
+          status: 'SCHEDULED',
+          customerId: order.customerId,
+          notes: `Entrega do pedido confirmado #${order.number}`,
+        },
+      });
+    }
+    await this.prisma.notification.create({
+      data: {
+        tenantId,
+        channel: 'SYSTEM',
+        title: 'Pedido confirmado',
+        message: `Pedido #${order.number} confirmado e cobranca criada.`,
+        status: 'UNREAD',
+        entityType: 'SalesOrder',
+        entityId: order.id,
+      },
     });
     await this.audit.record({
       tenantId,

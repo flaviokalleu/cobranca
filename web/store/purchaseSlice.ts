@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { api } from '@/lib/api';
+import { asArray } from '@/lib/pagination';
 
 export interface PurchaseOrder {
   id: string;
@@ -20,10 +21,8 @@ export interface PurchaseOrderItem {
   totalCents: number;
 }
 
-const arr = <T>(d: unknown): T[] => (Array.isArray(d) ? (d as T[]) : []);
-
 export const fetchPurchases = createAsyncThunk('purchases/fetch', async () =>
-  arr<PurchaseOrder>((await api('GET', '/purchases')).data),
+  asArray<PurchaseOrder>((await api('GET', '/purchases')).data),
 );
 
 export const createPurchase = createAsyncThunk(

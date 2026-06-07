@@ -1,7 +1,9 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { toast } from 'sonner';
+import { DndContext, type DragEndEvent, useDraggable, useDroppable } from '@dnd-kit/core';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import {
   createCustomer,
@@ -19,6 +21,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { DataPagination } from '@/components/ui/data-pagination';
 import { Label } from '@/components/ui/label';
 import {
   Select,
@@ -27,7 +30,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Plus } from 'lucide-react';
+import { ExternalLink, Plus } from 'lucide-react';
 
 const brl = (cents: number) =>
   (cents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -47,7 +50,8 @@ const stageOf = (customer: Customer) => customer.stage ?? 'LEAD';
 
 export default function CrmPage() {
   const dispatch = useAppDispatch();
-  const { customers } = useAppSelector((state) => state.data);
+  const { customers, customersPagination } = useAppSelector((state) => state.data);
+  const [page, setPage] = useState(1);
 
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
@@ -58,8 +62,8 @@ export default function CrmPage() {
   const [income, setIncome] = useState('0.00');
 
   useEffect(() => {
-    void dispatch(fetchCustomers());
-  }, [dispatch]);
+    void dispatch(fetchCustomers({ page }));
+  }, [dispatch, page]);
 
   const customersByStage = useMemo(
     () =>
@@ -104,6 +108,13 @@ export default function CrmPage() {
     }
   }
 
+  function onDragEnd(event: DragEndEvent) {
+    const customer = event.active.data.current?.customer as Customer | undefined;
+    const stage = event.over?.id?.toString();
+    if (!customer || !stage || stage === stageOf(customer)) return;
+    void onChangeStage(customer, stage);
+  }
+
   return (
     <>
       <PageHeader
@@ -116,64 +127,24 @@ export default function CrmPage() {
           </Button>
         }
       />
-      <div className="p-6">
-        <div className="flex gap-4 overflow-x-auto pb-2">
-          {customersByStage.map((stage) => {
-            const total = stage.cards.reduce(
-              (sum, customer) => sum + (customer.incomeCents ?? 0),
-              0,
-            );
-            return (
-              <div key={stage.key} className="w-64 shrink-0">
-                <div className="mb-2 flex items-center justify-between px-1">
-                  <span className="text-sm font-semibold">{stage.label}</span>
-                  <span className="text-xs text-muted-foreground">{stage.cards.length}</span>
-                </div>
-                <div className="space-y-2 rounded-lg bg-muted/40 p-2">
-                  {stage.cards.map((customer) => (
-                    <div key={customer.id} className="rounded-lg border bg-card p-3 shadow-sm">
-                      <p className="font-medium">{customer.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {customer.whatsapp ?? customer.phone}
-                      </p>
-                      {customer.city && (
-                        <p className="text-xs text-muted-foreground">{customer.city}</p>
-                      )}
-                      {customer.incomeCents != null && (
-                        <p className="mt-1 text-sm font-semibold text-primary">
-                          {brl(customer.incomeCents)}
-                        </p>
-                      )}
-                      <Select
-                        value={stageOf(customer)}
-                        onValueChange={(nextStage) => void onChangeStage(customer, nextStage)}
-                      >
-                        <SelectTrigger className="mt-2 h-8 text-xs">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {STAGES.map((item) => (
-                            <SelectItem key={item.key} value={item.key}>
-                              {item.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  ))}
-                  {stage.cards.length === 0 && (
-                    <p className="px-2 py-6 text-center text-xs text-muted-foreground">
-                      Vazio
-                    </p>
-                  )}
-                  <p className="px-1 pt-1 text-right text-xs text-muted-foreground">
-                    {brl(total)}
-                  </p>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+      <div className="p-4 md:p-6">
+        <DndContext onDragEnd={onDragEnd}>
+          <div className="flex gap-3 overflow-x-auto pb-4" style={{ WebkitOverflowScrolling: 'touch' }}>
+            {customersByStage.map((stage) => (
+              <StageColumn
+                key={stage.key}
+                stage={stage}
+                onChangeStage={onChangeStage}
+              />
+            ))}
+          </div>
+        </DndContext>
+        <DataPagination
+          page={customersPagination.page}
+          total={customersPagination.total}
+          totalPages={customersPagination.totalPages}
+          onPageChange={setPage}
+        />
       </div>
 
       <Dialog open={open} onOpenChange={setOpen}>
@@ -233,5 +204,89 @@ export default function CrmPage() {
         </DialogContent>
       </Dialog>
     </>
+  );
+}
+
+function StageColumn({
+  stage,
+  onChangeStage,
+}: {
+  stage: { key: string; label: string; cards: Customer[] };
+  onChangeStage: (customer: Customer, stage: string) => Promise<void>;
+}) {
+  const { setNodeRef, isOver } = useDroppable({ id: stage.key });
+  const total = stage.cards.reduce((sum, customer) => sum + (customer.incomeCents ?? 0), 0);
+  return (
+    <div className="w-64 shrink-0">
+      <div className="mb-2 flex items-center justify-between px-1">
+        <span className="text-sm font-semibold">{stage.label}</span>
+        <span className="text-xs text-muted-foreground">{stage.cards.length}</span>
+      </div>
+      <div
+        ref={setNodeRef}
+        className={`min-h-28 space-y-2 rounded-lg bg-muted/40 p-2 ${isOver ? 'ring-2 ring-primary' : ''}`}
+      >
+        {stage.cards.map((customer) => (
+          <LeadCard key={customer.id} customer={customer} onChangeStage={onChangeStage} />
+        ))}
+        {stage.cards.length === 0 && (
+          <p className="px-2 py-6 text-center text-xs text-muted-foreground">Vazio</p>
+        )}
+        <p className="px-1 pt-1 text-right text-xs text-muted-foreground">{brl(total)}</p>
+      </div>
+    </div>
+  );
+}
+
+function LeadCard({
+  customer,
+  onChangeStage,
+}: {
+  customer: Customer;
+  onChangeStage: (customer: Customer, stage: string) => Promise<void>;
+}) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: customer.id,
+    data: { customer },
+  });
+  const style = transform
+    ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` }
+    : undefined;
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`rounded-lg border bg-card p-3 shadow-sm ${isDragging ? 'z-20 opacity-80 shadow-lg' : ''}`}
+      {...attributes}
+    >
+      <div className="cursor-grab active:cursor-grabbing" {...listeners}>
+        <p className="font-medium">{customer.name}</p>
+        <p className="text-xs text-muted-foreground">{customer.whatsapp ?? customer.phone}</p>
+        {customer.city && <p className="text-xs text-muted-foreground">{customer.city}</p>}
+        {customer.incomeCents != null && (
+          <p className="mt-1 text-sm font-semibold text-primary">{brl(customer.incomeCents)}</p>
+        )}
+      </div>
+      <div className="mt-2 flex items-center gap-2">
+        <Select
+          value={stageOf(customer)}
+          onValueChange={(nextStage) => void onChangeStage(customer, nextStage)}
+        >
+          <SelectTrigger className="h-8 flex-1 text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {STAGES.map((item) => (
+              <SelectItem key={item.key} value={item.key}>
+                {item.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Link href={`/dashboard/clientes/${customer.id}`} className="rounded-md border p-2 text-muted-foreground hover:text-foreground">
+          <ExternalLink className="h-3.5 w-3.5" />
+        </Link>
+      </div>
+    </div>
   );
 }

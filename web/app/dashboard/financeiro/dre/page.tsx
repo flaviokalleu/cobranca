@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { fetchSummary } from '@/store/financeSlice';
+import { api } from '@/lib/api';
+import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import {
   TrendingUp,
   TrendingDown,
@@ -15,6 +17,14 @@ import {
   CheckCircle2,
   CalendarDays,
 } from 'lucide-react';
+
+interface DreData {
+  revenue: { totalCents: number; breakdown: Array<{ account: string; amountCents: number }> };
+  expenses: { totalCents: number; breakdown: Array<{ account: string; amountCents: number }> };
+  grossProfitCents: number;
+  operatingProfitCents: number;
+  netProfitCents: number;
+}
 
 const brl = (cents: number) =>
   (cents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -88,9 +98,18 @@ export default function DrePage() {
 
   const [from, setFrom] = useState(firstOfMonth());
   const [to, setTo] = useState(lastOfMonth());
+  const [dre, setDre] = useState<DreData | null>(null);
 
   useEffect(() => {
-    if (role === 'ADMIN') void dispatch(fetchSummary({ from, to }));
+    if (role === 'ADMIN') {
+      void dispatch(fetchSummary({ from, to }));
+      const params = new URLSearchParams();
+      if (from) params.set('from', from);
+      if (to) params.set('to', to);
+      void api<DreData>('GET', `/finance/dre?${params.toString()}`).then((res) => {
+        if (res.status < 400) setDre(res.data);
+      });
+    }
   }, [role, dispatch, from, to]);
 
   if (role !== 'ADMIN') {
@@ -125,6 +144,11 @@ export default function DrePage() {
   const despRatio = pctNum(d.expenseCents, d.revenueCents);
   const posicaoLiquida = d.cashCents + d.aReceberCents - d.aPagarCents;
   const isLucro = d.resultCents >= 0;
+  const chartData = [
+    { name: 'Receita', valor: dre?.revenue.totalCents ?? d.revenueCents },
+    { name: 'Despesa', valor: dre?.expenses.totalCents ?? d.expenseCents },
+    { name: 'Resultado', valor: dre?.netProfitCents ?? d.resultCents },
+  ];
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -266,6 +290,43 @@ export default function DrePage() {
             </div>
           </div>
         </div>
+
+        {dre && (
+          <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
+            <div className="overflow-hidden rounded-2xl bg-white" style={{ border: '1px solid #e5e7eb' }}>
+              <div className="border-b border-gray-100 px-5 py-4">
+                <h2 className="text-sm font-bold uppercase tracking-wider text-gray-900">DRE por conta</h2>
+              </div>
+              <div className="grid gap-4 p-5 md:grid-cols-2">
+                <div>
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-400">Receitas</p>
+                  {dre.revenue.breakdown.map((row) => (
+                    <DreRow key={row.account} label={row.account} value={row.amountCents} />
+                  ))}
+                </div>
+                <div>
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-400">Despesas</p>
+                  {dre.expenses.breakdown.map((row) => (
+                    <DreRow key={row.account} label={row.account} value={row.amountCents} isSubtraction />
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div className="rounded-2xl bg-white p-5" style={{ border: '1px solid #e5e7eb' }}>
+              <h2 className="mb-4 text-sm font-bold uppercase tracking-wider text-gray-900">Comparativo</h2>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={chartData}>
+                    <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                    <YAxis tickFormatter={(value) => `${Number(value) / 1000}k`} tick={{ fontSize: 11 }} />
+                    <Tooltip formatter={(value) => brl(Number(value))} />
+                    <Bar dataKey="valor" fill="#dc2626" radius={[6, 6, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Posicao financeira */}
         <div className="overflow-hidden rounded-2xl bg-white" style={{ border: '1px solid #e5e7eb' }}>

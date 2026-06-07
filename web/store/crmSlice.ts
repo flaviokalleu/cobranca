@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { api } from '@/lib/api';
+import { asArray, paginationMeta, paginationQuery, type PaginationParams } from '@/lib/pagination';
 
 export interface Lead {
   id: string;
@@ -11,11 +12,10 @@ export interface Lead {
   createdAt: string;
 }
 
-const arr = <T>(d: unknown): T[] => (Array.isArray(d) ? (d as T[]) : []);
-
-export const fetchLeads = createAsyncThunk('crm/fetch', async () =>
-  arr<Lead>((await api('GET', '/leads')).data),
-);
+export const fetchLeads = createAsyncThunk('crm/fetch', async (params?: PaginationParams) => {
+  const data = (await api('GET', `/leads${paginationQuery(params)}`)).data;
+  return { items: asArray<Lead>(data), meta: paginationMeta(data) };
+});
 
 export const createLead = createAsyncThunk(
   'crm/create',
@@ -41,8 +41,9 @@ export const changeStage = createAsyncThunk(
 
 interface CrmState {
   leads: Lead[];
+  pagination: { total: number; page: number; totalPages: number };
 }
-const initialState: CrmState = { leads: [] };
+const initialState: CrmState = { leads: [], pagination: { total: 0, page: 1, totalPages: 1 } };
 
 const crmSlice = createSlice({
   name: 'crm',
@@ -50,7 +51,8 @@ const crmSlice = createSlice({
   reducers: {},
   extraReducers: (builder) => {
     builder.addCase(fetchLeads.fulfilled, (s, a) => {
-      s.leads = a.payload;
+      s.leads = a.payload.items;
+      if (a.payload.meta) s.pagination = a.payload.meta;
     });
   },
 });

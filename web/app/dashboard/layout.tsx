@@ -6,6 +6,7 @@ import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { fetchCustomers, fetchCharges, clearError } from '@/store/dataSlice';
 import { Sidebar } from '@/components/sidebar';
 import { MobileNav } from '@/components/mobile-nav';
+import { GlobalSearch } from '@/components/global-search';
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
@@ -37,6 +38,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-screen bg-gray-50">
       <Sidebar />
+      <GlobalSearch />
       <div className="flex min-w-0 flex-1 flex-col pb-16 md:pb-0">
         <MobileNav />
         {children}

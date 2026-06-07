@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { QueueService } from '../../common/queue/queue.service';
 import { CompanyActivationService } from '../companies/company-activation.service';
@@ -12,6 +13,7 @@ import {
 import { FinancialExtractorService } from '../financial-extractor/financial-extractor.service';
 import { NormalizationService } from '../financial-extractor/normalization.service';
 import { FinancialEntriesService } from '../financial-entries/financial-entries.service';
+import { PushService } from '../push/push.service';
 import { DeepSeekConsultantService } from './deepseek-consultant.service';
 import { WhatsappButtonHandler, CorrectionField } from './whatsapp-button.handler';
 import { WhatsappFileService } from './whatsapp-file.service';
@@ -71,6 +73,8 @@ export class WhatsappMessageHandler {
     private readonly financialEntries: FinancialEntriesService,
     private readonly normalization: NormalizationService,
     private readonly consultant: DeepSeekConsultantService,
+    private readonly events: EventEmitter2,
+    private readonly push: PushService,
   ) {}
 
   registerQueueHandlers(): void {
@@ -109,7 +113,9 @@ export class WhatsappMessageHandler {
     const resolution = await this.resolver.resolveByWhatsappPhone(phone);
     if (!resolution.ok || !resolution.tenant || !resolution.whatsappUser) {
       if (this.buttons.parseGreeting(text)) {
-        await this.outbound.sendUnknownWelcome(remoteJid);
+        if (!(await this.sendConfiguredWelcome(remoteJid, rawMessage.pushName))) {
+          await this.outbound.sendUnknownWelcome(remoteJid);
+        }
       } else {
         await this.outbound.sendText(remoteJid, resolution.message ?? 'Nao foi possivel identificar a empresa.');
       }
@@ -117,10 +123,33 @@ export class WhatsappMessageHandler {
     }
     const tenant = resolution.tenant;
     const whatsappUser = resolution.whatsappUser;
+    this.events.emit('notification.realtime', {
+      tenantId: tenant.id,
+      type: 'whatsapp.message',
+      payload: {
+        from: phone,
+        name: rawMessage.pushName ?? null,
+        text: text ? this.preview(text) : null,
+      },
+    });
+    await this.push.notifyTenant(tenant.id, {
+      title: 'Mensagem no WhatsApp',
+      body: `${rawMessage.pushName ?? phone}: ${text ? this.preview(text) : 'arquivo recebido'}`,
+      url: '/admin/whatsapp',
+      tag: `whatsapp-${phone}`,
+      data: { phone, messageType: rawMessage.message ? Object.keys(rawMessage.message as Record<string, unknown>)[0] : 'text' },
+    });
+
+    if (this.isDebtQuestion(text)) {
+      await this.replyDebtQuote(tenant.id, remoteJid, phone);
+      return;
+    }
 
     if (!this.whatsappUsers.hasPermission(whatsappUser, 'financial_entries:create')) {
       if (this.buttons.parseGreeting(text)) {
-        await this.outbound.sendMenu(remoteJid, rawMessage.pushName);
+        if (!(await this.sendConfiguredWelcome(remoteJid, rawMessage.pushName))) {
+          await this.outbound.sendMenu(remoteJid, rawMessage.pushName);
+        }
       } else {
         await this.outbound.sendText(
           remoteJid,
@@ -143,7 +172,9 @@ export class WhatsappMessageHandler {
     const isGreeting = this.buttons.parseGreeting(text);
     const isMenuCmd = chatbotCmd === 'menu';
     if ((isGreeting || isMenuCmd) && !this.consultant.isAvailable) {
-      await this.outbound.sendMenu(remoteJid, rawMessage.pushName);
+      if (!(await this.sendConfiguredWelcome(remoteJid, rawMessage.pushName))) {
+        await this.outbound.sendMenu(remoteJid, rawMessage.pushName);
+      }
       return;
     }
 
@@ -453,8 +484,74 @@ export class WhatsappMessageHandler {
     return bot.isActive && !['inactive', 'blocked'].includes(bot.status);
   }
 
+  private async sendConfiguredWelcome(remoteJid: string, name?: string): Promise<boolean> {
+    const bot = await this.prisma.mainWhatsappBot.findFirst({
+      orderBy: { createdAt: 'desc' },
+      select: { welcomeMessage: true },
+    });
+    const message = bot?.welcomeMessage?.trim();
+    if (!message) return false;
+    await this.outbound.sendText(
+      remoteJid,
+      message.replace(/\{nome\}/g, name?.trim() || 'cliente'),
+    );
+    return true;
+  }
+
   private looksLikeReceiptText(text: string): boolean {
     const normalized = text.toLowerCase();
     return /r\$\s*\d|pix|comprovante|transferencia|pagamento|recebimento/i.test(normalized);
+  }
+
+  private preview(text: string): string {
+    const normalized = text.replace(/\s+/g, ' ').trim();
+    return normalized.length > 120 ? `${normalized.slice(0, 120)}...` : normalized;
+  }
+
+  private isDebtQuestion(text: string): boolean {
+    return /quanto\s+devo|meu\s+saldo|minha\s+divida|quitar\s+emprestimo/i.test(
+      text.normalize('NFD').replace(/[\u0300-\u036f]/g, ''),
+    );
+  }
+
+  private async replyDebtQuote(tenantId: string, remoteJid: string, phone: string): Promise<void> {
+    const customer = await this.prisma.customer.findFirst({
+      where: {
+        tenantId,
+        OR: [{ phone }, { whatsapp: phone }, { phone: { endsWith: phone.slice(-8) } }, { whatsapp: { endsWith: phone.slice(-8) } }],
+      },
+      select: { id: true, name: true },
+    });
+    if (!customer) {
+      await this.outbound.sendText(remoteJid, 'Nao encontrei emprestimo vinculado a este telefone.');
+      return;
+    }
+    const loans = await this.prisma.loan.findMany({
+      where: {
+        tenantId,
+        customerId: customer.id,
+        status: { in: ['ACTIVE', 'DEFAULTED', 'PENDING_SIGNATURE'] },
+      },
+      include: { installmentsList: true },
+    });
+    const pending = loans.flatMap((loan) =>
+      loan.installmentsList
+        .filter((installment) => installment.status !== 'PAID')
+        .map((installment) => ({
+          totalCents: installment.totalCents,
+          dueAt: installment.dueAt,
+        })),
+    );
+    if (!pending.length) {
+      await this.outbound.sendText(remoteJid, `${customer.name}, nao ha parcelas pendentes no momento.`);
+      return;
+    }
+    const totalCents = pending.reduce((sum, row) => sum + row.totalCents, 0);
+    const nextDue = pending.sort((a, b) => a.dueAt.getTime() - b.dueAt.getTime())[0];
+    await this.outbound.sendText(
+      remoteJid,
+      `${customer.name}, seu saldo em aberto e ${(totalCents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}.\n` +
+        `Proximo vencimento: ${nextDue.dueAt.toLocaleDateString('pt-BR')}.`,
+    );
   }
 }

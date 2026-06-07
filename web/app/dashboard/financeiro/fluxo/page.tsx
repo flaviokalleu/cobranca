@@ -4,12 +4,15 @@ import { useEffect, useMemo, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { fetchCashflow, type CashflowRow } from '@/store/financeSlice';
 import { fetchFinancialEntries } from '@/store/financialEntriesSlice';
+import { API_URL, api, getToken } from '@/lib/api';
+import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { NotificationBell } from '@/components/notification-bell';
 import {
   ArrowDownRight,
   ArrowUpRight,
   CalendarDays,
   CircleDollarSign,
+  Download,
   MessageCircle,
   Search,
   TrendingDown,
@@ -53,6 +56,14 @@ type UnifiedRow = {
   source: Source;
   tipo?: string;
 };
+
+interface Projection {
+  initialCashCents: number;
+  alert: boolean;
+  alertDate?: string | null;
+  alertAmountCents: number;
+  days: Array<{ date: string; inCents: number; outCents: number; accumulatedCents: number }>;
+}
 
 function recurrenceLabel(recurrence?: string | null) {
   return recurrence === 'MONTHLY' || recurrence === 'MENSAL' ? 'Mensal' : 'Avulso';
@@ -119,8 +130,8 @@ function StatusBadge({ row }: { row: UnifiedRow }) {
 
 export default function FluxoCaixaPage() {
   const dispatch = useAppDispatch();
-  const { cashflow } = useAppSelector((state) => state.finance);
-  const { entries: whatsappEntries } = useAppSelector((state) => state.financialEntries);
+  const cashflow = useAppSelector((state) => state.finance.cashflow);
+  const whatsappEntries = useAppSelector((state) => state.financialEntries.entries ?? []);
 
   const [from, setFrom] = useState(firstOfMonth());
   const [to, setTo] = useState(lastOfMonth());
@@ -130,14 +141,18 @@ export default function FluxoCaixaPage() {
   const [recurrenceFilter, setRecurrenceFilter] = useState('ALL');
   const [categoryFilter, setCategoryFilter] = useState('ALL');
   const [query, setQuery] = useState('');
+  const [projection, setProjection] = useState<Projection | null>(null);
 
   useEffect(() => {
     void dispatch(fetchCashflow(from || to ? { from: from || undefined, to: to || undefined } : undefined));
     void dispatch(fetchFinancialEntries());
+    void api<Projection>('GET', '/finance/cashflow-projection?days=90').then((res) => {
+      if (res.status < 400) setProjection(res.data);
+    });
   }, [dispatch, from, to]);
 
   const allRows = useMemo(() => {
-    const manualRows: UnifiedRow[] = cashflow.rows.map((row: CashflowRow) => ({
+    const manualRows: UnifiedRow[] = (cashflow?.rows ?? []).map((row: CashflowRow) => ({
       id: row.id,
       date: row.date,
       description: row.description,
@@ -280,6 +295,25 @@ export default function FluxoCaixaPage() {
     setQuery('');
   }
 
+  async function downloadReport(type: 'cashflow' | 'summary') {
+    const params = new URLSearchParams();
+    if (from) params.set('from', from);
+    if (to) params.set('to', to);
+    const token = getToken();
+    const response = await fetch(
+      `${API_URL}/finance/reports/${type}.pdf${params.toString() ? `?${params}` : ''}`,
+      { headers: token ? { authorization: `Bearer ${token}` } : {} },
+    );
+    if (!response.ok) return;
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = type === 'cashflow' ? 'fluxo-de-caixa.pdf' : 'resumo-financeiro.pdf';
+    link.click();
+    window.URL.revokeObjectURL(url);
+  }
+
   const kpis = [
     {
       label: 'Entradas no periodo',
@@ -343,9 +377,9 @@ export default function FluxoCaixaPage() {
       </div>
 
       <div className="mx-auto max-w-7xl px-4 pt-4 sm:px-6">
-        <div className="rounded-2xl bg-white px-5 py-4" style={{ border: '1px solid #e5e7eb' }}>
+        <div className="rounded-2xl bg-white px-4 py-4 sm:px-5" style={{ border: '1px solid #e5e7eb' }}>
           <div className="flex flex-col gap-4 xl:flex-row xl:items-end">
-            <div className="grid flex-1 gap-3 md:grid-cols-2 xl:grid-cols-5">
+            <div className="grid flex-1 gap-3 grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5">
               <label className="grid gap-1.5">
                 <span className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">De</span>
                 <input
@@ -429,7 +463,7 @@ export default function FluxoCaixaPage() {
                   ))}
                 </select>
               </label>
-              <label className="grid gap-1.5 md:col-span-2 xl:col-span-3">
+              <label className="col-span-2 grid gap-1.5 sm:col-span-2 md:col-span-3 xl:col-span-3">
                 <span className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Buscar</span>
                 <span className="relative">
                   <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
@@ -443,37 +477,33 @@ export default function FluxoCaixaPage() {
               </label>
             </div>
             <div className="flex flex-wrap gap-2 xl:w-56">
-              <button
-                onClick={() => applyPreset('MONTH')}
-                className="h-9 rounded-lg bg-indigo-600 px-3 text-xs font-semibold text-white"
-              >
+              <button onClick={() => applyPreset('MONTH')} className="h-9 rounded-lg bg-indigo-600 px-3 text-xs font-semibold text-white">
                 Este mes
               </button>
-              <button
-                onClick={() => applyPreset('NEXT_30')}
-                className="h-9 rounded-lg bg-gray-100 px-3 text-xs font-semibold text-gray-600 hover:bg-gray-200"
-              >
+              <button onClick={() => applyPreset('NEXT_30')} className="h-9 rounded-lg bg-gray-100 px-3 text-xs font-semibold text-gray-600 hover:bg-gray-200">
                 Prox. 30 dias
               </button>
-              <button
-                onClick={() => applyPreset('ALL')}
-                className="h-9 rounded-lg bg-gray-100 px-3 text-xs font-semibold text-gray-600 hover:bg-gray-200"
-              >
+              <button onClick={() => applyPreset('ALL')} className="h-9 rounded-lg bg-gray-100 px-3 text-xs font-semibold text-gray-600 hover:bg-gray-200">
                 Tudo
               </button>
-              <button
-                onClick={clearAdvancedFilters}
-                className="h-9 rounded-lg bg-gray-100 px-3 text-xs font-semibold text-gray-600 hover:bg-gray-200"
-              >
+              <button onClick={clearAdvancedFilters} className="h-9 rounded-lg bg-gray-100 px-3 text-xs font-semibold text-gray-600 hover:bg-gray-200">
                 Limpar filtros
               </button>
+              <div className="flex w-full gap-2 sm:w-auto">
+                <button onClick={() => void downloadReport('cashflow')} className="inline-flex flex-1 sm:flex-none h-9 items-center justify-center gap-1.5 rounded-lg bg-gray-900 px-3 text-xs font-semibold text-white hover:bg-gray-800">
+                  <Download className="h-3.5 w-3.5" /> PDF
+                </button>
+                <button onClick={() => void downloadReport('summary')} className="inline-flex flex-1 sm:flex-none h-9 items-center justify-center gap-1.5 rounded-lg bg-gray-900 px-3 text-xs font-semibold text-white hover:bg-gray-800">
+                  <Download className="h-3.5 w-3.5" /> Resumo
+                </button>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
       <div className="mx-auto max-w-7xl space-y-4 px-4 pb-4 pt-4 sm:px-6 sm:pb-6">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 xl:grid-cols-5">
           {kpis.map((kpi) => (
             <div key={kpi.label} className={`rounded-2xl ${kpi.bg} p-4`} style={{ border: '1px solid #e5e7eb' }}>
               <div className="mb-2 flex items-start justify-between">
@@ -485,6 +515,41 @@ export default function FluxoCaixaPage() {
             </div>
           ))}
         </div>
+
+        {projection && (
+          <div className="grid gap-4 lg:grid-cols-[1fr_280px]">
+            <div className="rounded-2xl bg-white p-4" style={{ border: '1px solid #e5e7eb' }}>
+              <div className="mb-3 flex items-center justify-between">
+                <h2 className="text-sm font-bold text-gray-900">Projecao 90 dias</h2>
+                <span className="text-xs font-medium text-gray-400">Saldo acumulado</span>
+              </div>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={projection.days}>
+                    <XAxis dataKey="date" tick={{ fontSize: 10 }} interval="preserveStartEnd" tickFormatter={(v: string) => v.slice(5)} />
+                    <YAxis tickFormatter={(value) => `${Number(value) / 1000}k`} tick={{ fontSize: 10 }} width={36} />
+                    <Tooltip formatter={(value) => brl(Number(value))} />
+                    <Line type="monotone" dataKey="accumulatedCents" stroke="#2563eb" strokeWidth={2} dot={false} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+            <div
+              className={`rounded-2xl p-4 ${projection.alert ? 'bg-red-50' : 'bg-emerald-50'}`}
+              style={{ border: '1px solid #e5e7eb' }}
+            >
+              <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Alerta de saldo</p>
+              <p className={`mt-2 text-lg font-bold ${projection.alert ? 'text-red-600' : 'text-emerald-700'}`}>
+                {projection.alert ? 'Saldo negativo previsto' : 'Sem saldo negativo'}
+              </p>
+              {projection.alert && (
+                <p className="mt-2 text-sm text-red-600">
+                  {projection.alertDate} | {brl(projection.alertAmountCents)}
+                </p>
+              )}
+            </div>
+          </div>
+        )}
 
         <div className="space-y-2 sm:hidden">
           {rows.length === 0 && (

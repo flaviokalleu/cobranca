@@ -1,4 +1,4 @@
-import { IsDateString, IsIn, IsOptional, IsString, Length } from 'class-validator';
+import { IsDateString, IsEmail, IsIn, IsOptional, IsString, Length } from 'class-validator';
 
 export class UpdateNotificationDto {
   @IsOptional()
@@ -18,6 +18,10 @@ export class UpdateNotificationDto {
   @IsOptional()
   @IsIn(['UNREAD', 'READ', 'QUEUED', 'SENT', 'FAILED'])
   status?: string;
+
+  @IsOptional()
+  @IsEmail()
+  recipientEmail?: string | null;
 
   @IsOptional()
   @IsString()

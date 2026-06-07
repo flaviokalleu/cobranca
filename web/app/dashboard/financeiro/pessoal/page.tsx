@@ -192,10 +192,10 @@ export default function FinancasPessoaisPage() {
               <h2 className="mb-4 text-sm font-bold text-gray-900">Gastos por categoria</h2>
               <ResponsiveContainer width="100%" height={220}>
                 <PieChart>
-                  <Pie data={pieData.map(c => ({ name: c.category, value: c.amountCents / 100 }))} cx="50%" cy="50%" outerRadius={80} dataKey="value" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={false}>
+                  <Pie data={pieData.map(c => ({ name: c.category, value: c.amountCents / 100 }))} cx="50%" cy="50%" outerRadius={80} dataKey="value" label={({ name, percent }) => `${name} ${(((percent ?? 0) * 100)).toFixed(0)}%`} labelLine={false}>
                     {pieData.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
                   </Pie>
-                  <Tooltip formatter={(v: number) => brl(v * 100)} />
+                  <Tooltip formatter={(v) => brl(Number(v ?? 0) * 100)} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
@@ -208,7 +208,7 @@ export default function FinancasPessoaisPage() {
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                   <XAxis dataKey="name" tick={{ fontSize: 11 }} />
                   <YAxis tick={{ fontSize: 11 }} tickFormatter={(v: number) => `R$${v}`} />
-                  <Tooltip formatter={(v: number) => [`R$ ${v.toFixed(2)}`, '']} />
+                  <Tooltip formatter={(v) => [`R$ ${Number(v ?? 0).toFixed(2)}`, '']} />
                   <Legend wrapperStyle={{ fontSize: 11 }} />
                   <Bar dataKey="receita" name="Receita" fill="#22c55e" radius={[4,4,0,0]} />
                   <Bar dataKey="gasto" name="Gasto" fill="#ef4444" radius={[4,4,0,0]} />

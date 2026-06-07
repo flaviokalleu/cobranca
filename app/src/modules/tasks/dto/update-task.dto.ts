@@ -1,4 +1,5 @@
-import { IsBoolean, IsDateString, IsOptional, IsString, Length } from 'class-validator';
+import { IsBoolean, IsDateString, IsInt, IsOptional, IsString, Length, Min } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class UpdateTaskDto {
   @IsOptional()
@@ -21,6 +22,24 @@ export class UpdateTaskDto {
   @IsOptional()
   @IsString()
   assignee?: string;
+
+  @IsOptional()
+  @IsString()
+  assigneeId?: string;
+
+  @IsOptional()
+  @IsString()
+  recurrence?: string;
+
+  @IsOptional()
+  @IsDateString()
+  nextOccurrenceAt?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  estimatedMinutes?: number;
 
   @IsOptional()
   @IsBoolean()

@@ -1,10 +1,13 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import { SuppliersService } from './suppliers.service';
 import { CreateSupplierDto } from './dto/create-supplier.dto';
 import { UpdateSupplierDto } from './dto/update-supplier.dto';
 import { Tenant } from '../../common/tenant/tenant.decorator';
 import { Roles } from '../../auth/decorators/roles.decorator';
+import { PolicyResource } from '../../auth/decorators/policy.decorator';
+import { PaginationDto } from '../../common/dto/pagination.dto';
 
+@PolicyResource('Supplier')
 @Controller('suppliers')
 export class SuppliersController {
   constructor(private readonly suppliers: SuppliersService) {}
@@ -17,8 +20,8 @@ export class SuppliersController {
 
   @Roles('ADMIN', 'FINANCE', 'OPERATIONS', 'AGENT')
   @Get()
-  list(@Tenant() tenantId: string) {
-    return this.suppliers.list(tenantId);
+  list(@Tenant() tenantId: string, @Query() query: PaginationDto) {
+    return this.suppliers.list(tenantId, query);
   }
 
   @Roles('ADMIN', 'FINANCE', 'OPERATIONS', 'AGENT')

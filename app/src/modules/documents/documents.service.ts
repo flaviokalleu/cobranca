@@ -6,6 +6,11 @@ import { CreateCustomerDocumentDto } from './dto/create-customer-document.dto';
 import { UpdateCustomerDocumentStatusDto } from './dto/update-customer-document-status.dto';
 import { UpdateDocumentRequirementDto } from './dto/update-document-requirement.dto';
 import { UpdateCustomerDocumentDto } from './dto/update-customer-document.dto';
+import {
+  paginated,
+  paginationArgs,
+  PaginationDto,
+} from '../../common/dto/pagination.dto';
 
 @Injectable()
 export class DocumentsService {
@@ -35,11 +40,32 @@ export class DocumentsService {
     return requirement;
   }
 
-  listRequirements(tenantId: string) {
-    return this.prisma.documentRequirement.findMany({
-      where: { tenantId, active: true },
-      orderBy: [{ category: 'asc' }, { name: 'asc' }],
-    });
+  async listRequirements(tenantId: string, query: PaginationDto) {
+    const { skip, take } = paginationArgs(query);
+    const search = query.search?.trim();
+    const where = {
+      tenantId,
+      active: true,
+      ...(search
+        ? {
+            OR: [
+              { name: { contains: search, mode: 'insensitive' as const } },
+              { category: { contains: search, mode: 'insensitive' as const } },
+              { description: { contains: search, mode: 'insensitive' as const } },
+            ],
+          }
+        : {}),
+    };
+    const [data, total] = await this.prisma.$transaction([
+      this.prisma.documentRequirement.findMany({
+        where,
+        orderBy: [{ category: 'asc' }, { name: 'asc' }],
+        skip,
+        take,
+      }),
+      this.prisma.documentRequirement.count({ where }),
+    ]);
+    return paginated(data, total, query);
   }
 
   async updateRequirement(
@@ -93,14 +119,34 @@ export class DocumentsService {
     return { ok: true };
   }
 
-  async listCustomerDocuments(tenantId: string, customerId: string) {
+  async listCustomerDocuments(tenantId: string, customerId: string, query: PaginationDto) {
     await this.ensureCustomer(tenantId, customerId);
     await this.ensureChecklist(tenantId, customerId);
-
-    return this.prisma.customerDocument.findMany({
-      where: { tenantId, customerId },
-      orderBy: [{ status: 'asc' }, { name: 'asc' }],
-    });
+    const { skip, take } = paginationArgs(query);
+    const search = query.search?.trim();
+    const where = {
+      tenantId,
+      customerId,
+      ...(search
+        ? {
+            OR: [
+              { name: { contains: search, mode: 'insensitive' as const } },
+              { status: { contains: search, mode: 'insensitive' as const } },
+              { notes: { contains: search, mode: 'insensitive' as const } },
+            ],
+          }
+        : {}),
+    };
+    const [data, total] = await this.prisma.$transaction([
+      this.prisma.customerDocument.findMany({
+        where,
+        orderBy: [{ status: 'asc' }, { name: 'asc' }],
+        skip,
+        take,
+      }),
+      this.prisma.customerDocument.count({ where }),
+    ]);
+    return paginated(data, total, query);
   }
 
   async createCustomerDocument(

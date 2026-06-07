@@ -4,10 +4,18 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   connectWhatsapp,
   getWhatsappLogs,
+  getWhatsappMetrics,
+  getWhatsappMessages,
+  getWhatsappSettings,
   getWhatsappStatus,
   logoutWhatsapp,
   restartWhatsapp,
+  sendWhatsappTestMessage,
+  updateWhatsappSettings,
   type WhatsappConnectionLog,
+  type WhatsappMetrics,
+  type WhatsappMessageLog,
+  type WhatsappSettings,
   type WhatsappStatus,
   whatsappEventsUrl,
 } from '@/services/whatsappAdminApi';
@@ -20,15 +28,36 @@ const initialStatus: WhatsappStatus = {
 export function useWhatsappConnection() {
   const [status, setStatus] = useState<WhatsappStatus>(initialStatus);
   const [logs, setLogs] = useState<WhatsappConnectionLog[]>([]);
+  const [messages, setMessages] = useState<WhatsappMessageLog[]>([]);
+  const [metrics, setMetrics] = useState<WhatsappMetrics>({
+    errorCount: 0,
+    receiptsProcessed: 0,
+    totalMessages: 0,
+    series: [],
+  });
+  const [settings, setSettings] = useState<WhatsappSettings>({
+    isActive: true,
+    welcomeMessage: null,
+    alertPhone: null,
+  });
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     try {
-      const [nextStatus, nextLogs] = await Promise.all([getWhatsappStatus(), getWhatsappLogs()]);
+      const [nextStatus, nextLogs, nextMessages, nextMetrics, nextSettings] = await Promise.all([
+        getWhatsappStatus(),
+        getWhatsappLogs(),
+        getWhatsappMessages(),
+        getWhatsappMetrics(),
+        getWhatsappSettings(),
+      ]);
       setStatus(nextStatus);
       setLogs(nextLogs);
+      setMessages(nextMessages);
+      setMetrics(nextMetrics);
+      setSettings(nextSettings);
       setError(null);
     } catch (err) {
       setError((err as Error).message);
@@ -96,6 +125,9 @@ export function useWhatsappConnection() {
     () => ({
       status,
       logs,
+      messages,
+      metrics,
+      settings,
       loading,
       actionLoading,
       error,
@@ -104,8 +136,34 @@ export function useWhatsappConnection() {
       regenerateQr: () => runAction(() => connectWhatsapp(true)),
       restart: () => runAction(restartWhatsapp),
       logout: () => runAction(logoutWhatsapp),
+      saveSettings: async (body: Partial<WhatsappSettings>) => {
+        setActionLoading(true);
+        try {
+          const next = await updateWhatsappSettings(body);
+          setSettings(next);
+          await refresh();
+        } catch (err) {
+          setError((err as Error).message);
+          throw err;
+        } finally {
+          setActionLoading(false);
+        }
+      },
+      sendTestMessage: async (body: { to: string; message: string }) => {
+        setActionLoading(true);
+        try {
+          const result = await sendWhatsappTestMessage(body);
+          await refresh();
+          return result;
+        } catch (err) {
+          setError((err as Error).message);
+          throw err;
+        } finally {
+          setActionLoading(false);
+        }
+      },
     }),
-    [actionLoading, error, loading, logs, refresh, runAction, status],
+    [actionLoading, error, loading, logs, messages, metrics, refresh, runAction, settings, status],
   );
 }
 

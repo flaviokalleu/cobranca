@@ -239,7 +239,7 @@ export default function DocumentosPage() {
         }
       />
 
-      <div className="space-y-4 p-6">
+      <div className="space-y-4 p-4 md:p-6">
         <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_160px_160px]">
           <div className="grid gap-1.5">
             <Label>Cliente</Label>

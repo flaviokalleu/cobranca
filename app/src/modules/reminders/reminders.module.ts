@@ -10,6 +10,7 @@ import { WhaileysReminderSender } from './whaileys-reminder.sender';
 import { WhatsappBotModule } from '../whatsapp-bot/whatsapp-bot.module';
 import { LedgerModule } from '../ledger/ledger.module';
 import { AuditModule } from '../../common/audit/audit.module';
+import { MailModule } from '../../common/mail/mail.module';
 
 // console (padrao) ou whaileys (WhatsApp real). Trocado por env REMINDER_SENDER.
 const SenderImpl =
@@ -18,7 +19,7 @@ const SenderImpl =
     : ConsoleReminderSender;
 
 @Module({
-  imports: [WhatsappBotModule, LedgerModule, AuditModule],
+  imports: [WhatsappBotModule, LedgerModule, AuditModule, MailModule],
   controllers: [RemindersController],
   providers: [
     ReminderProcessor,

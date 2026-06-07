@@ -5,6 +5,7 @@ import { AuditService } from '../../common/audit/audit.service';
 import { ExtractedTransactionDto } from '../financial-extractor/dto/extracted-transaction.dto';
 import { NormalizationService } from '../financial-extractor/normalization.service';
 import { FinancialEntriesRepository } from './financial-entries.repository';
+import { PaginationDto } from '../../common/dto/pagination.dto';
 
 export interface SaveWhatsappFinancialEntryInput {
   tenantId: string;
@@ -25,8 +26,8 @@ export class FinancialEntriesService {
     private readonly repository: FinancialEntriesRepository,
   ) {}
 
-  list(tenantId: string) {
-    return this.repository.listByTenant(tenantId);
+  list(tenantId: string, query: PaginationDto & { status?: string }) {
+    return this.repository.listByTenant(tenantId, query);
   }
 
   async update(tenantId: string, id: string, dto: UpdateFinancialEntryDto) {
@@ -41,6 +42,7 @@ export class FinancialEntriesService {
         ...(dto.recorrencia !== undefined && { recorrencia: dto.recorrencia }),
         ...(dto.dataTransacao !== undefined && { dataTransacao: new Date(dto.dataTransacao) }),
         ...(dto.pagadorNome !== undefined && { pagadorNome: dto.pagadorNome }),
+        ...(dto.status !== undefined && { status: dto.status }),
       },
       include: { lead: { select: { id: true, name: true, whatsapp: true } } },
     });
@@ -85,17 +87,23 @@ export class FinancialEntriesService {
     const pagadorNome = this.nullIfUnknown(input.extracted.pagador.nome);
     const pagadorDoc  = this.nullIfUnknown(input.extracted.pagador.documento);
 
-    // Upsert Lead usando nome+documento do pagador (receita) ou recebedor (gasto)
+    // Upsert Lead — busca por doc no Customer para evitar duplicata com ChargesService
     let leadId: string | null = null;
     if (pagadorNome) {
-      const existing = await this.prisma.lead.findFirst({
-        where: {
-          tenantId: input.tenantId,
-          name: pagadorNome,
-          ...(pagadorDoc ? { document: pagadorDoc } : {}),
-        },
-        select: { id: true },
-      });
+      // Se temos doc, tenta encontrar customer já existente e o lead vinculado
+      let existing = pagadorDoc
+        ? await this.prisma.lead.findFirst({
+            where: { tenantId: input.tenantId, document: pagadorDoc },
+            select: { id: true },
+          })
+        : null;
+      // Fallback: busca por nome
+      if (!existing) {
+        existing = await this.prisma.lead.findFirst({
+          where: { tenantId: input.tenantId, name: pagadorNome },
+          select: { id: true },
+        });
+      }
       if (existing) {
         const updated = await this.prisma.lead.update({
           where: { id: existing.id },

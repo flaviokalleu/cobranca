@@ -64,6 +64,7 @@ export default function NotificacoesPage() {
   const [status, setStatus] = useState('UNREAD');
   const [title, setTitle] = useState('');
   const [message, setMessage] = useState('');
+  const [recipientEmail, setRecipientEmail] = useState('');
   const [scheduledAt, setScheduledAt] = useState('');
 
   useEffect(() => {
@@ -81,6 +82,7 @@ export default function NotificacoesPage() {
     setStatus('UNREAD');
     setTitle('');
     setMessage('');
+    setRecipientEmail('');
     setScheduledAt('');
   }
 
@@ -95,6 +97,7 @@ export default function NotificacoesPage() {
     setStatus(notification.status);
     setTitle(notification.title);
     setMessage(notification.message);
+    setRecipientEmail(notification.recipientEmail ?? '');
     setScheduledAt(toLocalInput(notification.scheduledAt));
     setOpen(true);
   }
@@ -105,6 +108,7 @@ export default function NotificacoesPage() {
       channel,
       title,
       message,
+      recipientEmail: recipientEmail.trim() || null,
       status,
       scheduledAt: scheduledAt || null,
     };
@@ -115,6 +119,7 @@ export default function NotificacoesPage() {
             channel,
             title,
             message,
+            recipientEmail: recipientEmail.trim() || null,
             scheduledAt: scheduledAt || undefined,
           }),
         );
@@ -164,6 +169,11 @@ export default function NotificacoesPage() {
                 </div>
                 <p className="font-medium">{notification.title}</p>
                 <p className="text-sm text-muted-foreground">{notification.message}</p>
+                {notification.recipientEmail && (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Destino: {notification.recipientEmail}
+                  </p>
+                )}
               </div>
               <div className="flex flex-wrap justify-end gap-1">
                 <Button
@@ -254,6 +264,17 @@ export default function NotificacoesPage() {
                 className="min-h-28 rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
               />
             </div>
+            {channel === 'EMAIL' && (
+              <div className="grid gap-1.5">
+                <Label>E-mail de destino</Label>
+                <Input
+                  type="email"
+                  value={recipientEmail}
+                  onChange={(event) => setRecipientEmail(event.target.value)}
+                  placeholder="cliente@email.com"
+                />
+              </div>
+            )}
             <div className="grid gap-1.5">
               <Label>Agendamento</Label>
               <Input

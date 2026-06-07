@@ -1,5 +1,6 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import { Roles } from '../../auth/decorators/roles.decorator';
+import { PolicyResource } from '../../auth/decorators/policy.decorator';
 import { Tenant } from '../../common/tenant/tenant.decorator';
 import { DocumentsService } from './documents.service';
 import { CreateDocumentRequirementDto } from './dto/create-document-requirement.dto';
@@ -7,15 +8,17 @@ import { CreateCustomerDocumentDto } from './dto/create-customer-document.dto';
 import { UpdateCustomerDocumentStatusDto } from './dto/update-customer-document-status.dto';
 import { UpdateDocumentRequirementDto } from './dto/update-document-requirement.dto';
 import { UpdateCustomerDocumentDto } from './dto/update-customer-document.dto';
+import { PaginationDto } from '../../common/dto/pagination.dto';
 
+@PolicyResource('Document')
 @Controller('documents')
 export class DocumentsController {
   constructor(private readonly documents: DocumentsService) {}
 
   @Roles('ADMIN', 'COMMERCIAL', 'OPERATIONS', 'AGENT')
   @Get('requirements')
-  listRequirements(@Tenant() tenantId: string) {
-    return this.documents.listRequirements(tenantId);
+  listRequirements(@Tenant() tenantId: string, @Query() query: PaginationDto) {
+    return this.documents.listRequirements(tenantId, query);
   }
 
   @Roles('ADMIN', 'COMMERCIAL', 'OPERATIONS', 'AGENT')
@@ -48,8 +51,9 @@ export class DocumentsController {
   listCustomerDocuments(
     @Tenant() tenantId: string,
     @Param('customerId') customerId: string,
+    @Query() query: PaginationDto,
   ) {
-    return this.documents.listCustomerDocuments(tenantId, customerId);
+    return this.documents.listCustomerDocuments(tenantId, customerId, query);
   }
 
   @Roles('ADMIN', 'COMMERCIAL', 'OPERATIONS', 'AGENT')

@@ -8,6 +8,11 @@ import { AuditService } from '../../common/audit/audit.service';
 import { LedgerService } from '../ledger/ledger.service';
 import { CreatePayableDto } from './dto/create-payable.dto';
 import { UpdatePayableDto } from './dto/update-payable.dto';
+import {
+  paginated,
+  paginationArgs,
+  PaginationDto,
+} from '../../common/dto/pagination.dto';
 
 @Injectable()
 export class PayablesService {
@@ -52,14 +57,34 @@ export class PayablesService {
       entityId: payable.id,
       metadata: { amountCents: payable.amountCents },
     });
+    await this.syncPayableCalendar(payable);
     return payable;
   }
 
-  list(tenantId: string) {
-    return this.prisma.payable.findMany({
-      where: { tenantId },
-      orderBy: { createdAt: 'desc' },
-    });
+  async list(tenantId: string, query: PaginationDto) {
+    const { skip, take } = paginationArgs(query);
+    const search = query.search?.trim();
+    const where = {
+      tenantId,
+      ...(search
+        ? {
+            OR: [
+              { description: { contains: search, mode: 'insensitive' as const } },
+              { category: { contains: search, mode: 'insensitive' as const } },
+            ],
+          }
+        : {}),
+    };
+    const [data, total] = await this.prisma.$transaction([
+      this.prisma.payable.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take,
+      }),
+      this.prisma.payable.count({ where }),
+    ]);
+    return paginated(data, total, query);
   }
 
   async update(tenantId: string, id: string, dto: UpdatePayableDto) {
@@ -136,6 +161,7 @@ export class PayablesService {
       entityId: payable.id,
       metadata: { amountDelta },
     });
+    await this.syncPayableCalendar(updated);
     return updated;
   }
 
@@ -228,6 +254,36 @@ export class PayablesService {
       entityType: 'Payable',
       entityId: payable.id,
     });
+    await this.prisma.calendarEvent.updateMany({
+      where: { tenantId, payableId: payable.id },
+      data: { status: 'DONE' },
+    });
     return updated;
+  }
+
+  private async syncPayableCalendar(payable: {
+    id: string;
+    tenantId: string;
+    description: string;
+    dueDate: Date;
+    status: string;
+  }) {
+    await this.prisma.calendarEvent.upsert({
+      where: { id: `payable-due-${payable.id}` },
+      create: {
+        id: `payable-due-${payable.id}`,
+        tenantId: payable.tenantId,
+        title: `Vencimento a pagar: ${payable.description}`,
+        type: 'DUE_DATE',
+        startsAt: payable.dueDate,
+        status: payable.status === 'PAID' ? 'DONE' : 'SCHEDULED',
+        payableId: payable.id,
+      },
+      update: {
+        title: `Vencimento a pagar: ${payable.description}`,
+        startsAt: payable.dueDate,
+        status: payable.status === 'PAID' ? 'DONE' : 'SCHEDULED',
+      },
+    });
   }
 }

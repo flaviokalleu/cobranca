@@ -1,10 +1,13 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import { ProductsService } from './products.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { Tenant } from '../../common/tenant/tenant.decorator';
 import { Roles } from '../../auth/decorators/roles.decorator';
+import { PolicyResource } from '../../auth/decorators/policy.decorator';
+import { PaginationDto } from '../../common/dto/pagination.dto';
 
+@PolicyResource('Product')
 @Controller('products')
 export class ProductsController {
   constructor(private readonly products: ProductsService) {}
@@ -17,8 +20,8 @@ export class ProductsController {
 
   @Roles('ADMIN', 'COMMERCIAL', 'OPERATIONS', 'AGENT')
   @Get()
-  list(@Tenant() tenantId: string) {
-    return this.products.list(tenantId);
+  list(@Tenant() tenantId: string, @Query() query: PaginationDto) {
+    return this.products.list(tenantId, query);
   }
 
   @Roles('ADMIN', 'OPERATIONS', 'AGENT')

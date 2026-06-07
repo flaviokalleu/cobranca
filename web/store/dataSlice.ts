@@ -1,5 +1,11 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { api } from '@/lib/api';
+import {
+  asArray,
+  paginationMeta,
+  paginationQuery,
+  type PaginationParams,
+} from '@/lib/pagination';
 
 export interface Customer {
   id: string;
@@ -21,7 +27,14 @@ export interface Charge {
   status: string;
   category?: string | null;
   recurrence?: string | null;
+  nextDueAt?: string | null;
+  publicToken?: string | null;
+  interestMode?: string | null;
+  interestRateBps?: number | null;
+  interestGraceDays?: number | null;
   paidAt?: string | null;
+  paidAmountCents?: number | null;
+  createdAt?: string;
   customer?: { id: string; name: string } | null;
 }
 export interface User {
@@ -42,35 +55,69 @@ export interface Settings {
   pixKey: string;
   merchantName: string;
   merchantCity: string;
+  companyName?: string | null;
+  companyCnpj?: string | null;
+  companyPhone?: string | null;
+  companyEmail?: string | null;
+  companyAddress?: string | null;
+  companyCity?: string | null;
+  companyState?: string | null;
+  logoUrl?: string | null;
+  reminderDaysBefore?: number;
+  defaultDueDays?: number;
+  notifyByEmail?: boolean;
+  notifyByWhatsapp?: boolean;
+  timezone?: string;
+  nfeEnabled?: boolean;
+  nfeCnpj?: string | null;
+  nfeRazaoSocial?: string | null;
+  nfeCodServico?: string | null;
+  nfeCodMunicipio?: string | null;
+  theme?: string;
 }
 
 interface DataState {
   customers: Customer[];
   charges: Charge[];
+  upcomingCharges: Charge[];
   users: User[];
   audit: AuditEntry[];
   settings: Settings | null;
   pix: { id: string; code: string } | null;
   error: string | null;
+  customersPagination: { total: number; page: number; totalPages: number };
+  chargesPagination: { total: number; page: number; totalPages: number };
 }
 
 const initialState: DataState = {
   customers: [],
   charges: [],
+  upcomingCharges: [],
   users: [],
   audit: [],
   settings: null,
   pix: null,
   error: null,
+  customersPagination: { total: 0, page: 1, totalPages: 1 },
+  chargesPagination: { total: 0, page: 1, totalPages: 1 },
 };
 
-const asArray = <T>(data: unknown): T[] => (Array.isArray(data) ? (data as T[]) : []);
-
-export const fetchCustomers = createAsyncThunk('data/fetchCustomers', async () =>
-  asArray<Customer>((await api('GET', '/customers')).data),
+export const fetchCustomers = createAsyncThunk(
+  'data/fetchCustomers',
+  async (params?: PaginationParams) => {
+    const data = (await api('GET', `/customers${paginationQuery(params)}`)).data;
+    return { items: asArray<Customer>(data), meta: paginationMeta(data) };
+  },
 );
-export const fetchCharges = createAsyncThunk('data/fetchCharges', async () =>
-  asArray<Charge>((await api('GET', '/charges')).data),
+export const fetchCharges = createAsyncThunk(
+  'data/fetchCharges',
+  async (params?: PaginationParams) => {
+    const data = (await api('GET', `/charges${paginationQuery(params)}`)).data;
+    return { items: asArray<Charge>(data), meta: paginationMeta(data) };
+  },
+);
+export const fetchUpcomingCharges = createAsyncThunk('data/fetchUpcomingCharges', async () =>
+  asArray<Charge>((await api('GET', '/charges/upcoming')).data),
 );
 export const fetchUsers = createAsyncThunk('data/fetchUsers', async () =>
   asArray<User>((await api('GET', '/users')).data),
@@ -151,12 +198,16 @@ export const createCharge = createAsyncThunk(
       dueDate: string;
       category?: string;
       recurrence?: string;
+      nextDueAt?: string;
+      interestMode?: string;
+      interestRateBps?: number;
+      interestGraceDays?: number;
     },
     { dispatch, rejectWithValue },
   ) => {
     const { status } = await api('POST', '/charges', body);
     if (status >= 300) return rejectWithValue('Erro ao criar cobrança (escolha cliente e data válida).');
-    await dispatch(fetchCharges());
+    await Promise.all([dispatch(fetchCharges()), dispatch(fetchUpcomingCharges())]);
     return true;
   },
 );
@@ -167,7 +218,7 @@ export const payCharge = createAsyncThunk(
     const { status } = await api('POST', `/charges/${id}/pay`);
     if (status === 403) return rejectWithValue('Apenas ADMIN pode dar baixa.');
     if (status >= 300) return rejectWithValue('Erro ao registrar pagamento.');
-    await dispatch(fetchCharges());
+    await Promise.all([dispatch(fetchCharges()), dispatch(fetchUpcomingCharges())]);
     return true;
   },
 );
@@ -181,13 +232,17 @@ export const updateCharge = createAsyncThunk(
       dueDate?: string;
       category?: string | null;
       recurrence?: string;
+      nextDueAt?: string | null;
+      interestMode?: string | null;
+      interestRateBps?: number | null;
+      interestGraceDays?: number | null;
     },
     { dispatch, rejectWithValue },
   ) => {
     const { id, ...data } = body;
     const { status } = await api('PATCH', `/charges/${id}`, data);
     if (status >= 300) return rejectWithValue('Erro ao editar cobrança.');
-    await dispatch(fetchCharges());
+    await Promise.all([dispatch(fetchCharges()), dispatch(fetchUpcomingCharges())]);
     return true;
   },
 );
@@ -207,7 +262,7 @@ export const deleteCharge = createAsyncThunk(
     const { status } = await api('DELETE', `/charges/${id}`);
     if (status === 403) return rejectWithValue('Apenas ADMIN/FINANCE pode excluir.');
     if (status >= 300) return rejectWithValue('Erro ao excluir cobrança.');
-    await dispatch(fetchCharges());
+    await Promise.all([dispatch(fetchCharges()), dispatch(fetchUpcomingCharges())]);
     return true;
   },
 );
@@ -251,7 +306,7 @@ export const deleteUser = createAsyncThunk(
 
 export const saveSettings = createAsyncThunk(
   'data/saveSettings',
-  async (body: Settings, { rejectWithValue }) => {
+  async (body: Partial<Settings>, { rejectWithValue }) => {
     const { status, data } = await api<Settings>('PUT', '/settings', body);
     if (status >= 300) return rejectWithValue('Erro ao salvar configurações.');
     return data;
@@ -277,10 +332,15 @@ const dataSlice = createSlice({
   extraReducers: (builder) => {
     builder
       .addCase(fetchCustomers.fulfilled, (s, a) => {
-        s.customers = a.payload;
+        s.customers = a.payload.items;
+        if (a.payload.meta) s.customersPagination = a.payload.meta;
       })
       .addCase(fetchCharges.fulfilled, (s, a) => {
-        s.charges = a.payload;
+        s.charges = a.payload.items;
+        if (a.payload.meta) s.chargesPagination = a.payload.meta;
+      })
+      .addCase(fetchUpcomingCharges.fulfilled, (s, a) => {
+        s.upcomingCharges = a.payload;
       })
       .addCase(fetchUsers.fulfilled, (s, a) => {
         s.users = a.payload;

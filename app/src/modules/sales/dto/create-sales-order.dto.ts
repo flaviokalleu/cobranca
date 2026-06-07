@@ -2,7 +2,9 @@ import { Type } from 'class-transformer';
 import {
   ArrayMinSize,
   IsArray,
+  IsDateString,
   IsInt,
+  IsOptional,
   IsString,
   Min,
   ValidateNested,
@@ -20,6 +22,10 @@ export class SalesItemDto {
 export class CreateSalesOrderDto {
   @IsString()
   customerId!: string;
+
+  @IsOptional()
+  @IsDateString()
+  deliveryAt?: string;
 
   @IsArray()
   @ArrayMinSize(1)

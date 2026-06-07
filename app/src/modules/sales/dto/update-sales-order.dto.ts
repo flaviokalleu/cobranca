@@ -2,6 +2,7 @@ import { Type } from 'class-transformer';
 import {
   ArrayMinSize,
   IsArray,
+  IsDateString,
   IsInt,
   IsOptional,
   IsString,
@@ -22,6 +23,10 @@ export class UpdateSalesOrderDto {
   @IsOptional()
   @IsString()
   customerId?: string;
+
+  @IsOptional()
+  @IsDateString()
+  deliveryAt?: string;
 
   @IsOptional()
   @IsArray()

@@ -4,9 +4,11 @@ import { UpdateSettingsDto } from './dto/update-settings.dto';
 import { AuditService } from '../audit/audit.service';
 import { Tenant } from '../tenant/tenant.decorator';
 import { Roles } from '../../auth/decorators/roles.decorator';
+import { PolicyResource } from '../../auth/decorators/policy.decorator';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import { JwtUser } from '../../auth/jwt-user.interface';
 
+@PolicyResource('Settings')
 @Controller('settings')
 export class SettingsController {
   constructor(

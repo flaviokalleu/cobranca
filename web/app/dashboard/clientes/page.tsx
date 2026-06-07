@@ -23,6 +23,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { DataPagination } from '@/components/ui/data-pagination';
 import { Label } from '@/components/ui/label';
 import {
   Select,
@@ -57,7 +58,8 @@ const stageLabel = (stage?: string | null) =>
 
 export default function ClientesPage() {
   const dispatch = useAppDispatch();
-  const { customers } = useAppSelector((state) => state.data);
+  const { customers, customersPagination } = useAppSelector((state) => state.data);
+  const [page, setPage] = useState(1);
 
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
@@ -74,9 +76,9 @@ export default function ClientesPage() {
   useEffect(() => {
     // sincroniza leads sem customer e então recarrega a lista
     api('POST', '/leads/sync-customers')
-      .then(() => dispatch(fetchCustomers()))
-      .catch(() => dispatch(fetchCustomers()));
-  }, [dispatch]);
+      .then(() => dispatch(fetchCustomers({ page })))
+      .catch(() => dispatch(fetchCustomers({ page })));
+  }, [dispatch, page]);
 
   function reset() {
     setName('');
@@ -159,8 +161,43 @@ export default function ClientesPage() {
         }
       />
 
-      <div className="p-6">
-        <Card>
+      <div className="p-4 md:p-6">
+        {/* Mobile: cards */}
+        <div className="space-y-3 md:hidden">
+          {customers.map((customer) => (
+            <div key={customer.id} className="rounded-xl border bg-white p-4 shadow-sm">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="truncate font-semibold text-gray-900">{customer.name}</p>
+                  {(customer.whatsapp ?? customer.phone) && (
+                    <p className="mt-0.5 text-sm text-gray-500">{customer.whatsapp ?? customer.phone}</p>
+                  )}
+                  {customer.city && <p className="text-xs text-gray-400">{customer.city}</p>}
+                </div>
+                <Badge variant="outline" className="shrink-0 text-xs">{stageLabel(customer.stage)}</Badge>
+              </div>
+              {customer.document && (
+                <p className="mt-2 text-xs text-gray-400">Doc: {customer.document}</p>
+              )}
+              <div className="mt-3 flex gap-2 border-t pt-3">
+                <Button variant="outline" size="sm" className="flex-1" onClick={() => openEdit(customer)}>
+                  <Pencil className="mr-1 h-3.5 w-3.5" /> Editar
+                </Button>
+                <Button variant="outline" size="sm" className="flex-1 text-destructive hover:text-destructive" onClick={() => void onDelete(customer)}>
+                  <Trash2 className="mr-1 h-3.5 w-3.5" /> Excluir
+                </Button>
+              </div>
+            </div>
+          ))}
+          {customers.length === 0 && (
+            <div className="rounded-xl border bg-white py-12 text-center text-sm text-muted-foreground">
+              Nenhum cliente ainda. Clique em "Novo cliente".
+            </div>
+          )}
+        </div>
+
+        {/* Desktop: tabela */}
+        <Card className="hidden md:block">
           <Table>
             <TableHeader>
               <TableRow>
@@ -184,21 +221,10 @@ export default function ClientesPage() {
                   <TableCell>{customer.city ?? '-'}</TableCell>
                   <TableCell>
                     <div className="flex justify-end gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        title="Editar"
-                        onClick={() => openEdit(customer)}
-                      >
+                      <Button variant="ghost" size="icon" title="Editar" onClick={() => openEdit(customer)}>
                         <Pencil className="h-4 w-4" />
                       </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        title="Excluir"
-                        className="text-destructive"
-                        onClick={() => void onDelete(customer)}
-                      >
+                      <Button variant="ghost" size="icon" title="Excluir" className="text-destructive" onClick={() => void onDelete(customer)}>
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
@@ -215,6 +241,12 @@ export default function ClientesPage() {
             </TableBody>
           </Table>
         </Card>
+        <DataPagination
+          page={customersPagination.page}
+          total={customersPagination.total}
+          totalPages={customersPagination.totalPages}
+          onPageChange={setPage}
+        />
       </div>
 
       <Dialog open={open} onOpenChange={setOpen}>

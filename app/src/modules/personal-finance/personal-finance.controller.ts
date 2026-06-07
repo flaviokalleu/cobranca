@@ -2,6 +2,7 @@ import { BadRequestException, Body, Controller, Delete, Get, Param, Patch, Post,
 import { FileInterceptor } from '@nestjs/platform-express';
 import type { Response } from 'express';
 import { Roles } from '../../auth/decorators/roles.decorator';
+import { PolicyAction, PolicyResource } from '../../auth/decorators/policy.decorator';
 import { Tenant } from '../../common/tenant/tenant.decorator';
 import { PersonalFinanceService } from './personal-finance.service';
 import { CreatePersonalFinanceAccountDto } from './dto/create-personal-finance-account.dto';
@@ -17,6 +18,7 @@ import { UpdatePersonalTransactionDto } from './dto/update-personal-transaction.
 import { UpdateSpendingLimitDto } from './dto/update-spending-limit.dto';
 import { UpdateInvestmentGoalDto } from './dto/update-investment-goal.dto';
 
+@PolicyResource('PersonalFinance')
 @Controller('personal-finance')
 export class PersonalFinanceController {
   constructor(private readonly personalFinance: PersonalFinanceService) {}
@@ -28,6 +30,7 @@ export class PersonalFinanceController {
   }
 
   @Roles('ADMIN', 'FINANCE', 'USER', 'AGENT')
+  @PolicyAction('export')
   @Get('export')
   async exportCsv(@Tenant() tenantId: string, @Res() res: Response) {
     const csv = await this.personalFinance.exportCsv(tenantId);
@@ -43,11 +46,12 @@ export class PersonalFinanceController {
   }
 
   @Roles('ADMIN', 'FINANCE', 'USER', 'AGENT')
+  @PolicyAction('import')
   @Post('import-ofx')
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 5 * 1024 * 1024 } }))
   importOFX(
     @Tenant() tenantId: string,
-    @UploadedFile() file: Express.Multer.File,
+    @UploadedFile() file: { buffer: Buffer; originalname: string; mimetype: string },
   ) {
     if (!file) throw new BadRequestException('Arquivo OFX nao enviado.');
     const content = file.buffer.toString('utf-8');
@@ -139,6 +143,7 @@ export class PersonalFinanceController {
   }
 
   @Roles('ADMIN', 'FINANCE', 'USER', 'AGENT')
+  @PolicyAction('create')
   @Post('ingest')
   ingest(@Tenant() tenantId: string, @Body() dto: IngestFinanceMessageDto) {
     return this.personalFinance.ingestMessage(tenantId, dto);
@@ -201,6 +206,7 @@ export class PersonalFinanceController {
   }
 
   @Roles('ADMIN', 'FINANCE', 'USER', 'AGENT')
+  @PolicyAction('update')
   @Post('goals/:id/contribute')
   contributeGoal(
     @Tenant() tenantId: string,

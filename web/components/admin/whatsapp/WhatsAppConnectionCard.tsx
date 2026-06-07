@@ -8,6 +8,14 @@ function fmt(value?: string | null) {
   return new Date(value).toLocaleString('pt-BR');
 }
 
+function uptime(seconds?: number | null) {
+  if (!seconds) return 'Nao conectado';
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  if (hours > 0) return `${hours}h ${minutes}min`;
+  return `${minutes}min`;
+}
+
 export function WhatsAppConnectionCard({ status }: { status: WhatsappStatus }) {
   const cards = [
     {
@@ -15,11 +23,13 @@ export function WhatsAppConnectionCard({ status }: { status: WhatsappStatus }) {
       value: <WhatsAppStatusBadge status={status.status} />,
       icon: Activity,
     },
+    { label: 'Robo ativo', value: status.isActive === false ? 'Inativo' : 'Ativo', icon: Bot },
     { label: 'Numero conectado', value: status.phone ?? 'Nao conectado', icon: Phone },
     { label: 'Nome do perfil', value: status.profileName ?? 'Nao identificado', icon: Bot },
     { label: 'Ultima atualizacao', value: fmt(status.lastUpdate), icon: Clock },
-    { label: 'Mensagens recebidas', value: 'Metricas em coleta', icon: MessageSquare },
-    { label: 'Comprovantes processados', value: 'Metricas em coleta', icon: Activity },
+    { label: 'Uptime', value: uptime(status.connectedUptimeSeconds), icon: Clock },
+    { label: 'Mensagens hoje', value: status.messagesProcessedToday ?? 0, icon: MessageSquare },
+    { label: 'Comprovantes hoje', value: status.receiptsProcessedToday ?? 0, icon: Activity },
     { label: 'Erro recente', value: status.lastError ?? 'Nenhum erro recente', icon: AlertTriangle },
   ];
 

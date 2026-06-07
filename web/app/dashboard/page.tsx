@@ -3,10 +3,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
-import { fetchPayables } from '@/store/financeSlice';
+import { fetchDashboardKpis, fetchPayables } from '@/store/financeSlice';
 import { fetchLeads } from '@/store/crmSlice';
 import { fetchTasks } from '@/store/tasksSlice';
 import { fetchFinancialEntries } from '@/store/financialEntriesSlice';
+import { api } from '@/lib/api';
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
   CartesianGrid, BarChart, Bar, Cell, PieChart, Pie, Legend,
@@ -56,6 +57,7 @@ const brl = (cents: number) =>
   (cents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const fmtDate = (iso: string) =>
   new Date(iso).toLocaleDateString('pt-BR', { timeZone: 'UTC' });
+const isoDate = (date: Date) => date.toISOString().slice(0, 10);
 const inRange = (iso: string, from: Date, to: Date) => {
   const d = new Date(iso);
   return d >= from && d <= to;
@@ -160,26 +162,43 @@ type RecentRow =
   | { kind: 'charge'; id: string; nome: string; descricao: string; tipo: string; data: string; valorCents: number; status: string; dueDate: string }
   | { kind: 'wa'; id: string; nome: string; descricao: string; tipo: string; data: string; valorCents: number; confianca: string };
 
+interface AlertsSummary {
+  overdueCharges: { count: number; totalCents: number };
+  overduePayables: { count: number; totalCents: number };
+  lowStock: { count: number };
+  overdueTasks: { count: number };
+  pendingFinancialEntries: { count: number };
+  chargingDueToday: { count: number; totalCents: number };
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default function PainelPage() {
   const dispatch = useAppDispatch();
   const { customers, charges } = useAppSelector((s) => s.data);
-  const { payables } = useAppSelector((s) => s.finance);
+  const { payables, dashboardKpis } = useAppSelector((s) => s.finance);
   const { leads } = useAppSelector((s) => s.crm);
   const { tasks } = useAppSelector((s) => s.tasks);
   const { entries: financialEntries } = useAppSelector((s) => s.financialEntries);
 
   const [period, setPeriod] = useState<Period>('30d');
+  const [alerts, setAlerts] = useState<AlertsSummary | null>(null);
 
   useEffect(() => {
     void dispatch(fetchPayables());
     void dispatch(fetchLeads());
     void dispatch(fetchTasks());
     void dispatch(fetchFinancialEntries());
+    void api<AlertsSummary>('GET', '/alerts/summary').then((res) => {
+      if (res.status < 400) setAlerts(res.data);
+    });
   }, [dispatch]);
 
   // ── Filtros de data ────────────────────────────────────────────────────────
   const { from, to } = useMemo(() => periodRange(period), [period]);
+
+  useEffect(() => {
+    void dispatch(fetchDashboardKpis({ from: isoDate(from), to: isoDate(to) }));
+  }, [dispatch, from, to]);
 
   const chargesFiltered = useMemo(
     () => charges.filter(c => inRange(c.dueDate, from, to)),
@@ -195,7 +214,7 @@ export default function PainelPage() {
   );
 
   // ── KPIs ──────────────────────────────────────────────────────────────────
-  const kpis = useMemo(() => {
+  const localKpis = useMemo(() => {
     const pending = chargesFiltered.filter(c => c.status === 'PENDING');
     const aReceber = pending.reduce((s, c) => s + c.amountCents, 0);
     const recebidoManual = chargesFiltered.filter(c => c.status === 'PAID').reduce((s, c) => s + c.amountCents, 0);
@@ -226,8 +245,38 @@ export default function PainelPage() {
     return { aReceber, recebido, vencidas, aPagar, pct, tarefas, saldo, waReceitas, recebidoManual, despesasPagas, waGastos, dso, inadimplencia, total };
   }, [chargesFiltered, payablesFiltered, entriesFiltered, tasks]);
 
+  const kpis = useMemo(() => {
+    if (!dashboardKpis) return localKpis;
+    const total = dashboardKpis.pendingReceivablesCents + dashboardKpis.totalIncomeCents;
+    return {
+      ...localKpis,
+      aReceber: dashboardKpis.pendingReceivablesCents,
+      recebido: dashboardKpis.totalIncomeCents,
+      vencidas: dashboardKpis.overdueCharges,
+      aPagar: dashboardKpis.pendingPayablesCents,
+      pct: dashboardKpis.collectionRate,
+      tarefas: dashboardKpis.openTasks,
+      saldo: dashboardKpis.balanceCents,
+      waReceitas: dashboardKpis.whatsappIncomeCents,
+      recebidoManual: dashboardKpis.receivedCents,
+      despesasPagas: dashboardKpis.paidExpensesCents,
+      waGastos: dashboardKpis.whatsappExpenseCents,
+      dso: dashboardKpis.dsoDays,
+      inadimplencia: dashboardKpis.defaultRate,
+      total,
+    };
+  }, [dashboardKpis, localKpis]);
+
   // ── Chart: área (tendência mensal ou diária) ───────────────────────────────
   const chartData = useMemo(() => {
+    if (dashboardKpis?.chart?.length) {
+      return dashboardKpis.chart.map((point) => ({
+        mes: point.label,
+        receita: point.incomeCents / 100,
+        despesa: point.expenseCents / 100,
+      }));
+    }
+
     const useDays = period === 'hoje' || period === '7d' || period === '30d';
     if (useDays) {
       const days = period === 'hoje' ? 1 : period === '7d' ? 7 : 30;
@@ -293,7 +342,7 @@ export default function PainelPage() {
       else if (e.tipo === 'gasto') pt.despesa += e.valorCents / 100;
     }
     return pts;
-  }, [charges, payables, financialEntries, period]);
+  }, [charges, dashboardKpis, payables, financialEntries, period]);
 
   // ── Donut: composição de receita ───────────────────────────────────────────
   const donutData = useMemo(() => {
@@ -505,6 +554,25 @@ export default function PainelPage() {
             icon={MessageCircle} iconBg="#dcfce7" iconColor="#16a34a" />
         </div>
 
+        {alerts && (
+          <div className="grid gap-3 rounded-2xl bg-white p-4 sm:grid-cols-3 lg:grid-cols-6" style={{ border: '1px solid #e5e7eb' }}>
+            {[
+              { label: 'Cobrancas vencidas', value: alerts.overdueCharges.count, sub: brl(alerts.overdueCharges.totalCents) },
+              { label: 'Contas vencidas', value: alerts.overduePayables.count, sub: brl(alerts.overduePayables.totalCents) },
+              { label: 'Tarefas atrasadas', value: alerts.overdueTasks.count, sub: 'checklist' },
+              { label: 'Recibos pendentes', value: alerts.pendingFinancialEntries.count, sub: 'OCR' },
+              { label: 'Estoque critico', value: alerts.lowStock.count, sub: 'produtos' },
+              { label: 'Vence hoje', value: alerts.chargingDueToday.count, sub: brl(alerts.chargingDueToday.totalCents) },
+            ].map((item) => (
+              <div key={item.label} className="rounded-xl bg-gray-50 p-3">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">{item.label}</p>
+                <p className={`mt-1 text-xl font-bold ${item.value > 0 ? 'text-red-600' : 'text-emerald-600'}`}>{item.value}</p>
+                <p className="text-[11px] text-gray-400">{item.sub}</p>
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* ── GRÁFICO ÁREA + DONUT ─────────────────────────────────────────── */}
         <div className="grid gap-4 lg:grid-cols-3">
 
@@ -566,7 +634,7 @@ export default function PainelPage() {
                       <Cell key={i} fill={DONUT_COLORS[i % DONUT_COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(v: number) => brl(Math.round(v * 100))} />
+                  <Tooltip formatter={(v) => brl(Math.round(Number(v ?? 0) * 100))} />
                 </PieChart>
               </ResponsiveContainer>
             </div>

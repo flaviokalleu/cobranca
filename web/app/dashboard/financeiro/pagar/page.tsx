@@ -180,8 +180,45 @@ export default function ContasPagarPage() {
           </Button>
         }
       />
-      <div className="p-6">
-        <Card>
+      <div className="p-4 md:p-6">
+        {/* Mobile: cards */}
+        <div className="space-y-3 md:hidden">
+          {payables.map((payable) => (
+            <div key={payable.id} className="rounded-xl border bg-white p-4 shadow-sm">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="truncate font-semibold text-gray-900">{payable.description}</p>
+                  {payable.category && <p className="text-xs text-gray-400">{payable.category}</p>}
+                </div>
+                <StatusBadge payable={payable} />
+              </div>
+              <div className="mt-2 flex items-center justify-between">
+                <span className="text-lg font-bold text-gray-900">{brl(payable.amountCents)}</span>
+                <span className="text-xs text-gray-400">Vence: {fmtDate(payable.dueDate)}</span>
+              </div>
+              <p className="mt-1 text-xs text-gray-400">{recurrenceLabel(payable.recurrence)}</p>
+              <div className="mt-3 flex gap-2 border-t pt-3">
+                <Button variant="outline" size="sm" className="flex-1" disabled={payable.status !== 'PENDING'} onClick={() => void onPay(payable.id)}>
+                  <Check className="mr-1 h-3.5 w-3.5" /> Pagar
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => openEdit(payable)}>
+                  <Pencil className="h-3.5 w-3.5" />
+                </Button>
+                <Button variant="outline" size="sm" className="text-destructive hover:text-destructive" onClick={() => void onDelete(payable)}>
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            </div>
+          ))}
+          {payables.length === 0 && (
+            <div className="rounded-xl border bg-white py-12 text-center text-sm text-muted-foreground">
+              Nenhuma conta a pagar.
+            </div>
+          )}
+        </div>
+
+        {/* Desktop: tabela */}
+        <Card className="hidden md:block">
           <Table>
             <TableHeader>
               <TableRow>
@@ -202,35 +239,16 @@ export default function ContasPagarPage() {
                   <TableCell>{recurrenceLabel(payable.recurrence)}</TableCell>
                   <TableCell>{brl(payable.amountCents)}</TableCell>
                   <TableCell>{fmtDate(payable.dueDate)}</TableCell>
-                  <TableCell>
-                    <StatusBadge payable={payable} />
-                  </TableCell>
+                  <TableCell><StatusBadge payable={payable} /></TableCell>
                   <TableCell>
                     <div className="flex justify-end gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        title="Pagar"
-                        disabled={payable.status !== 'PENDING'}
-                        onClick={() => void onPay(payable.id)}
-                      >
+                      <Button variant="ghost" size="icon" title="Pagar" disabled={payable.status !== 'PENDING'} onClick={() => void onPay(payable.id)}>
                         <Check className="h-4 w-4" />
                       </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        title="Editar"
-                        onClick={() => openEdit(payable)}
-                      >
+                      <Button variant="ghost" size="icon" title="Editar" onClick={() => openEdit(payable)}>
                         <Pencil className="h-4 w-4" />
                       </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        title="Excluir"
-                        className="text-destructive"
-                        onClick={() => void onDelete(payable)}
-                      >
+                      <Button variant="ghost" size="icon" title="Excluir" className="text-destructive" onClick={() => void onDelete(payable)}>
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>

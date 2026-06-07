@@ -9,24 +9,23 @@ import {
   Query,
 } from '@nestjs/common';
 import { Roles } from '../../auth/decorators/roles.decorator';
+import { PolicyResource } from '../../auth/decorators/policy.decorator';
 import { Tenant } from '../../common/tenant/tenant.decorator';
 import { CalendarService } from './calendar.service';
 import { CreateCalendarEventDto } from './dto/create-calendar-event.dto';
 import { UpdateCalendarEventStatusDto } from './dto/update-calendar-event-status.dto';
 import { UpdateCalendarEventDto } from './dto/update-calendar-event.dto';
+import { ListCalendarEventsDto } from './dto/list-calendar-events.dto';
 
+@PolicyResource('Calendar')
 @Controller('calendar')
 export class CalendarController {
   constructor(private readonly calendar: CalendarService) {}
 
   @Roles('ADMIN', 'FINANCE', 'COMMERCIAL', 'OPERATIONS', 'USER', 'AGENT')
   @Get('events')
-  list(
-    @Tenant() tenantId: string,
-    @Query('from') from?: string,
-    @Query('to') to?: string,
-  ) {
-    return this.calendar.list(tenantId, from, to);
+  list(@Tenant() tenantId: string, @Query() query: ListCalendarEventsDto) {
+    return this.calendar.list(tenantId, query);
   }
 
   @Roles('ADMIN', 'FINANCE', 'COMMERCIAL', 'OPERATIONS', 'AGENT')

@@ -9,6 +9,11 @@ import { StockService } from '../stock/stock.service';
 import { PayablesService } from '../payables/payables.service';
 import { CreatePurchaseOrderDto } from './dto/create-purchase-order.dto';
 import { UpdatePurchaseOrderDto } from './dto/update-purchase-order.dto';
+import {
+  paginated,
+  paginationArgs,
+  PaginationDto,
+} from '../../common/dto/pagination.dto';
 
 @Injectable()
 export class PurchasesService {
@@ -76,22 +81,44 @@ export class PurchasesService {
     return updated;
   }
 
-  async list(tenantId: string) {
+  async list(tenantId: string, query: PaginationDto) {
+    const { skip, take } = paginationArgs(query);
+    const search = query.search?.trim();
+    const where = {
+      tenantId,
+      ...(search
+        ? {
+            OR: [
+              { status: { contains: search, mode: 'insensitive' as const } },
+              { supplier: { name: { contains: search, mode: 'insensitive' as const } } },
+            ],
+          }
+        : {}),
+    };
     const orders = await this.prisma.purchaseOrder.findMany({
-      where: { tenantId },
+      where,
       orderBy: { createdAt: 'desc' },
+      skip,
+      take,
     });
-    const items = await this.prisma.purchaseOrderItem.findMany({
-      where: { tenantId, orderId: { in: orders.map((order) => order.id) } },
-    });
+    const [items, total] = await Promise.all([
+      this.prisma.purchaseOrderItem.findMany({
+        where: { tenantId, orderId: { in: orders.map((order) => order.id) } },
+      }),
+      this.prisma.purchaseOrder.count({ where }),
+    ]);
     const itemsByOrder = new Map<string, typeof items>();
     for (const item of items) {
       itemsByOrder.set(item.orderId, [...(itemsByOrder.get(item.orderId) ?? []), item]);
     }
-    return orders.map((order) => ({
-      ...order,
-      items: itemsByOrder.get(order.id) ?? [],
-    }));
+    return paginated(
+      orders.map((order) => ({
+        ...order,
+        items: itemsByOrder.get(order.id) ?? [],
+      })),
+      total,
+      query,
+    );
   }
 
   async update(tenantId: string, id: string, dto: UpdatePurchaseOrderDto) {

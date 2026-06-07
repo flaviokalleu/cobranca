@@ -7,10 +7,11 @@ interface PageHeaderProps {
   title: string;
   description?: string;
   actions?: ReactNode;
+  children?: ReactNode;
   breadcrumb?: string;
 }
 
-export function PageHeader({ title, description, actions, breadcrumb }: PageHeaderProps) {
+export function PageHeader({ title, description, actions, children, breadcrumb }: PageHeaderProps) {
   return (
     <header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b bg-white/80 px-6 backdrop-blur"
       style={{ borderColor: '#f0f0f0' }}>
@@ -25,10 +26,11 @@ export function PageHeader({ title, description, actions, breadcrumb }: PageHead
           <span style={{ color: '#374151' }} className="font-medium">{breadcrumb ?? title}</span>
         </div>
         <h1 className="text-lg font-bold tracking-tight text-gray-900">{title}</h1>
+        {description && <p className="text-xs text-gray-500">{description}</p>}
       </div>
       <div className="flex items-center gap-2">
         <NotificationBell />
-        {actions}
+        {actions ?? children}
       </div>
     </header>
   );

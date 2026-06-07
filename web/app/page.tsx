@@ -6,15 +6,16 @@ import Link from 'next/link';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { login } from '@/store/authSlice';
 import { AuthShell } from '@/components/auth-shell';
-import { ArrowRight, Lock, Mail } from 'lucide-react';
+import { ArrowRight, Lock, Mail, ShieldCheck } from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
   const dispatch = useAppDispatch();
-  const { token, status, error } = useAppSelector((s) => s.auth);
+  const { token, status, error, requiresTwoFactor } = useAppSelector((s) => s.auth);
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [twoFactorCode, setTwoFactorCode] = useState('');
 
   useEffect(() => {
     if (token) router.push('/dashboard');
@@ -22,8 +23,14 @@ export default function LoginPage() {
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const res = await dispatch(login({ tenantId: 'demo', email, password }));
-    if (login.fulfilled.match(res)) router.push('/dashboard');
+    const res = await dispatch(login({
+      email,
+      password,
+      twoFactorCode: requiresTwoFactor ? twoFactorCode : undefined,
+    }));
+    if (login.fulfilled.match(res) && !('requiresTwoFactor' in res.payload)) {
+      router.push('/dashboard');
+    }
   }
 
   return (
@@ -60,6 +67,25 @@ export default function LoginPage() {
             />
           </div>
         </div>
+
+        {requiresTwoFactor && (
+          <div className="grid gap-2">
+            <label className="auth-field-label">Codigo 2FA</label>
+            <div className="auth-field-wrap">
+              <ShieldCheck className="auth-field-icon" />
+              <input
+                type="text"
+                className="auth-input"
+                placeholder="123456"
+                value={twoFactorCode}
+                onChange={(e) => setTwoFactorCode(e.target.value)}
+                required
+                inputMode="numeric"
+                autoComplete="one-time-code"
+              />
+            </div>
+          </div>
+        )}
 
         {error && <div className="auth-error">{error}</div>}
 

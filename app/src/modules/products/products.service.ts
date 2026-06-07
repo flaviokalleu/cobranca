@@ -3,6 +3,11 @@ import { PrismaService } from '../../common/prisma/prisma.service';
 import { AuditService } from '../../common/audit/audit.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
+import {
+  paginated,
+  paginationArgs,
+  PaginationDto,
+} from '../../common/dto/pagination.dto';
 
 @Injectable()
 export class ProductsService {
@@ -33,11 +38,27 @@ export class ProductsService {
     return product;
   }
 
-  list(tenantId: string) {
-    return this.prisma.product.findMany({
-      where: { tenantId, active: true },
-      orderBy: { createdAt: 'desc' },
-    });
+  async list(tenantId: string, query: PaginationDto) {
+    const { skip, take } = paginationArgs(query);
+    const search = query.search?.trim();
+    const where = {
+      tenantId,
+      active: true,
+      ...(search
+        ? {
+            OR: [
+              { name: { contains: search, mode: 'insensitive' as const } },
+              { sku: { contains: search, mode: 'insensitive' as const } },
+              { description: { contains: search, mode: 'insensitive' as const } },
+            ],
+          }
+        : {}),
+    };
+    const [data, total] = await this.prisma.$transaction([
+      this.prisma.product.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take }),
+      this.prisma.product.count({ where }),
+    ]);
+    return paginated(data, total, query);
   }
 
   async update(tenantId: string, id: string, dto: UpdateProductDto) {

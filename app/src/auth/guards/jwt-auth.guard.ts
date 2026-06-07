@@ -9,6 +9,7 @@ import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
 import { Request } from 'express';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { requestContext } from '../../common/logging/request-context';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
 import { JwtUser, Role } from '../jwt-user.interface';
 
@@ -61,6 +62,17 @@ export class JwtAuthGuard implements CanActivate {
     if (tenant && tenant.status === 'SUSPENDED') {
       throw new ForbiddenException('Empresa suspensa. Contate o suporte.');
     }
+
+    // Bloqueia acesso se assinatura vencida (exceto ADMIN que pode reativar)
+    if (payload.role !== 'ADMIN' && payload.role !== 'SUPERADMIN') {
+      const sub = await this.prisma.subscription.findFirst({
+        where: { tenantId: payload.tenantId },
+        select: { status: true },
+      });
+      if (sub?.status === 'CANCELED' || sub?.status === 'PAST_DUE') {
+        throw new ForbiddenException('Assinatura inativa. Contate o administrador da conta.');
+      }
+    }
     if (!user) {
       throw new UnauthorizedException('Usuario nao encontrado ou removido.');
     }
@@ -72,6 +84,12 @@ export class JwtAuthGuard implements CanActivate {
       email: user.email,
     };
     req.tenantId = user.tenantId;
+
+    const context = requestContext.getStore();
+    if (context) {
+      context.tenantId = user.tenantId;
+      context.userId = user.id;
+    }
 
     return true;
   }

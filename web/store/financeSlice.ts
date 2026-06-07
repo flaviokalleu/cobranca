@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { api } from '@/lib/api';
+import { asArray } from '@/lib/pagination';
 
 export interface Payable {
   id: string;
@@ -37,11 +38,30 @@ export interface FinanceSummary {
   aReceberCents: number;
   aPagarCents: number;
 }
-
-const arr = <T>(d: unknown): T[] => (Array.isArray(d) ? (d as T[]) : []);
+export interface DashboardKpis {
+  pendingReceivablesCents: number;
+  receivedCents: number;
+  pendingPayablesCents: number;
+  paidExpensesCents: number;
+  whatsappIncomeCents: number;
+  whatsappExpenseCents: number;
+  totalIncomeCents: number;
+  totalExpenseCents: number;
+  balanceCents: number;
+  projectedBalanceCents: number;
+  collectionRate: number;
+  overdueCharges: number;
+  dsoDays: number;
+  defaultRate: number;
+  openTasks: number;
+  leadCount: number;
+  customerCount: number;
+  whatsappCount: number;
+  chart: Array<{ key: string; label: string; incomeCents: number; expenseCents: number }>;
+}
 
 export const fetchPayables = createAsyncThunk('finance/fetchPayables', async () =>
-  arr<Payable>((await api('GET', '/payables')).data),
+  asArray<Payable>((await api('GET', '/payables')).data),
 );
 export const fetchCashflow = createAsyncThunk(
   'finance/fetchCashflow',
@@ -62,6 +82,17 @@ export const fetchSummary = createAsyncThunk(
     if (period?.to) params.set('to', period.to);
     const qs = params.toString();
     const { data } = await api<FinanceSummary>('GET', `/finance/summary${qs ? `?${qs}` : ''}`);
+    return data;
+  },
+);
+export const fetchDashboardKpis = createAsyncThunk(
+  'finance/fetchDashboardKpis',
+  async (period?: { from?: string; to?: string }) => {
+    const params = new URLSearchParams();
+    if (period?.from) params.set('from', period.from);
+    if (period?.to) params.set('to', period.to);
+    const qs = params.toString();
+    const { data } = await api<DashboardKpis>('GET', `/finance/kpis${qs ? `?${qs}` : ''}`);
     return data;
   },
 );
@@ -133,11 +164,13 @@ interface FinanceState {
   payables: Payable[];
   cashflow: Cashflow;
   summary: FinanceSummary | null;
+  dashboardKpis: DashboardKpis | null;
 }
 const initialState: FinanceState = {
   payables: [],
   cashflow: { balanceCents: 0, rows: [] },
   summary: null,
+  dashboardKpis: null,
 };
 
 const financeSlice = createSlice({
@@ -154,6 +187,9 @@ const financeSlice = createSlice({
       })
       .addCase(fetchSummary.fulfilled, (s, a) => {
         s.summary = a.payload;
+      })
+      .addCase(fetchDashboardKpis.fulfilled, (s, a) => {
+        s.dashboardKpis = a.payload;
       });
   },
 });

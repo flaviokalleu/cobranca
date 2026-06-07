@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ForbiddenException,
   Injectable,
   Logger,
@@ -12,6 +13,8 @@ import { PrismaService } from '../../common/prisma/prisma.service';
 import { JwtUser } from '../../auth/jwt-user.interface';
 import { MainWhatsappBotService } from '../whatsapp-bot/main-whatsapp-bot.service';
 import { WhatsappOutboundService, WhatsappSocketLike } from '../whatsapp-bot/whatsapp-outbound.service';
+import { SendTestMessageDto } from './dto/send-test-message.dto';
+import { UpdateWhatsappSettingsDto } from './dto/update-whatsapp-settings.dto';
 import { WhatsappStatusDto } from './dto/whatsapp-status.dto';
 import { WhatsappConnectionStatus } from './types/whatsapp-connection-status.type';
 import { WhatsappAdminGateway } from './whatsapp-admin.gateway';
@@ -56,11 +59,17 @@ export class WhatsappAdminService implements OnModuleInit, OnModuleDestroy {
   }
 
   async status(): Promise<WhatsappStatusDto> {
-    const connection = await this.ensureConnection();
+    const [connection, bot, metrics] = await Promise.all([
+      this.ensureConnection(),
+      this.ensureMainBot(),
+      this.whatsappMetrics(),
+    ]);
+    const statusMeta = this.statusMeta(connection, bot, metrics);
     const status = connection.status as WhatsappConnectionStatus;
     if (status === 'waiting_qr') {
       return {
         status,
+        ...statusMeta,
         qrAvailable: !!this.currentQr,
         qrCode: this.currentQr,
         qrImageDataUrl: this.currentQrImageDataUrl,
@@ -71,6 +80,7 @@ export class WhatsappAdminService implements OnModuleInit, OnModuleDestroy {
     if (status === 'qr_expired') {
       return {
         status,
+        ...statusMeta,
         qrAvailable: false,
         qrCode: null,
         qrImageDataUrl: null,
@@ -82,12 +92,14 @@ export class WhatsappAdminService implements OnModuleInit, OnModuleDestroy {
     if (status === 'disconnected') {
       return {
         status,
+        ...statusMeta,
         lastUpdate: connection.updatedAt,
         message: 'WhatsApp nao conectado.',
       };
     }
     return {
       status,
+      ...statusMeta,
       phone: connection.phone,
       profileName: connection.profileName,
       profilePictureUrl: connection.profilePictureUrl,
@@ -196,6 +208,115 @@ export class WhatsappAdminService implements OnModuleInit, OnModuleDestroy {
     });
   }
 
+  async messages(): Promise<
+    Array<{
+      direction: string;
+      phone: string | null;
+      messageType: string | null;
+      status: string;
+      description: string | null;
+      createdAt: Date;
+    }>
+  > {
+    return this.prisma.whatsappMessageLog.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+      select: {
+        direction: true,
+        phone: true,
+        messageType: true,
+        status: true,
+        description: true,
+        createdAt: true,
+      },
+    });
+  }
+
+  async metrics() {
+    const since = new Date();
+    since.setDate(since.getDate() - 6);
+    since.setHours(0, 0, 0, 0);
+    const [messages, errors, receipts] = await Promise.all([
+      this.prisma.whatsappMessageLog.findMany({
+        where: { createdAt: { gte: since } },
+        select: { status: true, direction: true, createdAt: true },
+        orderBy: { createdAt: 'asc' },
+      }),
+      this.prisma.whatsappMessageLog.count({
+        where: { status: 'error', createdAt: { gte: since } },
+      }),
+      this.prisma.financialEntry.count({
+        where: { createdAt: { gte: since }, fonteExtracao: { startsWith: 'WHATSAPP' } },
+      }),
+    ]);
+    const days = new Map<string, { date: string; inbound: number; outbound: number; errors: number; processed: number }>();
+    for (let offset = 0; offset < 7; offset += 1) {
+      const day = new Date(since);
+      day.setDate(since.getDate() + offset);
+      const key = day.toISOString().slice(0, 10);
+      days.set(key, { date: key, inbound: 0, outbound: 0, errors: 0, processed: 0 });
+    }
+    for (const message of messages) {
+      const key = message.createdAt.toISOString().slice(0, 10);
+      const row = days.get(key);
+      if (!row) continue;
+      if (message.direction === 'OUTBOUND') row.outbound += 1;
+      else row.inbound += 1;
+      if (message.status === 'error') row.errors += 1;
+      if (message.status === 'processed') row.processed += 1;
+    }
+    return {
+      errorCount: errors,
+      receiptsProcessed: receipts,
+      totalMessages: messages.length,
+      series: Array.from(days.values()),
+    };
+  }
+
+  async settings() {
+    const bot = await this.ensureMainBot();
+    return {
+      isActive: bot.isActive,
+      welcomeMessage: bot.welcomeMessage,
+      alertPhone: bot.alertPhone,
+    };
+  }
+
+  async updateSettings(actor: JwtUser, dto: UpdateWhatsappSettingsDto) {
+    const bot = await this.ensureMainBot();
+    const data = {
+      isActive: dto.isActive ?? undefined,
+      welcomeMessage:
+        dto.welcomeMessage === undefined
+          ? undefined
+          : dto.welcomeMessage?.trim() || null,
+      alertPhone:
+        dto.alertPhone === undefined ? undefined : dto.alertPhone?.replace(/\D/g, '') || null,
+    };
+    await this.prisma.mainWhatsappBot.update({ where: { id: bot.id }, data });
+    await this.log('WHATSAPP_SETTINGS_UPDATED', actor, 'updated');
+    return this.settings();
+  }
+
+  async sendTestMessage(actor: JwtUser, dto: SendTestMessageDto) {
+    if (!this.socket) {
+      throw new BadRequestException('WhatsApp nao conectado para envio de teste.');
+    }
+    await this.outbound.sendText(dto.to, dto.message);
+    await this.prisma.whatsappMessageLog.create({
+      data: {
+        direction: 'OUTBOUND',
+        phone: dto.to.replace(/\D/g, ''),
+        messageType: 'text',
+        status: 'sent',
+        description: this.preview(dto.message),
+        metadata: JSON.stringify({ actorId: actor.sub, kind: 'test_message' }),
+      },
+    });
+    await this.log('WHATSAPP_TEST_MESSAGE_SENT', actor, 'sent', 'Mensagem de teste enviada.');
+    return { ok: true, message: 'Mensagem de teste enviada.' };
+  }
+
   eventsForToken(token: string): Observable<MessageEvent> {
     if (!token) throw new ForbiddenException('Token ausente.');
     let user: JwtUser;
@@ -244,9 +365,63 @@ export class WhatsappAdminService implements OnModuleInit, OnModuleDestroy {
     );
     socket.ev.on('messages.upsert', (event: { messages?: unknown[] }) => {
       for (const message of event.messages ?? []) {
-        void this.bot.handleIncomingMessage(message);
+        void this.handleIncomingMessage(message);
       }
     });
+  }
+
+  private async handleIncomingMessage(message: unknown): Promise<void> {
+    const raw = message as Record<string, any>;
+    const logId = await this.createMessageLog(raw);
+    const remoteJid = raw.key?.remoteJid;
+    const shouldProcess =
+      typeof remoteJid === 'string' &&
+      !raw.key?.fromMe &&
+      remoteJid !== 'status@broadcast' &&
+      !remoteJid.endsWith('@g.us');
+
+    if (!shouldProcess) {
+      if (logId) {
+        await this.prisma.whatsappMessageLog.update({
+          where: { id: logId },
+          data: { status: raw.key?.fromMe ? 'sent' : 'ignored' },
+        });
+      }
+      return;
+    }
+
+    try {
+      await this.bot.handleIncomingMessage(message as never);
+      await this.prisma.whatsappMessageLog.update({
+        where: { id: logId },
+        data: { status: 'processed' },
+      });
+    } catch (err) {
+      const errorMessage = (err as Error).message;
+      await this.prisma.whatsappMessageLog.update({
+        where: { id: logId },
+        data: { status: 'error', description: this.preview(errorMessage) },
+      });
+      await this.setStatus('error', { lastError: errorMessage });
+    }
+  }
+
+  private async createMessageLog(message: Record<string, any>): Promise<string> {
+    const jid = typeof message.key?.remoteJid === 'string' ? message.key.remoteJid : null;
+    const direction = message.key?.fromMe ? 'OUTBOUND' : 'INBOUND';
+    const record = await this.prisma.whatsappMessageLog.create({
+      data: {
+        direction,
+        jid,
+        phone: jid ? jid.split('@')[0].replace(/\D/g, '') : null,
+        messageType: this.messageType(message.message),
+        status: direction === 'OUTBOUND' ? 'sent' : 'received',
+        description: this.messagePreview(message.message),
+        metadata: message.key?.id ? JSON.stringify({ messageId: message.key.id }) : null,
+      },
+      select: { id: true },
+    });
+    return record.id;
   }
 
   private async handleConnectionUpdate(update: Record<string, any>): Promise<void> {
@@ -481,6 +656,87 @@ export class WhatsappAdminService implements OnModuleInit, OnModuleDestroy {
         metadata: actor ? JSON.stringify({ role: actor.role, tenantId: actor.tenantId }) : null,
       },
     });
+  }
+
+  private async whatsappMetrics(): Promise<{
+    messagesProcessedToday: number;
+    receiptsProcessedToday: number;
+  }> {
+    const today = this.todayStart();
+    const [messagesProcessedToday, receiptsProcessedToday] = await this.prisma.$transaction([
+      this.prisma.whatsappMessageLog.count({
+        where: {
+          createdAt: { gte: today },
+          status: { in: ['processed', 'sent'] },
+        },
+      }),
+      this.prisma.financialEntry.count({
+        where: {
+          createdAt: { gte: today },
+          fonteExtracao: { startsWith: 'WHATSAPP' },
+        },
+      }),
+    ]);
+    return { messagesProcessedToday, receiptsProcessedToday };
+  }
+
+  private statusMeta(
+    connection: { status: string; connectedAt: Date | null },
+    bot: {
+      isActive: boolean;
+      welcomeMessage: string | null;
+      alertPhone: string | null;
+    },
+    metrics: { messagesProcessedToday: number; receiptsProcessedToday: number },
+  ) {
+    const connectedUptimeSeconds =
+      connection.status === 'connected' && connection.connectedAt
+        ? Math.max(0, Math.floor((Date.now() - connection.connectedAt.getTime()) / 1000))
+        : null;
+    return {
+      isActive: bot.isActive,
+      welcomeMessage: bot.welcomeMessage,
+      alertPhone: bot.alertPhone,
+      connectedUptimeSeconds,
+      messagesProcessedToday: metrics.messagesProcessedToday,
+      receiptsProcessedToday: metrics.receiptsProcessedToday,
+    };
+  }
+
+  private messageType(message: unknown): string | null {
+    if (!message || typeof message !== 'object') return null;
+    return (
+      Object.keys(message as Record<string, unknown>).find(
+        (key) => !['messageContextInfo', 'senderKeyDistributionMessage'].includes(key),
+      ) ?? null
+    );
+  }
+
+  private messagePreview(message: unknown): string | null {
+    if (!message || typeof message !== 'object') return null;
+    const value = message as Record<string, any>;
+    return this.preview(
+      value.conversation ??
+        value.extendedTextMessage?.text ??
+        value.imageMessage?.caption ??
+        value.videoMessage?.caption ??
+        value.documentMessage?.caption ??
+        value.buttonsResponseMessage?.selectedDisplayText ??
+        value.listResponseMessage?.title,
+    );
+  }
+
+  private preview(value: unknown): string | null {
+    if (typeof value !== 'string') return null;
+    const normalized = value.replace(/\s+/g, ' ').trim();
+    if (!normalized) return null;
+    return normalized.length > 140 ? `${normalized.slice(0, 140)}...` : normalized;
+  }
+
+  private todayStart(): Date {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return today;
   }
 
   private closeSocket(options?: { suppressReconnect?: boolean }): void {

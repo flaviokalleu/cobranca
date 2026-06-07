@@ -1,5 +1,6 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 import { api } from '@/lib/api';
+import { asArray } from '@/lib/pagination';
 
 export interface CalendarEvent {
   id: string;
@@ -12,10 +13,8 @@ export interface CalendarEvent {
   notes?: string | null;
 }
 
-const arr = <T>(data: unknown): T[] => (Array.isArray(data) ? (data as T[]) : []);
-
 export const fetchEvents = createAsyncThunk('calendar/fetch', async () =>
-  arr<CalendarEvent>((await api('GET', '/calendar/events')).data),
+  asArray<CalendarEvent>((await api('GET', '/calendar/events')).data),
 );
 
 export const createEvent = createAsyncThunk(

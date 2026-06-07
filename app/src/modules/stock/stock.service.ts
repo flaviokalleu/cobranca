@@ -7,6 +7,11 @@ import { PrismaService } from '../../common/prisma/prisma.service';
 import { AuditService } from '../../common/audit/audit.service';
 import { AdjustStockDto } from './dto/adjust-stock.dto';
 import { UpdateStockMovementDto } from './dto/update-stock-movement.dto';
+import {
+  paginated,
+  paginationArgs,
+  PaginationDto,
+} from '../../common/dto/pagination.dto';
 
 export type StockMoveType = 'IN' | 'OUT';
 
@@ -36,6 +41,9 @@ export class StockService {
     const qty = Math.abs(qtyAbs);
     if (qty <= 0) {
       throw new BadRequestException('Quantidade deve ser positiva.');
+    }
+    if (type === 'OUT' && product.stockQty < qty) {
+      throw new BadRequestException(`Estoque insuficiente para ${product.name}. Disponivel: ${product.stockQty}.`);
     }
     const delta = type === 'OUT' ? -qty : qty;
     await this.prisma.$transaction([
@@ -83,12 +91,30 @@ export class StockService {
     });
   }
 
-  movements(tenantId: string) {
-    return this.prisma.stockMovement.findMany({
-      where: { tenantId },
-      orderBy: { createdAt: 'desc' },
-      take: 100,
-    });
+  async movements(tenantId: string, query: PaginationDto) {
+    const { skip, take } = paginationArgs(query);
+    const search = query.search?.trim();
+    const where = {
+      tenantId,
+      ...(search
+        ? {
+            OR: [
+              { reason: { contains: search, mode: 'insensitive' as const } },
+              { refType: { contains: search, mode: 'insensitive' as const } },
+            ],
+          }
+        : {}),
+    };
+    const [data, total] = await this.prisma.$transaction([
+      this.prisma.stockMovement.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take,
+      }),
+      this.prisma.stockMovement.count({ where }),
+    ]);
+    return paginated(data, total, query);
   }
 
   async updateMovement(tenantId: string, id: string, dto: UpdateStockMovementDto) {

@@ -1,0 +1,22 @@
+{
+  "name": "Cobranca",
+  "short_name": "Cobranca",
+  "description": "Controle financeiro, cobrancas e fluxo de caixa",
+  "start_url": "/dashboard",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f9fafb",
+  "theme_color": "#dc2626",
+  "icons": [
+    {
+      "src": "/logo.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/logo.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
