@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -43,18 +43,18 @@ import {
 import { Pencil, Trash2, UserPlus } from 'lucide-react';
 
 const STAGES = [
-  { key: 'LEAD', label: 'Lead' },
-  { key: 'FIRST_CONTACT', label: 'Primeiro contato' },
-  { key: 'DOCUMENTATION', label: 'Documentacao' },
-  { key: 'ANALYSIS', label: 'Analise' },
+  { key: 'LEAD', label: 'Interessado' },
+  { key: 'FIRST_CONTACT', label: 'Primeira conversa' },
+  { key: 'DOCUMENTATION', label: 'Documentos' },
+  { key: 'ANALYSIS', label: 'Em analise' },
   { key: 'APPROVED', label: 'Aprovado' },
   { key: 'CONTRACT', label: 'Contrato' },
-  { key: 'CUSTOMER', label: 'Cliente' },
+  { key: 'CUSTOMER', label: 'Cliente ativo' },
   { key: 'LOST', label: 'Perdido' },
 ] as const;
 
 const stageLabel = (stage?: string | null) =>
-  STAGES.find((item) => item.key === stage)?.label ?? 'Lead';
+  STAGES.find((item) => item.key === stage)?.label ?? 'Interessado';
 
 export default function ClientesPage() {
   const dispatch = useAppDispatch();
@@ -74,7 +74,7 @@ export default function ClientesPage() {
   const [stage, setStage] = useState('LEAD');
 
   useEffect(() => {
-    // sincroniza leads sem customer e então recarrega a lista
+    // sincroniza leads sem customer e entÃ£o recarrega a lista
     api('POST', '/leads/sync-customers')
       .then(() => dispatch(fetchCustomers({ page })))
       .catch(() => dispatch(fetchCustomers({ page })));
@@ -152,7 +152,7 @@ export default function ClientesPage() {
     <>
       <PageHeader
         title="Clientes"
-        description={`${customers.length} cadastrado(s)`}
+        description={`${customers.length} clientes na lista`}
         actions={
           <Button onClick={openNew}>
             <UserPlus className="h-4 w-4" />
@@ -202,7 +202,7 @@ export default function ClientesPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Nome</TableHead>
-                <TableHead>Estagio</TableHead>
+                <TableHead>Etapa</TableHead>
                 <TableHead>Documento</TableHead>
                 <TableHead>Telefone</TableHead>
                 <TableHead>Cidade</TableHead>
@@ -313,7 +313,7 @@ export default function ClientesPage() {
                 />
               </div>
               <div className="grid gap-1.5">
-                <Label>Estagio</Label>
+                <Label>Etapa</Label>
                 <Select value={stage} onValueChange={setStage}>
                   <SelectTrigger>
                     <SelectValue />
@@ -337,3 +337,5 @@ export default function ClientesPage() {
     </>
   );
 }
+
+

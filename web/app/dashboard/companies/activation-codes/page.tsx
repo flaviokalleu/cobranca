@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState } from 'react';
 import { KeyRound, Plus } from 'lucide-react';
@@ -19,8 +19,8 @@ export default function CurrentCompanyActivationCodesPage() {
   return (
     <>
       <PageHeader
-        title="Codigos de ativacao"
-        description="Gere codigos para vincular numeros de WhatsApp a empresa correta."
+        title="Ativar empresas"
+        description="Crie codigos para ligar numeros de WhatsApp a empresa certa."
         actions={
           <Button onClick={() => setOpen(true)}>
             <Plus className="h-4 w-4" />
@@ -57,3 +57,4 @@ export default function CurrentCompanyActivationCodesPage() {
     </>
   );
 }
+

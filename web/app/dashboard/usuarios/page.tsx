@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -51,7 +51,7 @@ interface Invitation {
   expiresAt: string;
 }
 
-export default function UsuariosPage() {
+export default function AcessosPage() {
   const dispatch = useAppDispatch();
   const role = useAppSelector((s) => s.auth.role);
   const { users } = useAppSelector((s) => s.data);
@@ -100,7 +100,7 @@ export default function UsuariosPage() {
   if (role !== 'ADMIN') {
     return (
       <>
-        <PageHeader title="Usuarios" />
+        <PageHeader title="Acessos" />
         <div className="p-4 md:p-6">
           <Card className="p-6 text-sm text-muted-foreground">
             Acesso restrito a administradores.
@@ -165,8 +165,8 @@ export default function UsuariosPage() {
   return (
     <>
       <PageHeader
-        title="Usuarios"
-        description={`${users.length} no total`}
+        title="Acessos"
+        description={`${users.length} ao todo`}
         actions={
           <Button onClick={openCreate}>
             <UserPlus className="h-4 w-4" />
@@ -363,3 +363,4 @@ export default function UsuariosPage() {
     </>
   );
 }
+

@@ -5,7 +5,7 @@ import { AuditService } from '../../common/audit/audit.service';
 import { ExtractedTransactionDto } from '../financial-extractor/dto/extracted-transaction.dto';
 import { NormalizationService } from '../financial-extractor/normalization.service';
 import { FinancialEntriesRepository } from './financial-entries.repository';
-import { PaginationDto } from '../../common/dto/pagination.dto';
+import { ListFinancialEntryDto } from './dto/list-financial-entry.dto';
 
 export interface SaveWhatsappFinancialEntryInput {
   tenantId: string;
@@ -26,7 +26,7 @@ export class FinancialEntriesService {
     private readonly repository: FinancialEntriesRepository,
   ) {}
 
-  list(tenantId: string, query: PaginationDto & { status?: string }) {
+  list(tenantId: string, query: ListFinancialEntryDto) {
     return this.repository.listByTenant(tenantId, query);
   }
 

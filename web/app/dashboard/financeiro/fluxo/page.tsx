@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useMemo, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
@@ -334,7 +334,7 @@ export default function FluxoCaixaPage() {
       textColor: 'text-rose-700',
     },
     {
-      label: 'Saldo projetado',
+      label: 'Saldo previsto',
       value: brl(totals.balance),
       sub: `Realizado: ${brl(totals.realizedBalance)}`,
       icon: CircleDollarSign,
@@ -343,7 +343,7 @@ export default function FluxoCaixaPage() {
       textColor: totals.balance >= 0 ? 'text-emerald-700' : 'text-red-600',
     },
     {
-      label: 'Pendencias',
+      label: 'Em aberto',
       value: brl(Math.abs(totals.pendingBalance)),
       sub: `Entrar: ${brl(totals.pendingIn)} | Sair: ${brl(totals.pendingOut)}`,
       icon: CalendarDays,
@@ -367,9 +367,9 @@ export default function FluxoCaixaPage() {
       <div className="sticky top-0 z-10 border-b border-gray-100 bg-white">
         <div className="flex h-16 items-center gap-3 px-4 sm:px-6">
           <div className="min-w-0 flex-1">
-            <h1 className="text-base font-bold text-gray-900">Fluxo de Caixa</h1>
+            <h1 className="text-base font-bold text-gray-900">Entradas e saidas</h1>
             <p className="hidden text-xs text-gray-400 sm:block">
-              Entradas e saidas | {rows.length} movimentacoes no filtro
+              Veja tudo que entrou, saiu e ainda vai vencer
             </p>
           </div>
           <NotificationBell />
@@ -411,15 +411,15 @@ export default function FluxoCaixaPage() {
                 </select>
               </label>
               <label className="grid gap-1.5">
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Movimento</span>
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Tipo</span>
                 <select
                   value={movementFilter}
                   onChange={(event) => setMovementFilter(event.target.value)}
                   className="h-10 rounded-lg border border-gray-200 bg-gray-50 px-3 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-200"
                 >
                   <option value="ALL">Entradas e saidas</option>
-                  <option value="IN">So entradas</option>
-                  <option value="OUT">So saidas</option>
+                  <option value="IN">Entradas</option>
+                  <option value="OUT">Saidas</option>
                 </select>
               </label>
               <label className="grid gap-1.5">
@@ -430,14 +430,14 @@ export default function FluxoCaixaPage() {
                   className="h-10 rounded-lg border border-gray-200 bg-gray-50 px-3 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-200"
                 >
                   <option value="ALL">Todos</option>
-                  <option value="REALIZED">Realizado</option>
-                  <option value="PENDING">Pendente</option>
+                  <option value="REALIZED">Ja aconteceu</option>
+                  <option value="PENDING">Em aberto</option>
                   <option value="REVIEW">Revisar WhatsApp</option>
                   <option value="CANCELED">Cancelado</option>
                 </select>
               </label>
               <label className="grid gap-1.5">
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Recorrencia</span>
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Repeticao</span>
                 <select
                   value={recurrenceFilter}
                   onChange={(event) => setRecurrenceFilter(event.target.value)}
@@ -470,7 +470,7 @@ export default function FluxoCaixaPage() {
                   <input
                     value={query}
                     onChange={(event) => setQuery(event.target.value)}
-                    placeholder="Descricao, categoria ou status"
+                    placeholder="Buscar descricao, categoria ou status"
                     className="h-10 w-full rounded-lg border border-gray-200 bg-gray-50 pl-9 pr-3 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-200"
                   />
                 </span>
@@ -481,7 +481,7 @@ export default function FluxoCaixaPage() {
                 Este mes
               </button>
               <button onClick={() => applyPreset('NEXT_30')} className="h-9 rounded-lg bg-gray-100 px-3 text-xs font-semibold text-gray-600 hover:bg-gray-200">
-                Prox. 30 dias
+                Proximos 30 dias
               </button>
               <button onClick={() => applyPreset('ALL')} className="h-9 rounded-lg bg-gray-100 px-3 text-xs font-semibold text-gray-600 hover:bg-gray-200">
                 Tudo
@@ -520,8 +520,8 @@ export default function FluxoCaixaPage() {
           <div className="grid gap-4 lg:grid-cols-[1fr_280px]">
             <div className="rounded-2xl bg-white p-4" style={{ border: '1px solid #e5e7eb' }}>
               <div className="mb-3 flex items-center justify-between">
-                <h2 className="text-sm font-bold text-gray-900">Projecao 90 dias</h2>
-                <span className="text-xs font-medium text-gray-400">Saldo acumulado</span>
+                <h2 className="text-sm font-bold text-gray-900">Proximos 90 dias</h2>
+                <span className="text-xs font-medium text-gray-400">Saldo previsto</span>
               </div>
               <div className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
@@ -540,7 +540,7 @@ export default function FluxoCaixaPage() {
             >
               <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Alerta de saldo</p>
               <p className={`mt-2 text-lg font-bold ${projection.alert ? 'text-red-600' : 'text-emerald-700'}`}>
-                {projection.alert ? 'Saldo negativo previsto' : 'Sem saldo negativo'}
+                {projection.alert ? 'Pode faltar dinheiro' : 'Saldo previsto positivo'}
               </p>
               {projection.alert && (
                 <p className="mt-2 text-sm text-red-600">
@@ -687,3 +687,5 @@ export default function FluxoCaixaPage() {
     </div>
   );
 }
+
+

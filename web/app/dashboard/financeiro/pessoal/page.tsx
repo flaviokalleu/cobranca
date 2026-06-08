@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -240,7 +240,7 @@ export default function FinancasPessoaisPage() {
                     </div>
                     <div>
                       <p className="text-sm font-medium text-gray-900 max-w-[200px] truncate">{tx.description}</p>
-                      <p className="text-[11px] text-gray-400">{tx.category} · {new Date(tx.occurredAt).toLocaleDateString('pt-BR')}</p>
+                      <p className="text-[11px] text-gray-400">{tx.category} Â· {new Date(tx.occurredAt).toLocaleDateString('pt-BR')}</p>
                     </div>
                   </div>
                   <p className={`text-sm font-bold tabular-nums ${tx.type === 'INCOME' ? 'text-emerald-600' : 'text-red-600'}`}>
@@ -283,7 +283,7 @@ export default function FinancasPessoaisPage() {
               {cards.length === 0 && <p className="py-10 text-center text-sm text-gray-400">Nenhum cartao ainda</p>}
               {cards.map((card) => (
                 <div key={card.id} className="flex items-center justify-between px-5 py-3.5">
-                  <div><p className="text-sm font-semibold text-gray-900">{card.name}</p><p className="text-[11px] text-gray-400">{card.closingDay ? `Fecha dia ${card.closingDay}` : ''}{card.closingDay && card.dueDay ? ' · ' : ''}{card.dueDay ? `Vence dia ${card.dueDay}` : ''}</p></div>
+                  <div><p className="text-sm font-semibold text-gray-900">{card.name}</p><p className="text-[11px] text-gray-400">{card.closingDay ? `Fecha dia ${card.closingDay}` : ''}{card.closingDay && card.dueDay ? ' Â· ' : ''}{card.dueDay ? `Vence dia ${card.dueDay}` : ''}</p></div>
                   <div className="flex items-center gap-3">
                     <p className="text-sm font-bold tabular-nums text-blue-600">{brl(card.limitCents)}</p>
                     <button onClick={() => void dispatch(deletePersonalCard(card.id)).then(() => toast.success('Excluido'))} className="rounded p-1 text-gray-300 hover:text-red-500"><Trash2 className="h-3.5 w-3.5" /></button>
@@ -455,3 +455,4 @@ export default function FinancasPessoaisPage() {
     </div>
   );
 }
+

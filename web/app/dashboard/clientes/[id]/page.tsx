@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
@@ -69,7 +69,7 @@ export default function ClienteDetalhePage({ params }: { params: { id: string } 
       <div className="space-y-4 p-4 sm:p-6">
         <div className="grid gap-3 md:grid-cols-4">
           <Card className="p-4">
-            <p className="text-xs text-muted-foreground">Estagio</p>
+            <p className="text-xs text-muted-foreground">Etapa</p>
             <p className="mt-1 font-bold">{data.customer.stage ?? 'LEAD'}</p>
           </Card>
           <Card className="p-4">
@@ -125,7 +125,7 @@ export default function ClienteDetalhePage({ params }: { params: { id: string } 
               <TableBody>
                 {[
                   ...data.documents.map((item) => ({ id: `doc-${item.id}`, title: item.name, type: 'Documento', status: item.status })),
-                  ...data.calendar.map((item) => ({ id: `cal-${item.id}`, title: item.title, type: 'Calendario', status: item.status })),
+                  ...data.calendar.map((item) => ({ id: `cal-${item.id}`, title: item.title, type: 'Agenda', status: item.status })),
                   ...data.leads.map((item) => ({ id: `lead-${item.id}`, title: item.name, type: 'Lead', status: item.stage })),
                   ...data.loans.map((item) => ({ id: `loan-${item.id}`, title: brl(item.totalCents), type: 'Emprestimo', status: item.status })),
                 ].map((item) => (
@@ -143,3 +143,4 @@ export default function ClienteDetalhePage({ params }: { params: { id: string } 
     </div>
   );
 }
+

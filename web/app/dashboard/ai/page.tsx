@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useRef, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
@@ -41,7 +41,7 @@ export default function AiPage() {
     <div className="flex h-[calc(100vh-4rem)] flex-col gap-4 p-6">
       <PageHeader
         title="Assistente Financeiro"
-        description="Faça perguntas sobre seu fluxo de caixa, cobranças e despesas."
+        description="FaÃ§a perguntas sobre seu fluxo de caixa, cobranÃ§as e despesas."
       />
 
       {/* Chat area */}
@@ -55,7 +55,7 @@ export default function AiPage() {
               <div>
                 <p className="text-lg font-medium">Como posso ajudar?</p>
                 <p className="mt-1 text-sm text-gray-500">
-                  Pergunte sobre recebimentos, despesas, inadimplência e muito mais.
+                  Pergunte sobre recebimentos, despesas, inadimplÃªncia e muito mais.
                 </p>
               </div>
 
@@ -78,7 +78,7 @@ export default function AiPage() {
           <div className="flex flex-col gap-4">
             {[...history].reverse().map((entry, i) => (
               <div key={i} className="flex flex-col gap-2">
-                {/* Pergunta do usuário */}
+                {/* Pergunta do usuÃ¡rio */}
                 <div className="flex items-start justify-end gap-2">
                   <div className="max-w-[80%] rounded-2xl rounded-tr-none bg-primary px-4 py-2 text-sm text-primary-foreground">
                     {entry.intent}
@@ -137,7 +137,7 @@ export default function AiPage() {
             <Input
               value={question}
               onChange={(e) => setQuestion(e.target.value)}
-              placeholder="Pergunte algo sobre suas finanças..."
+              placeholder="Pergunte algo sobre suas finanÃ§as..."
               disabled={loading}
               className="flex-1"
             />
@@ -150,3 +150,4 @@ export default function AiPage() {
     </div>
   );
 }
+

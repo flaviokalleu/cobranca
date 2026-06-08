@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -117,8 +117,8 @@ export default function TarefasPage() {
   return (
     <>
       <PageHeader
-        title="Checklist"
-        description={`${pending} pendente(s) de ${tasks.length}`}
+        title="Tarefas"
+        description={`${pending} em aberto de ${tasks.length}`}
         actions={
           <Button onClick={openCreate}>
             <Plus className="h-4 w-4" />
@@ -226,3 +226,5 @@ export default function TarefasPage() {
     </>
   );
 }
+
+

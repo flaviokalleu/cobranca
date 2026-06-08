@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
@@ -76,7 +76,7 @@ function inRange(iso: string, view: string) {
   return date >= start && date < end;
 }
 
-export default function CalendarioPage() {
+export default function AgendaPage() {
   const dispatch = useAppDispatch();
   const events = useAppSelector((state) => state.calendar.events);
   const customers = useAppSelector((state) => state.data.customers);
@@ -168,8 +168,8 @@ export default function CalendarioPage() {
   return (
     <>
       <PageHeader
-        title="Calendario"
-        description={`${filtered.length} evento(s) no periodo`}
+        title="Agenda"
+        description={`${filtered.length} eventos no periodo`}
         actions={
           <Button onClick={openCreate}>
             <CalendarPlus className="h-4 w-4" />
@@ -338,3 +338,4 @@ export default function CalendarioPage() {
     </>
   );
 }
+

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -35,7 +35,7 @@ interface Settings {
   theme?: string;
 }
 
-const tabs = ['Empresa', 'PIX/Cobranca', 'Notificacoes', 'Integracoes', 'Seguranca'] as const;
+const tabs = ['Empresa', 'PIX/Cobranca', 'Avisos', 'Integracoes', 'Seguranca'] as const;
 type Tab = (typeof tabs)[number];
 
 const emptySettings: Settings = {
@@ -152,7 +152,7 @@ export default function ConfiguracoesPage() {
 
   return (
     <>
-      <PageHeader title="Configuracoes" description="Empresa, cobranca, integracoes e seguranca" />
+      <PageHeader title="Configuracoes" description="Dados da empresa, PIX, avisos e seguranca." />
       <form onSubmit={save} className="space-y-4 p-6">
         <div className="flex flex-wrap gap-2">
           {tabs.map((tab) => (
@@ -198,7 +198,7 @@ export default function ConfiguracoesPage() {
               </div>
             )}
 
-            {active === 'Notificacoes' && (
+            {active === 'Avisos' && (
               <div className="grid gap-4 md:grid-cols-2">
                 <Toggle label="E-mail" checked={Boolean(settings.notifyByEmail)} onChange={(value) => field('notifyByEmail', value)} />
                 <Toggle label="WhatsApp" checked={Boolean(settings.notifyByWhatsapp)} onChange={(value) => field('notifyByWhatsapp', value)} />
@@ -298,3 +298,4 @@ function Toggle({ label, checked, onChange }: { label: string; checked: boolean;
     </label>
   );
 }
+

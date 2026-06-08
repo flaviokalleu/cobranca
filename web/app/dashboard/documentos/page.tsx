@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
@@ -224,7 +224,7 @@ export default function DocumentosPage() {
     <>
       <PageHeader
         title="Documentos"
-        description={`${requirements.length} requisito(s), ${stats.pending} pendencia(s)`}
+        description={`${requirements.length} itens, ${stats.pending} pendencias`}
         actions={
           <div className="flex gap-2">
             <Button variant="outline" onClick={openRequirementCreate}>
@@ -500,3 +500,4 @@ export default function DocumentosPage() {
     </>
   );
 }
+

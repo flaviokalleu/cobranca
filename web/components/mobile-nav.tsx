@@ -14,9 +14,9 @@ import { useTheme } from 'next-themes';
 
 const BOTTOM_TABS = [
   { href: '/dashboard',          label: 'Painel',   icon: LayoutDashboard },
-  { href: '/dashboard/cobrancas',label: 'Receita',  icon: Wallet },
+  { href: '/dashboard/cobrancas',label: 'Receber',  icon: Wallet },
   { href: '/dashboard/clientes', label: 'Clientes', icon: Users },
-  { href: '/dashboard/crm',      label: 'CRM',      icon: Target },
+  { href: '/dashboard/crm',      label: 'Vendas',   icon: Target },
 ];
 
 export function MobileNav() {
@@ -85,7 +85,7 @@ export function MobileNav() {
             </div>
             <div>
               <p className="text-sm font-semibold text-gray-900">{tenantId}</p>
-              <p className="text-xs text-gray-400">{role}</p>
+              <p className="text-xs text-gray-400">Minha conta</p>
             </div>
           </div>
           <button

@@ -36,7 +36,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div className="flex min-h-screen bg-gray-50 text-gray-950">
       <Sidebar />
       <GlobalSearch />
       <div className="flex min-w-0 flex-1 flex-col pb-16 md:pb-0">

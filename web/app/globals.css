@@ -50,9 +50,21 @@
 }
 
 @layer base {
-  * { @apply border-border; }
+  * { @apply border-border; letter-spacing: 0 !important; }
   html { scroll-behavior: smooth; }
-  body { @apply bg-background text-foreground antialiased; }
+  body { @apply bg-background text-foreground antialiased; font-size: 15px; }
+}
+
+@layer utilities {
+  .rounded-xl,
+  .rounded-2xl,
+  .rounded-3xl {
+    border-radius: 0.5rem !important;
+  }
+
+  .bg-gray-50 {
+    background-color: #f7f8fa;
+  }
 }
 
 /* Sidebar / mobile nav */

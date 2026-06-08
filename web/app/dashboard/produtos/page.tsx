@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -102,7 +102,7 @@ export default function ProdutosPage() {
   async function handleDelete(id: string, nome: string) {
     if (!confirm(`Excluir produto "${nome}"?`)) return;
     const res = await dispatch(deleteProduct(id));
-    if (deleteProduct.fulfilled.match(res)) toast.success('Produto excluído.');
+    if (deleteProduct.fulfilled.match(res)) toast.success('Produto excluÃ­do.');
     else toast.error('Erro ao excluir.');
   }
 
@@ -122,7 +122,7 @@ export default function ProdutosPage() {
     <div className="flex flex-col gap-4 p-4 md:gap-6 md:p-6">
       <PageHeader
         title="Produtos"
-        description={`${products.length} produto(s) cadastrado(s)`}
+        description={`${products.length} produtos na lista`}
       >
         <Button onClick={openNew} size="sm">
           <Plus className="mr-2 h-4 w-4" />
@@ -147,10 +147,10 @@ export default function ProdutosPage() {
               <TableHead>SKU</TableHead>
               <TableHead>Nome</TableHead>
               <TableHead>Unidade</TableHead>
-              <TableHead className="text-right">Preço Venda</TableHead>
+              <TableHead className="text-right">PreÃ§o Venda</TableHead>
               <TableHead className="text-right">Custo</TableHead>
               <TableHead className="text-center">Estoque</TableHead>
-              <TableHead className="w-24 text-right">Ações</TableHead>
+              <TableHead className="w-24 text-right">AÃ§Ãµes</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -211,7 +211,7 @@ export default function ProdutosPage() {
               </div>
               <div className="grid gap-1.5">
                 <Label>Unidade</Label>
-                <Input value={unit} onChange={(e) => setUnit(e.target.value)} placeholder="un, kg, m²..." />
+                <Input value={unit} onChange={(e) => setUnit(e.target.value)} placeholder="un, kg, mÂ²..." />
               </div>
             </div>
             <div className="grid gap-1.5">
@@ -219,12 +219,12 @@ export default function ProdutosPage() {
               <Input value={name} onChange={(e) => setName(e.target.value)} required />
             </div>
             <div className="grid gap-1.5">
-              <Label>Descrição</Label>
+              <Label>DescriÃ§Ã£o</Label>
               <Input value={description} onChange={(e) => setDescription(e.target.value)} />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="grid gap-1.5">
-                <Label>Preço de Venda (R$)</Label>
+                <Label>PreÃ§o de Venda (R$)</Label>
                 <Input
                   type="number"
                   step="0.01"
@@ -256,3 +256,4 @@ export default function ProdutosPage() {
     </div>
   );
 }
+

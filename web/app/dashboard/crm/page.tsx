@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
@@ -36,13 +36,13 @@ const brl = (cents: number) =>
   (cents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
 const STAGES = [
-  { key: 'LEAD', label: 'Lead' },
-  { key: 'FIRST_CONTACT', label: 'Primeiro contato' },
-  { key: 'DOCUMENTATION', label: 'Documentacao' },
-  { key: 'ANALYSIS', label: 'Analise' },
+  { key: 'LEAD', label: 'Interessado' },
+  { key: 'FIRST_CONTACT', label: 'Primeira conversa' },
+  { key: 'DOCUMENTATION', label: 'Documentos' },
+  { key: 'ANALYSIS', label: 'Em analise' },
   { key: 'APPROVED', label: 'Aprovado' },
   { key: 'CONTRACT', label: 'Contrato' },
-  { key: 'CUSTOMER', label: 'Cliente' },
+  { key: 'CUSTOMER', label: 'Cliente ativo' },
   { key: 'LOST', label: 'Perdido' },
 ] as const;
 
@@ -88,7 +88,7 @@ export default function CrmPage() {
       }),
     );
     if (createCustomer.fulfilled.match(res)) {
-      toast.success('Lead cadastrado em clientes');
+      toast.success('Interessado cadastrado em clientes');
       setName('');
       setPhone('');
       setWhatsapp('');
@@ -118,12 +118,12 @@ export default function CrmPage() {
   return (
     <>
       <PageHeader
-        title="Funil de vendas"
-        description={`${customers.length} cliente(s) e lead(s)`}
+        title="Clientes em negociacao"
+        description={`${customers.length} clientes e interessados`}
         actions={
           <Button onClick={() => setOpen(true)}>
             <Plus className="h-4 w-4" />
-            Novo lead
+            Novo interessado
           </Button>
         }
       />
@@ -151,7 +151,7 @@ export default function CrmPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Novo lead</DialogTitle>
-            <DialogDescription>O lead sera cadastrado tambem em Clientes.</DialogDescription>
+            <DialogDescription>O lead sera cadastrado tambem em Cliente ativos.</DialogDescription>
           </DialogHeader>
           <form onSubmit={onAdd} className="grid gap-4">
             <div className="grid gap-1.5">
@@ -227,7 +227,7 @@ function StageColumn({
         className={`min-h-28 space-y-2 rounded-lg bg-muted/40 p-2 ${isOver ? 'ring-2 ring-primary' : ''}`}
       >
         {stage.cards.map((customer) => (
-          <LeadCard key={customer.id} customer={customer} onChangeStage={onChangeStage} />
+          <InteressadoCard key={customer.id} customer={customer} onChangeStage={onChangeStage} />
         ))}
         {stage.cards.length === 0 && (
           <p className="px-2 py-6 text-center text-xs text-muted-foreground">Vazio</p>
@@ -238,7 +238,7 @@ function StageColumn({
   );
 }
 
-function LeadCard({
+function InteressadoCard({
   customer,
   onChangeStage,
 }: {
@@ -290,3 +290,5 @@ function LeadCard({
     </div>
   );
 }
+
+

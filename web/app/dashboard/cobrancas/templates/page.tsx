@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
-interface Template {
+interface Modelo {
   id: string;
   name: string;
   description: string;
@@ -28,8 +28,8 @@ interface Customer {
 const brl = (cents: number) =>
   (cents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-export default function ChargeTemplatesPage() {
-  const [templates, setTemplates] = useState<Template[]>([]);
+export default function ChargeModelosPage() {
+  const [templates, setModelos] = useState<Modelo[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -41,10 +41,10 @@ export default function ChargeTemplatesPage() {
 
   async function load() {
     const [templatesRes, customersRes] = await Promise.all([
-      api<Template[]>('GET', '/charge-templates'),
+      api<Modelo[]>('GET', '/charge-templates'),
       api<{ data: Customer[] }>('GET', '/customers?limit=100'),
     ]);
-    if (templatesRes.status < 400) setTemplates(templatesRes.data);
+    if (templatesRes.status < 400) setModelos(templatesRes.data);
     if (customersRes.status < 400) {
       setCustomers(customersRes.data.data ?? []);
       if (!customerId && customersRes.data.data?.[0]) setCustomerId(customersRes.data.data[0].id);
@@ -66,39 +66,39 @@ export default function ChargeTemplatesPage() {
       daysUntilDue: Number(daysUntilDue || 30),
     });
     if (res.status < 400) {
-      toast.success('Template criado');
+      toast.success('Modelo criado');
       setName('');
       setDescription('');
       setAmount('0.00');
       setCategory('');
       await load();
     } else {
-      toast.error('Nao foi possivel criar template');
+      toast.error('Nao foi possivel criar modelo');
     }
   }
 
-  async function apply(template: Template) {
+  async function apply(template: Modelo) {
     if (!customerId) return;
     const res = await api('POST', `/charge-templates/${template.id}/apply`, { customerId });
-    if (res.status < 400) toast.success('Cobranca criada pelo template');
-    else toast.error('Nao foi possivel aplicar template');
+    if (res.status < 400) toast.success('Cobranca criada pelo modelo');
+    else toast.error('Nao foi possivel usar este modelo');
   }
 
-  async function remove(template: Template) {
+  async function remove(template: Modelo) {
     const res = await api('DELETE', `/charge-templates/${template.id}`);
     if (res.status < 400) {
-      toast.success('Template excluido');
+      toast.success('Modelo excluido');
       await load();
     } else {
-      toast.error('Nao foi possivel excluir template');
+      toast.error('Nao foi possivel excluir modelo');
     }
   }
 
   return (
     <div className="min-h-screen bg-background">
       <div className="border-b bg-card px-4 py-4 sm:px-6">
-        <h1 className="text-base font-bold">Templates de cobranca</h1>
-        <p className="text-xs text-muted-foreground">Padroes para criar cobrancas recorrentes ou avulsas.</p>
+        <h1 className="text-base font-bold">Modelos de cobranca</h1>
+        <p className="text-xs text-muted-foreground">Salve cobrancas repetidas para criar mais rapido depois.</p>
       </div>
 
       <div className="grid gap-4 p-4 sm:p-6 lg:grid-cols-[360px_1fr]">
@@ -135,13 +135,13 @@ export default function ChargeTemplatesPage() {
                 <Input value={category} onChange={(event) => setCategory(event.target.value)} />
               </div>
             </div>
-            <Button type="submit" className="w-full">Salvar template</Button>
+            <Button type="submit" className="w-full">Salvar modelo</Button>
           </form>
         </Card>
 
         <Card className="overflow-hidden">
           <div className="border-b p-4">
-            <Label>Cliente para aplicar</Label>
+            <Label>Cliente ativo para aplicar</Label>
             <select value={customerId} onChange={(event) => setCustomerId(event.target.value)} className="mt-1 h-10 w-full max-w-sm rounded-md border bg-background px-3 text-sm">
               {customers.map((customer) => <option key={customer.id} value={customer.id}>{customer.name}</option>)}
             </select>
@@ -149,7 +149,7 @@ export default function ChargeTemplatesPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Template</TableHead>
+                <TableHead>Modelo</TableHead>
                 <TableHead>Valor</TableHead>
                 <TableHead>Recorrencia</TableHead>
                 <TableHead className="text-right">Acoes</TableHead>
@@ -179,7 +179,7 @@ export default function ChargeTemplatesPage() {
               {templates.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={4} className="py-12 text-center text-sm text-muted-foreground">
-                    Nenhum template criado.
+                    Nenhum modelo criado.
                   </TableCell>
                 </TableRow>
               )}
@@ -190,3 +190,5 @@ export default function ChargeTemplatesPage() {
     </div>
   );
 }
+
+

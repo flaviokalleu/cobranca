@@ -69,7 +69,7 @@ export function NotificationBell() {
   return (
     <DropdownMenu onOpenChange={(open) => open && realtime.resetRealtimeUnread()}>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" className="relative" title="Notificacoes">
+        <Button variant="ghost" size="icon" className="relative" title="Avisos">
           <Bell className="h-4 w-4" />
           <span
             className={
@@ -87,7 +87,7 @@ export function NotificationBell() {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-80 p-0">
         <DropdownMenuLabel className="flex items-center justify-between">
-          <span>Notificacoes</span>
+          <span>Avisos</span>
           <span className="text-muted-foreground">{unread} novas</span>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />

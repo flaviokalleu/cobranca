@@ -5,12 +5,13 @@ import {
   paginationArgs,
   PaginationDto,
 } from '../../common/dto/pagination.dto';
+import { ListFinancialEntryDto } from './dto/list-financial-entry.dto';
 
 @Injectable()
 export class FinancialEntriesRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  async listByTenant(tenantId: string, query: PaginationDto & { status?: string }) {
+  async listByTenant(tenantId: string, query: ListFinancialEntryDto) {
     const { skip, take } = paginationArgs(query);
     const search = query.search?.trim();
     const where = {

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -172,7 +172,7 @@ export default function ContasPagarPage() {
     <>
       <PageHeader
         title="Despesas"
-        description={`${payables.length} no total`}
+        description={`${payables.length} ao todo`}
         actions={
           <Button onClick={openCreate}>
             <Plus className="h-4 w-4" />
@@ -348,3 +348,4 @@ export default function ContasPagarPage() {
     </>
   );
 }
+

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
@@ -181,3 +181,4 @@ export default function RecibosPage() {
     </div>
   );
 }
+

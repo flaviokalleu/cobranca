@@ -24,15 +24,15 @@ export function StatCard({ label, value, hint, sub, icon: Icon, accent, trend }:
   const ic = iconColors[accent];
   return (
     <div
-      className="group relative overflow-hidden rounded-2xl bg-white p-5 transition-all hover:-translate-y-0.5 hover:shadow-lg"
+      className="group relative overflow-hidden rounded-lg bg-white p-5 transition-all hover:shadow-md"
       style={{ border: '1px solid #f0f0f0', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}
     >
       <div className="flex items-start justify-between">
         <div className="space-y-1">
-          <p className="text-xs font-medium uppercase tracking-wider" style={{ color: '#9ca3af' }}>
+          <p className="text-xs font-medium" style={{ color: '#6b7280' }}>
             {label}
           </p>
-          <p className="text-2xl font-bold tracking-tight text-gray-900">{value}</p>
+          <p className="text-2xl font-bold text-gray-950">{value}</p>
           {hint && <p className="text-xs" style={{ color: '#9ca3af' }}>{hint}</p>}
           {sub && <p className="text-xs font-medium" style={{ color: '#6b7280' }}>{sub}</p>}
           {trend && (
@@ -48,17 +48,13 @@ export function StatCard({ label, value, hint, sub, icon: Icon, accent, trend }:
           )}
         </div>
         <div
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg"
           style={{ background: ic.bg }}
         >
           <Icon className="h-5 w-5" style={{ color: ic.color }} />
         </div>
       </div>
       {/* Decoração sutil no canto */}
-      <div
-        className="pointer-events-none absolute -bottom-4 -right-4 h-16 w-16 rounded-full opacity-0 transition-opacity group-hover:opacity-100"
-        style={{ background: ic.bg }}
-      />
     </div>
   );
 }

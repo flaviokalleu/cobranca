@@ -11,7 +11,7 @@ interface AuthShellProps {
 const features = [
   { icon: BarChart2,    text: 'Receitas e despesas em tempo real',       delay: '0.25s' },
   { icon: MessageCircle, text: 'Lembretes automáticos pelo WhatsApp',    delay: '0.35s' },
-  { icon: Layers,       text: 'ERP completo: vendas, estoque e CRM',     delay: '0.45s' },
+  { icon: Layers,       text: 'Tudo junto: vendas, estoque e clientes',  delay: '0.45s' },
   { icon: ShieldCheck,  text: 'Segurança e auditoria em cada operação',  delay: '0.55s' },
 ];
 
@@ -46,7 +46,7 @@ export function AuthShell({ title, subtitle, children }: AuthShellProps) {
                 <span>simples e inteligente.</span>
               </h1>
               <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: '0.95rem', lineHeight: '1.6' }}>
-                Tudo que sua empresa precisa em uma única plataforma — do financeiro ao CRM.
+                Tudo que sua empresa precisa em uma unica plataforma: dinheiro, clientes e vendas.
               </p>
             </div>
 

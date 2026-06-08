@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { toast } from 'sonner';
 import { PageHeader } from '@/components/page-header';
@@ -23,8 +23,8 @@ export default function AdminWhatsappPage() {
   return (
     <>
       <PageHeader
-        title="WhatsApp do Robo"
-        description="Conecte o numero de WhatsApp que sera usado pelo robo para receber comprovantes e enviar mensagens automaticas."
+        title="WhatsApp do robo"
+        description="Acompanhe a conexao do WhatsApp, mensagens recebidas e comprovantes processados."
         actions={
           <WhatsAppActions
             status={whatsapp.status.status}
@@ -62,3 +62,5 @@ export default function AdminWhatsappPage() {
     </>
   );
 }
+
+

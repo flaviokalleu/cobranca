@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -118,12 +118,12 @@ export default function VendasPage() {
   async function handleDelete(id: string) {
     if (!confirm('Excluir este pedido?')) return;
     const res = await dispatch(deleteSale(id));
-    if (deleteSale.fulfilled.match(res)) toast.success('Pedido excluído.');
+    if (deleteSale.fulfilled.match(res)) toast.success('Pedido excluÃ­do.');
     else toast.error('Erro ao excluir.');
   }
 
   function getCustomerName(id: string) {
-    return customers.find((c) => c.id === id)?.name ?? '—';
+    return customers.find((c) => c.id === id)?.name ?? 'â€”';
   }
 
   const totalVendas = orders
@@ -133,8 +133,8 @@ export default function VendasPage() {
   return (
     <div className="flex flex-col gap-4 p-4 md:gap-6 md:p-6">
       <PageHeader
-        title="Pedidos de Venda"
-        description={`${orders.length} pedido(s) | Confirmados: ${brl(totalVendas)}`}
+        title="Vendas"
+        description={`${orders.length} pedidos | Confirmados: ${brl(totalVendas)}`}
       >
         <Button onClick={openNew} size="sm" disabled={products.length === 0 || customers.length === 0}>
           <Plus className="mr-2 h-4 w-4" />
@@ -147,12 +147,12 @@ export default function VendasPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Nº</TableHead>
+              <TableHead>NÂº</TableHead>
               <TableHead>Cliente</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="text-right">Total</TableHead>
               <TableHead>Data</TableHead>
-              <TableHead className="w-32 text-right">Ações</TableHead>
+              <TableHead className="w-32 text-right">AÃ§Ãµes</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -230,7 +230,7 @@ export default function VendasPage() {
                     <SelectContent>
                       {products.map((p) => (
                         <SelectItem key={p.id} value={p.id}>
-                          {p.name} — {brl(p.priceCents)}
+                          {p.name} â€” {brl(p.priceCents)}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -270,3 +270,4 @@ export default function VendasPage() {
     </div>
   );
 }
+

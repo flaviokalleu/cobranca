@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -86,7 +86,7 @@ export default function EstoquePage() {
       ? await dispatch(updateStockMovement({ id: editingId, qty: Number(qty), reason }))
       : await dispatch(adjustStock({ productId, qty: Number(qty), reason }));
     if ((editingId ? updateStockMovement : adjustStock).fulfilled.match(res as never)) {
-      toast.success(editingId ? 'Movimentação atualizada.' : 'Ajuste de estoque registrado.');
+      toast.success(editingId ? 'MovimentaÃ§Ã£o atualizada.' : 'Ajuste de estoque registrado.');
       setOpen(false);
     } else {
       toast.error('Erro ao salvar.');
@@ -94,9 +94,9 @@ export default function EstoquePage() {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm('Excluir esta movimentação?')) return;
+    if (!confirm('Excluir esta movimentaÃ§Ã£o?')) return;
     const res = await dispatch(deleteStockMovement(id));
-    if (deleteStockMovement.fulfilled.match(res)) toast.success('Movimentação excluída.');
+    if (deleteStockMovement.fulfilled.match(res)) toast.success('MovimentaÃ§Ã£o excluÃ­da.');
     else toast.error('Erro ao excluir.');
   }
 
@@ -108,8 +108,8 @@ export default function EstoquePage() {
   return (
     <div className="flex flex-col gap-4 p-4 md:gap-6 md:p-6">
       <PageHeader
-        title="Controle de Estoque"
-        description={`${products.length} produto(s) | ${movements.length} movimentação(ões)`}
+        title="Estoque"
+        description={`${products.length} produtos | ${movements.length} movimentaÃ§Ã£o(Ãµes)`}
       >
         <Button onClick={openNew} size="sm" disabled={products.length === 0}>
           <Plus className="mr-2 h-4 w-4" />
@@ -151,9 +151,9 @@ export default function EstoquePage() {
               <TableHead>Produto</TableHead>
               <TableHead className="text-right">Qtd</TableHead>
               <TableHead>Motivo</TableHead>
-              <TableHead>Referência</TableHead>
+              <TableHead>ReferÃªncia</TableHead>
               <TableHead>Data</TableHead>
-              <TableHead className="w-24 text-right">Ações</TableHead>
+              <TableHead className="w-24 text-right">AÃ§Ãµes</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -161,7 +161,7 @@ export default function EstoquePage() {
               <TableRow>
                 <TableCell colSpan={7} className="py-10 text-center text-gray-400">
                   <Package className="mx-auto mb-2 h-8 w-8 opacity-30" />
-                  Nenhuma movimentação encontrada.
+                  Nenhuma movimentaÃ§Ã£o encontrada.
                 </TableCell>
               </TableRow>
             )}
@@ -174,7 +174,7 @@ export default function EstoquePage() {
                     </span>
                   ) : (
                     <span className="flex items-center gap-1 text-red-500">
-                      <ArrowDownCircle className="h-4 w-4" /> Saída
+                      <ArrowDownCircle className="h-4 w-4" /> SaÃ­da
                     </span>
                   )}
                 </TableCell>
@@ -184,7 +184,7 @@ export default function EstoquePage() {
                 </TableCell>
                 <TableCell>{m.reason}</TableCell>
                 <TableCell className="text-xs text-gray-400">
-                  {m.refType ? `${m.refType}: ${m.refId?.slice(0, 8)}` : '—'}
+                  {m.refType ? `${m.refType}: ${m.refId?.slice(0, 8)}` : 'â€”'}
                 </TableCell>
                 <TableCell>{fmtDate(m.createdAt)}</TableCell>
                 <TableCell className="text-right">
@@ -212,9 +212,9 @@ export default function EstoquePage() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>{editingId ? 'Editar Movimentação' : 'Ajuste de Estoque'}</DialogTitle>
+            <DialogTitle>{editingId ? 'Editar MovimentaÃ§Ã£o' : 'Ajuste de Estoque'}</DialogTitle>
             <DialogDescription>
-              Use valores positivos para entrada e negativos para saída.
+              Use valores positivos para entrada e negativos para saÃ­da.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="grid gap-4">
@@ -241,7 +241,7 @@ export default function EstoquePage() {
                 type="number"
                 value={qty}
                 onChange={(e) => setQty(e.target.value)}
-                placeholder="+10 entrada / -5 saída"
+                placeholder="+10 entrada / -5 saÃ­da"
                 required
               />
             </div>
@@ -266,3 +266,4 @@ export default function EstoquePage() {
     </div>
   );
 }
+

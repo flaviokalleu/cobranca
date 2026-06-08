@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState } from 'react';
 import { Plus } from 'lucide-react';
@@ -21,8 +21,8 @@ export default function CompanyActivationCodesPage({
   return (
     <>
       <PageHeader
-        title="Codigos de ativacao"
-        description="Vincule usuarios de WhatsApp a esta empresa com validade, limite de uso e permissoes."
+        title="Ativar empresas"
+        description="Crie codigos para ligar cada numero de WhatsApp a empresa certa."
         actions={
           <Button onClick={() => setOpen(true)}>
             <Plus className="h-4 w-4" />
@@ -55,3 +55,4 @@ export default function CompanyActivationCodesPage({
     </>
   );
 }
+

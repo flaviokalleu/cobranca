@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -130,7 +130,7 @@ export default function ComprasPage() {
   }
 
   async function handleReceive(id: string) {
-    if (!confirm('Marcar este pedido como recebido? O estoque será atualizado.')) return;
+    if (!confirm('Marcar este pedido como recebido? O estoque serÃ¡ atualizado.')) return;
     const res = await dispatch(receivePurchase(id));
     if (receivePurchase.fulfilled.match(res)) toast.success('Pedido recebido! Estoque atualizado.');
     else toast.error('Erro ao receber pedido.');
@@ -139,7 +139,7 @@ export default function ComprasPage() {
   async function handleDelete(id: string) {
     if (!confirm('Excluir este pedido de compra?')) return;
     const res = await dispatch(deletePurchase(id));
-    if (deletePurchase.fulfilled.match(res)) toast.success('Pedido excluído.');
+    if (deletePurchase.fulfilled.match(res)) toast.success('Pedido excluÃ­do.');
     else toast.error('Erro ao excluir.');
   }
 
@@ -154,8 +154,8 @@ export default function ComprasPage() {
   return (
     <div className="flex flex-col gap-6 p-6">
       <PageHeader
-        title="Pedidos de Compra"
-        description={`${orders.length} pedido(s) | Pendente: ${brl(totalPendente)}`}
+        title="Compras"
+        description={`${orders.length} pedidos | Pendente: ${brl(totalPendente)}`}
       >
         <Button onClick={openNew} size="sm" disabled={products.length === 0}>
           <Plus className="mr-2 h-4 w-4" />
@@ -167,12 +167,12 @@ export default function ComprasPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Nº</TableHead>
+              <TableHead>NÂº</TableHead>
               <TableHead>Fornecedor</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="text-right">Total</TableHead>
               <TableHead>Data</TableHead>
-              <TableHead className="w-32 text-right">Ações</TableHead>
+              <TableHead className="w-32 text-right">AÃ§Ãµes</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -310,3 +310,4 @@ export default function ComprasPage() {
     </div>
   );
 }
+

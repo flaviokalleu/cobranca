@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -66,25 +66,25 @@ export default function ReconciliacaoPage() {
     });
     setLoading(false);
     if (res.status < 400) {
-      toast.success('Reconciliacao concluida');
+      toast.success('Conferencia concluida');
       await load();
     } else {
-      toast.error('Nao foi possivel reconciliar esta conta');
+      toast.error('Nao foi possivel conferir esta conta');
     }
   }
 
   return (
     <div className="min-h-screen bg-background">
       <div className="border-b bg-card px-4 py-4 sm:px-6">
-        <h1 className="text-base font-bold">Reconciliacao bancaria</h1>
-        <p className="text-xs text-muted-foreground">Matching por valor e data usando transacoes Open Finance.</p>
+        <h1 className="text-base font-bold">Conferir banco</h1>
+        <p className="text-xs text-muted-foreground">Compare o extrato do banco com as cobrancas do sistema.</p>
       </div>
 
       <div className="grid gap-4 p-4 sm:p-6 lg:grid-cols-[360px_1fr]">
         <Card className="p-4">
           <form onSubmit={run} className="space-y-4">
             <div className="space-y-1.5">
-              <Label>Conta bancaria</Label>
+              <Label>Conta do banco</Label>
               <select
                 value={accountId}
                 onChange={(event) => setAccountId(event.target.value)}
@@ -109,13 +109,13 @@ export default function ReconciliacaoPage() {
             </div>
             <Button type="submit" disabled={!accountId || loading} className="w-full">
               {loading ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Split className="h-4 w-4" />}
-              Rodar reconciliacao
+              Conferir agora
             </Button>
           </form>
           {accounts.length === 0 && (
             <div className="mt-4 flex gap-2 rounded-md bg-muted p-3 text-xs text-muted-foreground">
               <TriangleAlert className="h-4 w-4 shrink-0" />
-              Conecte uma conta em Open Finance ou use o sandbox local antes de reconciliar.
+              Conecte uma conta bancaria ou use o modo de teste antes de conferir.
             </div>
           )}
         </Card>
@@ -127,8 +127,8 @@ export default function ReconciliacaoPage() {
                 <TableHead>Periodo</TableHead>
                 <TableHead>Encontrados</TableHead>
                 <TableHead>Suspeitos</TableHead>
-                <TableHead>Nao reconhecidos</TableHead>
-                <TableHead>Total conciliado</TableHead>
+                <TableHead>Sem ligacao</TableHead>
+                <TableHead>Total conferido</TableHead>
                 <TableHead>Executado em</TableHead>
               </TableRow>
             </TableHeader>
@@ -146,7 +146,7 @@ export default function ReconciliacaoPage() {
               {results.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={6} className="py-12 text-center text-sm text-muted-foreground">
-                    Nenhuma reconciliacao executada ainda.
+                    Nenhuma conferencia feita ainda.
                   </TableCell>
                 </TableRow>
               )}
@@ -157,3 +157,5 @@ export default function ReconciliacaoPage() {
     </div>
   );
 }
+
+

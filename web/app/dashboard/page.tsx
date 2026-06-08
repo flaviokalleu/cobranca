@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
@@ -19,7 +19,7 @@ import {
   CalendarDays, TrendingDown, BarChart2, Percent,
 } from 'lucide-react';
 
-// ─── tipos de período ─────────────────────────────────────────────────────────
+// â”€â”€â”€ tipos de perÃ­odo â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 type Period = 'hoje' | '7d' | '30d' | 'trim' | 'ano';
 
 const PERIOD_LABELS: Record<Period, string> = {
@@ -52,7 +52,7 @@ function periodRange(p: Period): { from: Date; to: Date } {
   return { from, to };
 }
 
-// ─── helpers ──────────────────────────────────────────────────────────────────
+// â”€â”€â”€ helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const brl = (cents: number) =>
   (cents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const fmtDate = (iso: string) =>
@@ -65,7 +65,7 @@ const inRange = (iso: string, from: Date, to: Date) => {
 const isOverdue = (c: { status: string; dueDate: string }) =>
   c.status === 'PENDING' && new Date(c.dueDate).getTime() < Date.now();
 
-// ─── sub-componentes ──────────────────────────────────────────────────────────
+// â”€â”€â”€ sub-componentes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function PeriodFilter({ value, onChange }: { value: Period; onChange: (p: Period) => void }) {
   return (
     <div className="flex items-center gap-1 rounded-xl bg-gray-100 p-1">
@@ -148,7 +148,7 @@ function ChartTooltip({ active, payload, label }: { active?: boolean; payload?: 
       {payload.map((p) => (
         <p key={p.name} className="flex items-center gap-2 mb-1 last:mb-0">
           <span className="h-2 w-2 rounded-full flex-shrink-0" style={{ background: p.color }} />
-          <span className="text-gray-500">{p.name === 'receita' ? 'Receita' : p.name === 'despesa' ? 'Despesa' : p.name}</span>
+          <span className="text-gray-500">{p.name === 'receita' ? 'Entrada' : p.name === 'despesa' ? 'Saida' : p.name}</span>
           <span className="ml-auto font-bold text-gray-900">{brl(Math.round(p.value * 100))}</span>
         </p>
       ))}
@@ -171,7 +171,7 @@ interface AlertsSummary {
   chargingDueToday: { count: number; totalCents: number };
 }
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export default function PainelPage() {
   const dispatch = useAppDispatch();
   const { customers, charges } = useAppSelector((s) => s.data);
@@ -193,7 +193,7 @@ export default function PainelPage() {
     });
   }, [dispatch]);
 
-  // ── Filtros de data ────────────────────────────────────────────────────────
+  // â”€â”€ Filtros de data â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const { from, to } = useMemo(() => periodRange(period), [period]);
 
   useEffect(() => {
@@ -213,13 +213,13 @@ export default function PainelPage() {
     [financialEntries, from, to],
   );
 
-  // ── KPIs ──────────────────────────────────────────────────────────────────
+  // â”€â”€ KPIs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const localKpis = useMemo(() => {
     const pending = chargesFiltered.filter(c => c.status === 'PENDING');
     const aReceber = pending.reduce((s, c) => s + c.amountCents, 0);
     const recebidoManual = chargesFiltered.filter(c => c.status === 'PAID').reduce((s, c) => s + c.amountCents, 0);
-    const waReceitas = entriesFiltered.filter(e => e.tipo === 'receita').reduce((s, e) => s + e.valorCents, 0);
-    const recebido = recebidoManual + waReceitas;
+    const waEntradas = entriesFiltered.filter(e => e.tipo === 'receita').reduce((s, e) => s + e.valorCents, 0);
+    const recebido = recebidoManual + waEntradas;
     const vencidas = pending.filter(isOverdue).length;
     const aPagar = payablesFiltered.filter(p => p.status === 'PENDING').reduce((s, p) => s + p.amountCents, 0);
     const total = aReceber + recebido;
@@ -229,7 +229,7 @@ export default function PainelPage() {
     const saldo = recebido - despesasPagas - waGastos;
     const tarefas = tasks.filter(t => !t.done).length;
 
-    // DSO: dias médios de recebimento
+    // Prazo de recebimento: dias mÃ©dios de recebimento
     const paidCharges = chargesFiltered.filter(c => c.status === 'PAID' && c.paidAt);
     const dso = paidCharges.length > 0
       ? Math.round(paidCharges.reduce((s, c) => {
@@ -238,11 +238,11 @@ export default function PainelPage() {
         }, 0) / paidCharges.length)
       : 0;
 
-    // Taxa de inadimplência
+    // Taxa de inadimplÃªncia
     const totalCharges = chargesFiltered.length;
     const inadimplencia = totalCharges > 0 ? Math.round((vencidas / totalCharges) * 100) : 0;
 
-    return { aReceber, recebido, vencidas, aPagar, pct, tarefas, saldo, waReceitas, recebidoManual, despesasPagas, waGastos, dso, inadimplencia, total };
+    return { aReceber, recebido, vencidas, aPagar, pct, tarefas, saldo, waEntradas, recebidoManual, despesasPagas, waGastos, dso, inadimplencia, total };
   }, [chargesFiltered, payablesFiltered, entriesFiltered, tasks]);
 
   const kpis = useMemo(() => {
@@ -257,7 +257,7 @@ export default function PainelPage() {
       pct: dashboardKpis.collectionRate,
       tarefas: dashboardKpis.openTasks,
       saldo: dashboardKpis.balanceCents,
-      waReceitas: dashboardKpis.whatsappIncomeCents,
+      waEntradas: dashboardKpis.whatsappIncomeCents,
       recebidoManual: dashboardKpis.receivedCents,
       despesasPagas: dashboardKpis.paidExpensesCents,
       waGastos: dashboardKpis.whatsappExpenseCents,
@@ -267,7 +267,7 @@ export default function PainelPage() {
     };
   }, [dashboardKpis, localKpis]);
 
-  // ── Chart: área (tendência mensal ou diária) ───────────────────────────────
+  // â”€â”€ Chart: Ã¡rea (tendÃªncia mensal ou diÃ¡ria) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const chartData = useMemo(() => {
     if (dashboardKpis?.chart?.length) {
       return dashboardKpis.chart.map((point) => ({
@@ -344,7 +344,7 @@ export default function PainelPage() {
     return pts;
   }, [charges, dashboardKpis, payables, financialEntries, period]);
 
-  // ── Donut: composição de receita ───────────────────────────────────────────
+  // â”€â”€ Donut: composiÃ§Ã£o de receita â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const donutData = useMemo(() => {
     const manual = chargesFiltered.filter(c => c.status === 'PAID').reduce((s, c) => s + c.amountCents / 100, 0);
     const whatsapp = entriesFiltered.filter(e => e.tipo === 'receita').reduce((s, e) => s + e.valorCents / 100, 0);
@@ -357,13 +357,13 @@ export default function PainelPage() {
     return data.length > 0 ? data : [{ name: 'Sem dados', value: 1 }];
   }, [chargesFiltered, entriesFiltered]);
 
-  // ── Recentes ──────────────────────────────────────────────────────────────
+  // â”€â”€ Recentes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const recentes = useMemo<RecentRow[]>(() => {
     const rows: RecentRow[] = [
       ...chargesFiltered.map(c => ({
         kind: 'charge' as const,
         id: c.id,
-        nome: (c as { customer?: { name: string } }).customer?.name ?? '—',
+        nome: (c as { customer?: { name: string } }).customer?.name ?? 'â€”',
         descricao: c.description,
         tipo: c.recurrence === 'MONTHLY' ? 'Mensal' : 'Avulso',
         data: c.dueDate,
@@ -374,9 +374,9 @@ export default function PainelPage() {
       ...entriesFiltered.map(e => ({
         kind: 'wa' as const,
         id: e.id,
-        nome: e.pagadorNome ?? e.recebedorNome ?? '—',
+        nome: e.pagadorNome ?? e.recebedorNome ?? 'â€”',
         descricao: e.descricao,
-        tipo: e.tipo === 'receita' ? 'Receita' : 'Gasto',
+        tipo: e.tipo === 'receita' ? 'Entrada' : 'Gasto',
         data: e.dataTransacao ?? e.createdAt,
         valorCents: e.valorCents,
         confianca: e.confianca,
@@ -391,15 +391,15 @@ export default function PainelPage() {
   return (
     <div className="min-h-screen bg-gray-50">
 
-      {/* ── PAGE HEADER ─────────────────────────────────────────────────────── */}
+      {/* â”€â”€ PAGE HEADER â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <div className="sticky top-0 z-10 border-b border-gray-100 bg-white">
         <div className="mx-auto max-w-7xl px-4 sm:px-6">
           <div className="flex h-16 items-center justify-between gap-3">
             <div className="flex-shrink-0">
-              <h1 className="text-base font-bold text-gray-900">Dashboard</h1>
+              <h1 className="text-base font-bold text-gray-900">Painel</h1>
               <p className="hidden text-xs text-gray-400 capitalize sm:block">{mesAtual}</p>
             </div>
-            {/* Filtro de período - desktop */}
+            {/* Filtro de perÃ­odo - desktop */}
             <div className="hidden sm:block">
               <PeriodFilter value={period} onChange={setPeriod} />
             </div>
@@ -408,10 +408,10 @@ export default function PainelPage() {
               className="flex flex-shrink-0 items-center gap-1.5 rounded-xl bg-red-600 px-3 sm:px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-700 active:scale-95"
             >
               <Plus className="h-4 w-4" />
-              <span className="hidden sm:inline">Nova cobrança</span>
+              <span className="hidden sm:inline">Nova cobranca</span>
             </Link>
           </div>
-          {/* Filtro de período - mobile */}
+          {/* Filtro de perÃ­odo - mobile */}
           <div className="pb-3 sm:hidden overflow-x-auto">
             <PeriodFilter value={period} onChange={setPeriod} />
           </div>
@@ -420,7 +420,7 @@ export default function PainelPage() {
 
       <div className="mx-auto max-w-7xl space-y-4 p-4 sm:p-6">
 
-        {/* ── SALDO + INDICADORES TOPO ─────────────────────────────────────── */}
+        {/* â”€â”€ SALDO + INDICADORES TOPO â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
         <div className="grid gap-4 lg:grid-cols-3">
 
           {/* Saldo principal */}
@@ -447,7 +447,7 @@ export default function PainelPage() {
             {/* Barra de progresso */}
             <div className="mt-5">
               <div className="mb-1.5 flex justify-between text-xs text-gray-400">
-                <span>Taxa de recebimento: <strong className="text-gray-700">{kpis.pct}%</strong></span>
+                <span>Quanto ja recebeu: <strong className="text-gray-700">{kpis.pct}%</strong></span>
                 <span>{brl(kpis.recebido)} / {brl(kpis.total)}</span>
               </div>
               <div className="h-2 w-full overflow-hidden rounded-full bg-gray-100">
@@ -476,7 +476,7 @@ export default function PainelPage() {
 
           {/* Indicadores operacionais */}
           <div className="flex flex-col gap-4">
-            {/* DSO */}
+            {/* Prazo de recebimento */}
             <div className="rounded-2xl bg-white p-5" style={{ border: '1px solid #e5e7eb' }}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -484,8 +484,8 @@ export default function PainelPage() {
                     <Clock className="h-4.5 w-4.5 text-indigo-500" />
                   </div>
                   <div>
-                    <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">DSO</p>
-                    <p className="text-[10px] text-gray-300">Prazo médio recebimento</p>
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Prazo de recebimento</p>
+                    <p className="text-[10px] text-gray-300">Media de dias para receber</p>
                   </div>
                 </div>
                 <div className="text-right">
@@ -494,7 +494,7 @@ export default function PainelPage() {
               </div>
             </div>
 
-            {/* Inadimplência */}
+            {/* Atrasos */}
             <div className="rounded-2xl bg-white p-5" style={{ border: kpis.inadimplencia > 20 ? '1.5px solid #fca5a5' : '1px solid #e5e7eb' }}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -502,8 +502,8 @@ export default function PainelPage() {
                     <Percent className={`h-4.5 w-4.5 ${kpis.inadimplencia > 20 ? 'text-red-500' : 'text-orange-500'}`} />
                   </div>
                   <div>
-                    <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Inadimplência</p>
-                    <p className="text-[10px] text-gray-300">{kpis.vencidas} cobranças vencidas</p>
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Atrasos</p>
+                    <p className="text-[10px] text-gray-300">{kpis.vencidas} cobrancas vencidas</p>
                   </div>
                 </div>
                 <p className={`text-2xl font-bold tabular-nums ${kpis.inadimplencia > 20 ? 'text-red-600' : 'text-gray-900'}`}>
@@ -512,7 +512,7 @@ export default function PainelPage() {
               </div>
             </div>
 
-            {/* Tarefas + Leads */}
+            {/* Tarefas + Interessados */}
             <div className="grid grid-cols-2 gap-3">
               <Link href="/dashboard/tarefas" className="group rounded-2xl bg-white p-4 transition hover:shadow-md" style={{ border: '1px solid #e5e7eb' }}>
                 <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-50">
@@ -526,20 +526,20 @@ export default function PainelPage() {
                   <Target className="h-4.5 w-4.5 text-sky-500" />
                 </div>
                 <p className="mt-3 text-2xl font-bold text-gray-900 tabular-nums">{leads.length}</p>
-                <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">Leads</p>
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">Interessados</p>
               </Link>
             </div>
           </div>
         </div>
 
-        {/* ── KPI CARDS ───────────────────────────────────────────────────── */}
+        {/* â”€â”€ KPI CARDS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
         <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
           <KpiCard label="A receber" value={brl(kpis.aReceber)}
-            sub={`${chargesFiltered.filter(c => c.status === 'PENDING').length} cobranças`}
+            sub={`${chargesFiltered.filter(c => c.status === 'PENDING').length} cobranÃ§as`}
             icon={Wallet} iconBg="#fef9c3" iconColor="#ca8a04"
             href="/dashboard/cobrancas" />
           <KpiCard label="Vencidas" value={String(kpis.vencidas)}
-            sub="cobranças em atraso"
+            sub="cobranÃ§as em atraso"
             icon={AlertTriangle} iconBg="#fee2e2" iconColor="#dc2626"
             delta={kpis.vencidas > 0 ? `${kpis.vencidas} atrasada${kpis.vencidas > 1 ? 's' : ''}` : '0 em atraso'}
             deltaUp={kpis.vencidas === 0}
@@ -549,18 +549,18 @@ export default function PainelPage() {
             sub="cadastrados"
             icon={Users} iconBg="#ede9fe" iconColor="#7c3aed"
             href="/dashboard/clientes" />
-          <KpiCard label="WhatsApp" value={brl(kpis.waReceitas)}
-            sub={`${entriesFiltered.filter(e => e.tipo === 'receita').length} lançamentos`}
+          <KpiCard label="WhatsApp" value={brl(kpis.waEntradas)}
+            sub={`${entriesFiltered.filter(e => e.tipo === 'receita').length} lancamentos`}
             icon={MessageCircle} iconBg="#dcfce7" iconColor="#16a34a" />
         </div>
 
         {alerts && (
           <div className="grid gap-3 rounded-2xl bg-white p-4 sm:grid-cols-3 lg:grid-cols-6" style={{ border: '1px solid #e5e7eb' }}>
             {[
-              { label: 'Cobrancas vencidas', value: alerts.overdueCharges.count, sub: brl(alerts.overdueCharges.totalCents) },
+              { label: 'Cobrancas atrasadas', value: alerts.overdueCharges.count, sub: brl(alerts.overdueCharges.totalCents) },
               { label: 'Contas vencidas', value: alerts.overduePayables.count, sub: brl(alerts.overduePayables.totalCents) },
-              { label: 'Tarefas atrasadas', value: alerts.overdueTasks.count, sub: 'checklist' },
-              { label: 'Recibos pendentes', value: alerts.pendingFinancialEntries.count, sub: 'OCR' },
+              { label: 'Tarefas atrasadas', value: alerts.overdueTasks.count, sub: 'tarefas' },
+              { label: 'Recibos pendentes', value: alerts.pendingFinancialEntries.count, sub: 'recibos' },
               { label: 'Estoque critico', value: alerts.lowStock.count, sub: 'produtos' },
               { label: 'Vence hoje', value: alerts.chargingDueToday.count, sub: brl(alerts.chargingDueToday.totalCents) },
             ].map((item) => (
@@ -573,24 +573,24 @@ export default function PainelPage() {
           </div>
         )}
 
-        {/* ── GRÁFICO ÁREA + DONUT ─────────────────────────────────────────── */}
+        {/* â”€â”€ GRÃFICO ÃREA + DONUT â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
         <div className="grid gap-4 lg:grid-cols-3">
 
           {/* Area chart */}
           <div className="lg:col-span-2 rounded-2xl bg-white p-5 sm:p-6" style={{ border: '1px solid #e5e7eb' }}>
             <div className="mb-5 flex items-start justify-between">
               <div>
-                <h2 className="text-sm font-bold text-gray-900">Fluxo Financeiro</h2>
+                <h2 className="text-sm font-bold text-gray-900">Entradas e saidas</h2>
                 <p className="mt-0.5 text-xs text-gray-400">
-                  Receitas × Despesas · {PERIOD_LABELS[period]}
+                  Entradas e saidas Â· {PERIOD_LABELS[period]}
                 </p>
               </div>
               <div className="flex items-center gap-3 text-xs font-medium text-gray-500">
                 <span className="flex items-center gap-1.5">
-                  <span className="h-2.5 w-2.5 rounded-full bg-red-500" />Receita
+                  <span className="h-2.5 w-2.5 rounded-full bg-red-500" />Entrada
                 </span>
                 <span className="flex items-center gap-1.5">
-                  <span className="h-2.5 w-2.5 rounded-full bg-indigo-400" />Despesa
+                  <span className="h-2.5 w-2.5 rounded-full bg-indigo-400" />Saida
                 </span>
               </div>
             </div>
@@ -621,9 +621,9 @@ export default function PainelPage() {
             </div>
           </div>
 
-          {/* Donut: composição */}
+          {/* Donut: composiÃ§Ã£o */}
           <div className="rounded-2xl bg-white p-5" style={{ border: '1px solid #e5e7eb' }}>
-            <h2 className="text-sm font-bold text-gray-900">Composição de receita</h2>
+            <h2 className="text-sm font-bold text-gray-900">De onde veio o dinheiro</h2>
             <p className="mt-0.5 mb-4 text-xs text-gray-400">Por origem · {PERIOD_LABELS[period]}</p>
             <div className="h-44">
               <ResponsiveContainer width="100%" height="100%">
@@ -653,15 +653,15 @@ export default function PainelPage() {
           </div>
         </div>
 
-        {/* ── BAR CHART + AÇÕES RÁPIDAS ────────────────────────────────────── */}
+        {/* â”€â”€ BAR CHART + AÃ‡Ã•ES RÃPIDAS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
         <div className="grid gap-4 lg:grid-cols-3">
 
-          {/* Bar chart: receita vs despesa por mês */}
+          {/* Bar chart: receita vs despesa por mÃªs */}
           <div className="lg:col-span-2 rounded-2xl bg-white p-5 sm:p-6" style={{ border: '1px solid #e5e7eb' }}>
             <div className="mb-5 flex items-start justify-between">
               <div>
-                <h2 className="text-sm font-bold text-gray-900">Comparativo mensal</h2>
-                <p className="mt-0.5 text-xs text-gray-400">Receita vs Despesa em barras</p>
+                <h2 className="text-sm font-bold text-gray-900">Comparativo do mes</h2>
+                <p className="mt-0.5 text-xs text-gray-400">Entrada vs Saida em barras</p>
               </div>
               <BarChart2 className="h-4 w-4 text-gray-300" />
             </div>
@@ -680,16 +680,16 @@ export default function PainelPage() {
             </div>
           </div>
 
-          {/* Ações rápidas + resumo */}
+          {/* Atalhos + resumo */}
           <div className="flex flex-col gap-4">
             {/* resumo operacional */}
             <div className="rounded-2xl bg-white p-5" style={{ border: '1px solid #e5e7eb' }}>
-              <h3 className="mb-3 text-sm font-bold text-gray-900">Resumo do período</h3>
+              <h3 className="mb-3 text-sm font-bold text-gray-900">Resumo do periodo</h3>
               <div className="space-y-2">
                 {[
-                  { label: 'Cobranças ativas', val: chargesFiltered.filter(c => c.status === 'PENDING').length, color: '#f59e0b', bg: '#fffbeb' },
+                  { label: 'Cobrancas em aberto', val: chargesFiltered.filter(c => c.status === 'PENDING').length, color: '#f59e0b', bg: '#fffbeb' },
                   { label: 'Pagas', val: chargesFiltered.filter(c => c.status === 'PAID').length, color: '#10b981', bg: '#f0fdf4' },
-                  { label: 'Despesas pendentes', val: payablesFiltered.filter(p => p.status === 'PENDING').length, color: '#ef4444', bg: '#fef2f2' },
+                  { label: 'Saidas pendentes', val: payablesFiltered.filter(p => p.status === 'PENDING').length, color: '#ef4444', bg: '#fef2f2' },
                 ].map(item => (
                   <div key={item.label} className="flex items-center justify-between rounded-xl px-3 py-2" style={{ background: item.bg }}>
                     <div className="flex items-center gap-2">
@@ -702,15 +702,15 @@ export default function PainelPage() {
               </div>
             </div>
 
-            {/* ações rápidas */}
+            {/* aÃ§Ãµes rÃ¡pidas */}
             <div className="rounded-2xl bg-white p-5" style={{ border: '1px solid #e5e7eb' }}>
-              <h3 className="mb-3 text-sm font-bold text-gray-900">Ações rápidas</h3>
+              <h3 className="mb-3 text-sm font-bold text-gray-900">Atalhos</h3>
               <div className="space-y-1">
                 {[
-                  { label: 'Cobranças', href: '/dashboard/cobrancas', icon: Wallet, iconBg: '#fee2e2', iconColor: '#dc2626' },
+                  { label: 'Receber', href: '/dashboard/cobrancas', icon: Wallet, iconBg: '#fee2e2', iconColor: '#dc2626' },
                   { label: 'Clientes', href: '/dashboard/clientes', icon: Users, iconBg: '#ede9fe', iconColor: '#7c3aed' },
-                  { label: 'Fluxo de caixa', href: '/dashboard/financeiro/fluxo', icon: TrendingUp, iconBg: '#d1fae5', iconColor: '#059669' },
-                  { label: 'Despesas', href: '/dashboard/financeiro/pagar', icon: Banknote, iconBg: '#e0f2fe', iconColor: '#0284c7' },
+                  { label: 'Entradas e saidas', href: '/dashboard/financeiro/fluxo', icon: TrendingUp, iconBg: '#d1fae5', iconColor: '#059669' },
+                  { label: 'Saidas', href: '/dashboard/financeiro/pagar', icon: Banknote, iconBg: '#e0f2fe', iconColor: '#0284c7' },
                 ].map(a => (
                   <Link key={a.label} href={a.href}
                     className="flex items-center gap-3 rounded-xl px-3 py-2 transition-all hover:bg-gray-50 group">
@@ -726,13 +726,13 @@ export default function PainelPage() {
           </div>
         </div>
 
-        {/* ── MOVIMENTAÇÕES RECENTES ──────────────────────────────────────── */}
+        {/* â”€â”€ MOVIMENTAÃ‡Ã•ES RECENTES â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
         <div className="rounded-2xl bg-white overflow-hidden" style={{ border: '1px solid #e5e7eb' }}>
           <div className="flex items-center justify-between border-b border-gray-50 px-5 py-4">
             <div>
-              <h2 className="text-sm font-bold text-gray-900">Movimentações recentes</h2>
+              <h2 className="text-sm font-bold text-gray-900">MovimentaÃ§Ãµes recentes</h2>
               <p className="mt-0.5 text-xs text-gray-400">
-                {chargesFiltered.length} cobranças · {entriesFiltered.length} via WhatsApp · {PERIOD_LABELS[period]}
+                {chargesFiltered.length} cobranÃ§as Â· {entriesFiltered.length} via WhatsApp Â· {PERIOD_LABELS[period]}
               </p>
             </div>
             <Link href="/dashboard/cobrancas"
@@ -756,7 +756,7 @@ export default function PainelPage() {
                     : row.kind === 'charge' && row.status === 'PAID' ? 'text-emerald-600'
                     : 'text-gray-700'
                   }`}>
-                    {row.kind === 'wa' && row.tipo === 'Gasto' ? '−' : '+'}{brl(row.valorCents)}
+                    {row.kind === 'wa' && row.tipo === 'Gasto' ? 'âˆ’' : '+'}{brl(row.valorCents)}
                   </p>
                   <p className="text-[10px] text-gray-400">{fmtDate(row.data)}</p>
                 </div>
@@ -765,7 +765,7 @@ export default function PainelPage() {
             {recentes.length === 0 && (
               <div className="px-4 py-10 text-center">
                 <CircleDollarSign className="mx-auto mb-2 h-8 w-8 text-gray-300" />
-                <p className="text-sm text-gray-400">Nenhuma movimentação no período</p>
+                <p className="text-sm text-gray-400">Nenhuma movimentaÃ§Ã£o no perÃ­odo</p>
               </div>
             )}
           </div>
@@ -775,7 +775,7 @@ export default function PainelPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-50 bg-gray-50/50">
-                  {['Origem', 'Cliente / Pagador', 'Descrição', 'Tipo', 'Data', 'Valor', 'Status'].map(h => (
+                  {['Origem', 'Cliente / Pagador', 'DescriÃ§Ã£o', 'Tipo', 'Data', 'Valor', 'Status'].map(h => (
                     <th key={h} className="px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-400">
                       {h}
                     </th>
@@ -814,7 +814,7 @@ export default function PainelPage() {
                         : row.kind === 'charge' && row.status === 'PAID' ? 'text-emerald-600'
                         : 'text-gray-900'
                       }`}>
-                        {row.kind === 'wa' && row.tipo === 'Gasto' ? '−' : '+'}{brl(row.valorCents)}
+                        {row.kind === 'wa' && row.tipo === 'Gasto' ? 'âˆ’' : '+'}{brl(row.valorCents)}
                       </span>
                     </td>
                     <td className="px-5 py-4">
@@ -827,7 +827,7 @@ export default function PainelPage() {
                             }}>
                             <span className="h-1.5 w-1.5 rounded-full"
                               style={{ background: row.confianca === 'alta' ? '#10b981' : row.confianca === 'media' ? '#f59e0b' : '#f43f5e' }} />
-                            {row.confianca === 'alta' ? 'Confirmado' : row.confianca === 'media' ? 'Provável' : 'Revisar'}
+                            {row.confianca === 'alta' ? 'Confirmado' : row.confianca === 'media' ? 'ProvÃ¡vel' : 'Revisar'}
                           </span>}
                     </td>
                   </tr>
@@ -836,9 +836,9 @@ export default function PainelPage() {
                   <tr>
                     <td colSpan={7} className="px-5 py-12 text-center">
                       <CircleDollarSign className="mx-auto mb-3 h-10 w-10 text-gray-200" />
-                      <p className="text-sm text-gray-400">Nenhuma movimentação em {PERIOD_LABELS[period]}</p>
+                      <p className="text-sm text-gray-400">Nenhuma movimentaÃ§Ã£o em {PERIOD_LABELS[period]}</p>
                       <Link href="/dashboard/cobrancas" className="mt-1 block text-xs font-semibold text-red-600 hover:text-red-700">
-                        Criar primeira cobrança →
+                        Criar primeira cobranÃ§a â†’
                       </Link>
                     </td>
                   </tr>
@@ -852,3 +852,5 @@ export default function PainelPage() {
     </div>
   );
 }
+
+

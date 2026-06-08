@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -85,7 +85,7 @@ export default function FornecedoresPage() {
   async function handleDelete(id: string, nome: string) {
     if (!confirm(`Excluir fornecedor "${nome}"?`)) return;
     const res = await dispatch(deleteSupplier(id));
-    if (deleteSupplier.fulfilled.match(res)) toast.success('Fornecedor excluído.');
+    if (deleteSupplier.fulfilled.match(res)) toast.success('Fornecedor excluÃ­do.');
     else toast.error('Erro ao excluir.');
   }
 
@@ -99,7 +99,7 @@ export default function FornecedoresPage() {
     <div className="flex flex-col gap-4 p-4 md:gap-6 md:p-6">
       <PageHeader
         title="Fornecedores"
-        description={`${suppliers.length} fornecedor(es) cadastrado(s)`}
+        description={`${suppliers.length} fornecedores na lista`}
       >
         <Button onClick={openNew} size="sm">
           <Plus className="mr-2 h-4 w-4" />
@@ -125,7 +125,7 @@ export default function FornecedoresPage() {
               <TableHead>CNPJ / CPF</TableHead>
               <TableHead>Telefone</TableHead>
               <TableHead>E-mail</TableHead>
-              <TableHead className="w-24 text-right">Ações</TableHead>
+              <TableHead className="w-24 text-right">AÃ§Ãµes</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -140,9 +140,9 @@ export default function FornecedoresPage() {
             {filtered.map((s) => (
               <TableRow key={s.id}>
                 <TableCell className="font-medium">{s.name}</TableCell>
-                <TableCell>{s.document ?? '—'}</TableCell>
-                <TableCell>{s.phone ?? '—'}</TableCell>
-                <TableCell>{s.email ?? '—'}</TableCell>
+                <TableCell>{s.document ?? 'â€”'}</TableCell>
+                <TableCell>{s.phone ?? 'â€”'}</TableCell>
+                <TableCell>{s.email ?? 'â€”'}</TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-1">
                     <Button variant="ghost" size="icon" onClick={() => openEdit(s)}>
@@ -206,3 +206,4 @@ export default function FornecedoresPage() {
     </div>
   );
 }
+

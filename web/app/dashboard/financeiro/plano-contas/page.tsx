@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
@@ -21,8 +21,8 @@ const emptyForm = { code: '', name: '', type: 'REVENUE' as AccountType };
 const typeLabels: Record<AccountType, string> = {
   REVENUE: 'Receita',
   EXPENSE: 'Despesa',
-  ASSET: 'Ativo',
-  LIABILITY: 'Passivo',
+  ASSET: 'Tenho',
+  LIABILITY: 'Devo',
 };
 
 const typeColors: Record<AccountType, string> = {
@@ -57,7 +57,7 @@ export default function AccountPlanPage() {
     if (res.status < 400) {
       setAccounts(res.data);
     } else {
-      toast.error('Nao foi possivel carregar o plano de contas.');
+      toast.error('Nao foi possivel carregar as categorias.');
     }
   }
 
@@ -71,9 +71,9 @@ export default function AccountPlanPage() {
     setLoading(false);
     if (res.status < 400) {
       setAccounts(res.data);
-      toast.success('Plano padrao aplicado.');
+      toast.success('Categorias padrao criadas.');
     } else {
-      toast.error('Nao foi possivel aplicar o plano padrao.');
+      toast.error('Nao foi possivel criar as categorias padrao.');
     }
   }
 
@@ -89,7 +89,7 @@ export default function AccountPlanPage() {
 
   async function save() {
     if (!form.code.trim() || !form.name.trim()) {
-      toast.error('Informe codigo e nome da conta.');
+      toast.error('Informe codigo e nome da categoria.');
       return;
     }
 
@@ -99,29 +99,29 @@ export default function AccountPlanPage() {
       : await api<AccountPlan>('POST', '/account-plan', form);
 
     if (res.status < 400) {
-      toast.success(originalCode ? 'Conta atualizada.' : 'Conta criada.');
+      toast.success(originalCode ? 'Categoria atualizada.' : 'Categoria criada.');
       cancelEdit();
       await load();
     } else {
-      toast.error('Nao foi possivel salvar a conta.');
+      toast.error('Nao foi possivel salvar a categoria.');
     }
   }
 
   async function deactivate(code: string) {
     const res = await api<AccountPlan>('DELETE', `/account-plan/${encodeURIComponent(code)}`);
     if (res.status < 400) {
-      toast.success('Conta desativada.');
+      toast.success('Categoria desativada.');
       await load();
     } else {
-      toast.error('Nao foi possivel desativar a conta.');
+      toast.error('Nao foi possivel desativar a categoria.');
     }
   }
 
   return (
     <div className="min-h-screen bg-background">
       <PageHeader
-        title="Plano de contas"
-        description="Classifique receitas, despesas, ativos e passivos usados na DRE e no fluxo de caixa."
+        title="Categorias financeiras"
+        description="Organize entradas e saidas para entender lucro, despesas e saldo."
         actions={
           <div className="flex flex-wrap gap-2">
             <button
@@ -129,7 +129,7 @@ export default function AccountPlanPage() {
               className="inline-flex items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-sm font-medium text-foreground hover:bg-muted"
             >
               <CheckCircle2 className="h-4 w-4" />
-              Plano padrao
+              Criar categorias padrao
             </button>
             <button
               onClick={() => void load()}
@@ -147,9 +147,9 @@ export default function AccountPlanPage() {
           <div className="mb-4 flex items-center justify-between">
             <div>
               <h2 className="text-sm font-semibold text-foreground">
-                {editingCode ? 'Editar conta' : 'Nova conta'}
+                {editingCode ? 'Editar categoria' : 'Nova categoria'}
               </h2>
-              <p className="text-xs text-muted-foreground">Use codigos como 3.1, 4.2 ou 1.1.</p>
+              <p className="text-xs text-muted-foreground">Use codigos simples como 3.1 para entradas e 4.1 para saidas.</p>
             </div>
             {editingCode && (
               <button
@@ -200,7 +200,7 @@ export default function AccountPlanPage() {
               className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground hover:opacity-90"
             >
               {editingCode ? <Save className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-              {editingCode ? 'Salvar alteracoes' : 'Criar conta'}
+              {editingCode ? 'Salvar alteracoes' : 'Criar categoria'}
             </button>
           </div>
         </section>
@@ -211,7 +211,7 @@ export default function AccountPlanPage() {
               <div className="flex items-center justify-between border-b border-border px-5 py-4">
                 <div>
                   <h2 className="text-sm font-semibold text-foreground">{typeLabels[type]}</h2>
-                  <p className="text-xs text-muted-foreground">{grouped[type].length} contas cadastradas</p>
+                  <p className="text-xs text-muted-foreground">{grouped[type].length} categorias cadastradas</p>
                 </div>
                 <span className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${typeColors[type]}`}>
                   {type}
@@ -245,7 +245,7 @@ export default function AccountPlanPage() {
                   </div>
                 ))}
                 {grouped[type].length === 0 && (
-                  <div className="px-5 py-6 text-sm text-muted-foreground">Nenhuma conta cadastrada neste tipo.</div>
+                  <div className="px-5 py-6 text-sm text-muted-foreground">Nenhuma categoria cadastrada neste grupo.</div>
                 )}
               </div>
             </div>
@@ -255,3 +255,5 @@ export default function AccountPlanPage() {
     </div>
   );
 }
+
+

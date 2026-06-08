@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useMemo, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
@@ -18,7 +18,7 @@ import {
 
 const fmtDateTime = (iso: string) => new Date(iso).toLocaleString('pt-BR');
 
-export default function AtividadePage() {
+export default function HistoricoPage() {
   const dispatch = useAppDispatch();
   const role = useAppSelector((s) => s.auth.role);
   const audit = useAppSelector((s) => s.data.audit);
@@ -49,7 +49,7 @@ export default function AtividadePage() {
   if (role !== 'ADMIN') {
     return (
       <>
-        <PageHeader title="Atividade" />
+        <PageHeader title="Historico" />
         <div className="p-4 md:p-6">
           <Card className="p-4 md:p-6 text-sm text-muted-foreground">
             Acesso restrito a administradores.
@@ -61,7 +61,7 @@ export default function AtividadePage() {
 
   return (
     <>
-      <PageHeader title="Atividade" description={`${filteredAudit.length} eventos no filtro`} />
+      <PageHeader title="Historico" description={`${filteredAudit.length} eventos no filtro`} />
       <div className="space-y-4 p-4 md:p-6">
         <Card className="grid gap-3 p-4 md:grid-cols-[1fr_220px]">
           <Input
@@ -87,7 +87,7 @@ export default function AtividadePage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Quando</TableHead>
-                <TableHead>Ação</TableHead>
+                <TableHead>AÃ§Ã£o</TableHead>
                 <TableHead>Tipo</TableHead>
                 <TableHead>Por</TableHead>
               </TableRow>
@@ -119,3 +119,4 @@ export default function AtividadePage() {
     </>
   );
 }
+

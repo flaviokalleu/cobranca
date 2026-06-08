@@ -45,13 +45,13 @@ export function Sidebar() {
   return (
     <aside
       className={cn(
-        'sticky top-0 hidden h-screen shrink-0 flex-col md:flex bg-white border-r border-gray-100 transition-all duration-200',
-        collapsed ? 'w-[60px]' : 'w-56',
+        'sticky top-0 hidden h-screen shrink-0 flex-col md:flex bg-white border-r border-gray-200 transition-all duration-200',
+        collapsed ? 'w-[64px]' : 'w-64',
       )}
     >
       {/* Logo + toggle */}
       <div className={cn(
-        'flex h-16 shrink-0 items-center border-b border-gray-100 relative',
+        'flex h-16 shrink-0 items-center border-b border-gray-200 relative',
         collapsed ? 'justify-center px-0' : 'px-4',
       )}>
         {!collapsed && (
@@ -92,7 +92,7 @@ export function Sidebar() {
           return (
             <div key={section.title ?? i} className={cn('mb-4', collapsed ? 'px-1.5' : 'px-2')}>
               {section.title && !collapsed && (
-                <p className="mb-1 px-2 text-[10px] font-semibold uppercase tracking-widest text-gray-400">
+                <p className="mb-1.5 px-2 text-[11px] font-semibold text-gray-500">
                   {section.title}
                 </p>
               )}
@@ -111,11 +111,11 @@ export function Sidebar() {
                       className={cn(
                         'flex items-center rounded-lg transition-all',
                         collapsed
-                          ? 'h-9 w-9 justify-center mx-auto'
-                          : 'gap-2.5 px-2.5 py-2 text-sm font-medium',
+                          ? 'h-10 w-10 justify-center mx-auto'
+                          : 'gap-3 px-3 py-2.5 text-sm font-medium',
                         active
-                          ? 'bg-red-50 text-red-600'
-                          : 'text-gray-500 hover:bg-gray-50 hover:text-gray-800',
+                          ? 'bg-red-50 text-red-700'
+                          : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900',
                       )}
                     >
                       <Icon
@@ -174,7 +174,7 @@ export function Sidebar() {
             </div>
             <div className="min-w-0 flex-1">
               <p className="truncate text-xs font-semibold text-gray-800">{tenantId}</p>
-              <p className="text-[10px] text-gray-400">{role}</p>
+              <p className="text-[10px] text-gray-400">Minha conta</p>
             </div>
             <button
               onClick={() => setTheme(dark ? 'light' : 'dark')}

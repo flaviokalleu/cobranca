@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
@@ -234,3 +234,4 @@ export default function EmprestimoDetalhePage() {
     </>
   );
 }
+

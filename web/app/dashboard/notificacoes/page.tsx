@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
@@ -55,7 +55,7 @@ const badgeVariant = (status: string) => {
   return 'secondary' as const;
 };
 
-export default function NotificacoesPage() {
+export default function AvisosPage() {
   const dispatch = useAppDispatch();
   const notifications = useAppSelector((state) => state.notifications.items);
   const [open, setOpen] = useState(false);
@@ -145,8 +145,8 @@ export default function NotificacoesPage() {
   return (
     <>
       <PageHeader
-        title="Notificacoes"
-        description={`${unread} nao lida(s)`}
+        title="Avisos"
+        description={`${unread} novos`}
         actions={
           <Button onClick={openCreate}>
             <BellPlus className="h-4 w-4" />
@@ -292,3 +292,4 @@ export default function NotificacoesPage() {
     </>
   );
 }
+

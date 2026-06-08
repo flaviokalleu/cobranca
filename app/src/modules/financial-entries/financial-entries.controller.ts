@@ -5,7 +5,7 @@ import { PolicyResource } from '../../auth/decorators/policy.decorator';
 import { Tenant } from '../../common/tenant/tenant.decorator';
 import { FinancialEntriesService } from './financial-entries.service';
 import { UpdateFinancialEntryDto } from './dto/update-financial-entry.dto';
-import { PaginationDto } from '../../common/dto/pagination.dto';
+import { ListFinancialEntryDto } from './dto/list-financial-entry.dto';
 
 @ApiTags('Lançamentos financeiros')
 @ApiBearerAuth('JWT')
@@ -17,7 +17,7 @@ export class FinancialEntriesController {
   @Get()
   @Roles('ADMIN', 'FINANCE', 'USER', 'AGENT')
   @ApiOperation({ summary: 'Listar lancamentos financeiros' })
-  list(@Tenant() tenantId: string, @Query() query: PaginationDto) {
+  list(@Tenant() tenantId: string, @Query() query: ListFinancialEntryDto) {
     return this.financialEntries.list(tenantId, query);
   }
 

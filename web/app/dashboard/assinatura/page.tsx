@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -27,15 +27,15 @@ interface Subscription {
 
 const brl = (cents: number) =>
   cents === 0
-    ? 'Grátis'
+    ? 'GrÃ¡tis'
     : (cents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
 const fmtDate = (iso?: string | null) =>
-  iso ? new Date(iso).toLocaleDateString('pt-BR') : '—';
+  iso ? new Date(iso).toLocaleDateString('pt-BR') : 'â€”';
 
 function StatusBadge({ status }: { status: string }) {
   if (status === 'ACTIVE') return <Badge variant="success">Ativa</Badge>;
-  if (status === 'TRIALING') return <Badge variant="warning">Período de teste</Badge>;
+  if (status === 'TRIALING') return <Badge variant="warning">PerÃ­odo de teste</Badge>;
   if (status === 'PAST_DUE') return <Badge variant="destructive">Pagamento em atraso</Badge>;
   if (status === 'CANCELED') return <Badge variant="secondary">Cancelada</Badge>;
   return <Badge>{status}</Badge>;
@@ -75,9 +75,9 @@ export default function AssinaturaPage() {
   }
 
   const planFeatures: Record<string, string[]> = {
-    FREE: ['Até 3 usuários', 'Até 50 cobranças/mês', 'WhatsApp bot básico', 'Suporte por e-mail'],
-    PRO: ['Até 10 usuários', 'Cobranças ilimitadas', 'Open Finance (Pluggy)', 'IA Financeira (DeepSeek)', 'Suporte prioritário'],
-    BUSINESS: ['Usuários ilimitados', 'Cobranças ilimitadas', 'Todos os módulos ERP', 'API dedicada', 'Suporte 24/7 + SLA'],
+    FREE: ['AtÃ© 3 usuÃ¡rios', 'AtÃ© 50 cobranÃ§as/mÃªs', 'WhatsApp bot bÃ¡sico', 'Suporte por e-mail'],
+    PRO: ['Ate 10 acessos', 'Cobrancas ilimitadas', 'Bancos conectados', 'Assistente financeiro', 'Suporte prioritario'],
+    BUSINESS: ['UsuÃ¡rios ilimitados', 'CobranÃ§as ilimitadas', 'Todos os mÃ³dulos ERP', 'API dedicada', 'Suporte 24/7 + SLA'],
   };
 
   return (
@@ -129,7 +129,7 @@ export default function AssinaturaPage() {
                 </div>
                 <p className="mt-1 text-2xl font-bold">
                   {brl(plan.priceCents)}
-                  {plan.priceCents > 0 && <span className="text-sm font-normal text-gray-400">/mês</span>}
+                  {plan.priceCents > 0 && <span className="text-sm font-normal text-gray-400">/mÃªs</span>}
                 </p>
               </div>
               <ul className="flex flex-col gap-1.5 text-sm text-gray-600">
@@ -161,3 +161,4 @@ export default function AssinaturaPage() {
     </div>
   );
 }
+
