@@ -37,7 +37,6 @@ export class CustomerPortalService {
   async loginByCpf(document: string, ip?: string): Promise<{ companies: { name: string; logoUrl: string | null; token: string }[] }> {
     const clean = document.replace(/\D/g, '');
     this.checkRateLimit(ip ?? clean);
-
     if (!clean) throw new NotFoundException('CPF/CNPJ invalido.');
 
     const customers = await this.prisma.customer.findMany({
