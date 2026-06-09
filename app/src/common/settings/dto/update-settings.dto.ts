@@ -3,7 +3,7 @@ import { IsBoolean, IsInt, IsOptional, IsString, Length, Min } from 'class-valid
 export class UpdateSettingsDto {
   @IsOptional()
   @IsString()
-  @Length(2, 100)
+  @Length(0, 100)
   pixKey?: string;
 
   @IsOptional()
