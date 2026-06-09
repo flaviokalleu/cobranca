@@ -60,6 +60,7 @@ function setup() {
   const whatsapp = { sendText: jest.fn().mockResolvedValue(undefined) };
   const nfe = { emitForCharge: jest.fn().mockResolvedValue(undefined) };
   const push = { notifyTenant: jest.fn().mockResolvedValue({ sent: 0 }) };
+  const asaas = { isEnabled: jest.fn().mockResolvedValue(false), syncCharge: jest.fn() };
   const service = new ChargesService(
     prisma as never,
     ledger as never,
@@ -71,6 +72,7 @@ function setup() {
     whatsapp as never,
     nfe as never,
     push as never,
+    asaas as never,
   );
   return { service, prisma, ledger, audit, queue, events, charge, push };
 }

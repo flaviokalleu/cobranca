@@ -1,7 +1,26 @@
 import { Injectable } from '@nestjs/common';
-import { createPdf } from 'pdfmake';
+import * as path from 'path';
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const pdfmake = require('pdfmake');
 import type { TDocumentDefinitions } from 'pdfmake/interfaces';
 import { FinanceService } from './finance.service';
+
+const FONTS_DIR = path.join(
+  path.dirname(require.resolve('pdfmake/package.json')),
+  'fonts',
+  'Roboto',
+);
+
+pdfmake.fonts = {
+  Roboto: {
+    normal: path.join(FONTS_DIR, 'Roboto-Regular.ttf'),
+    bold: path.join(FONTS_DIR, 'Roboto-Medium.ttf'),
+    italics: path.join(FONTS_DIR, 'Roboto-Italic.ttf'),
+    bolditalics: path.join(FONTS_DIR, 'Roboto-MediumItalic.ttf'),
+  },
+};
+pdfmake.setLocalAccessPolicy(() => true);
+pdfmake.setUrlAccessPolicy(() => false);
 
 @Injectable()
 export class FinanceReportService {
@@ -100,7 +119,7 @@ export class FinanceReportService {
   }
 
   private async render(docDefinition: TDocumentDefinitions): Promise<Buffer> {
-    return createPdf(docDefinition).getBuffer();
+    return pdfmake.createPdf(docDefinition).getBuffer() as Promise<Buffer>;
   }
 
   private kpiBox(label: string, value: string) {

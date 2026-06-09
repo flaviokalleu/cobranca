@@ -28,6 +28,9 @@ export interface EffectiveSettings {
   nfeCodMunicipio?: string | null;
   theme: string;
   chargeRobotEnabled: boolean;
+  paymentProvider: string;
+  asaasApiKey?: string | null;
+  mercadoPagoToken?: string | null;
 }
 
 /// Configuracoes do recebedor PIX por tenant. Cai para os defaults do .env se nao houver.
@@ -63,6 +66,9 @@ export class SettingsService {
       nfeCodMunicipio: s?.nfeCodMunicipio ?? null,
       theme: s?.theme ?? 'system',
       chargeRobotEnabled: s?.chargeRobotEnabled ?? false,
+      paymentProvider: s?.paymentProvider ?? 'NONE',
+      asaasApiKey: s?.asaasApiKey ?? null,
+      mercadoPagoToken: s?.mercadoPagoToken ?? null,
     };
   }
 
@@ -129,6 +135,9 @@ export class SettingsService {
       nfeCodMunicipio: s.nfeCodMunicipio,
       theme: s.theme,
       chargeRobotEnabled: s.chargeRobotEnabled,
+      paymentProvider: s.paymentProvider,
+      asaasApiKey: s.asaasApiKey,
+      mercadoPagoToken: s.mercadoPagoToken,
     };
   }
 }

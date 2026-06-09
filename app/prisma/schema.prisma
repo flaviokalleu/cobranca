@@ -12,22 +12,23 @@ generator client {
 
 /// Cliente devedor, sempre dentro de um tenant (empresa).
 model Customer {
-  id          String   @id @default(cuid())
-  tenantId    String
-  name        String
-  document    String?
-  phone       String
-  whatsapp    String?
-  email       String?
-  address     String?
-  city        String?
-  profession  String?
-  incomeCents Int?
-  stage       String   @default("LEAD") // LEAD | FIRST_CONTACT | DOCUMENTATION | ANALYSIS | APPROVED | CONTRACT | CUSTOMER | LOST
-  createdAt   DateTime @default(now())
-  charges     Charge[]
-  loans       Loan[]
-  lead        Lead?
+  id              String   @id @default(cuid())
+  tenantId        String
+  name            String
+  document        String?
+  phone           String
+  whatsapp        String?
+  email           String?
+  address         String?
+  city            String?
+  profession      String?
+  incomeCents     Int?
+  stage           String   @default("LEAD") // LEAD | FIRST_CONTACT | DOCUMENTATION | ANALYSIS | APPROVED | CONTRACT | CUSTOMER | LOST
+  asaasCustomerId String?  // ID do cliente no Asaas (para reutilizar em cobranças)
+  createdAt       DateTime @default(now())
+  charges         Charge[]
+  loans           Loan[]
+  lead            Lead?
 
   @@index([tenantId])
   @@index([tenantId, stage])
@@ -51,10 +52,11 @@ model Charge {
   createdAt       DateTime  @default(now())
   paidAt          DateTime?
   paidAmountCents Int?
-  gatewayProvider String?
-  gatewayChargeId String?
-  paymentLink     String?
-  pixCode         String?
+  gatewayProvider  String?
+  gatewayChargeId  String?
+  paymentLink      String?  // invoiceUrl do Asaas (portal de pagamento)
+  bankSlipUrl      String?  // URL do boleto (Asaas)
+  pixCode          String?  // PIX copia-e-cola local
   publicToken     String?   @unique
   interestMode    String    @default("NONE") // NONE | DAILY | WEEKLY | MONTHLY
   interestRateBps Int       @default(0)

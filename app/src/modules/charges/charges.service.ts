@@ -16,6 +16,7 @@ import { SettingsService } from '../../common/settings/settings.service';
 import { WhatsappOutboundService } from '../whatsapp-bot/whatsapp-outbound.service';
 import { NfeService } from '../nfe/nfe.service';
 import { PushService } from '../push/push.service';
+import { AsaasGatewayService } from '../asaas/asaas-gateway.service';
 import { CreateChargeDto } from './dto/create-charge.dto';
 import { UpdateChargeDto } from './dto/update-charge.dto';
 import { REMINDER_JOB, ReminderJobPayload } from '../reminders/reminder.types';
@@ -38,6 +39,7 @@ export class ChargesService {
     private readonly whatsapp: WhatsappOutboundService,
     private readonly nfe: NfeService,
     private readonly push: PushService,
+    private readonly asaas: AsaasGatewayService,
   ) {}
 
   async create(tenantId: string, dto: CreateChargeDto) {
@@ -119,6 +121,11 @@ export class ChargesService {
       dueDate: charge.dueDate.toISOString(),
     };
     this.queue.enqueue(REMINDER_JOB, payload);
+
+    // Sincroniza com Asaas em background se o tenant tiver gateway configurado
+    void this.asaas.isEnabled(tenantId).then((enabled) => {
+      if (enabled) void this.asaas.syncCharge(tenantId, charge.id);
+    });
 
     return charge;
   }

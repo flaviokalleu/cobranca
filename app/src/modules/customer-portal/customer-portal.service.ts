@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, UnauthorizedException } from '@nestjs/co
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { ChargesService } from '../charges/charges.service';
+import { AsaasGatewayService } from '../asaas/asaas-gateway.service';
 
 interface PortalPayload {
   tenantId: string;
@@ -14,6 +15,7 @@ export class CustomerPortalService {
     private readonly prisma: PrismaService,
     private readonly jwt: JwtService,
     private readonly charges: ChargesService,
+    private readonly asaas: AsaasGatewayService,
   ) {}
 
   async createToken(tenantId: string, customerId: string) {
@@ -50,6 +52,10 @@ export class CustomerPortalService {
         dueDate: true,
         paidAt: true,
         status: true,
+        paymentLink: true,
+        bankSlipUrl: true,
+        gatewayProvider: true,
+        gatewayChargeId: true,
       },
     });
     const settings = await this.prisma.settings.findUnique({
@@ -66,6 +72,30 @@ export class CustomerPortalService {
     });
     if (!charge) throw new NotFoundException('Cobranca nao encontrada no portal.');
     return this.charges.getPix(payload.tenantId, charge.id);
+  }
+
+  async asaasPixQrCode(token: string, chargeId: string) {
+    const payload = await this.verify(token);
+    const charge = await this.prisma.charge.findFirst({
+      where: { id: chargeId, tenantId: payload.tenantId, customerId: payload.customerId },
+    });
+    if (!charge) throw new NotFoundException('Cobranca nao encontrada no portal.');
+    if (charge.gatewayProvider !== 'ASAAS' || !charge.gatewayChargeId) {
+      throw new NotFoundException('Cobranca nao possui QR Code Asaas.');
+    }
+    return this.asaas.getPixQrCode(payload.tenantId, charge.gatewayChargeId);
+  }
+
+  async syncWithAsaas(token: string, chargeId: string) {
+    const payload = await this.verify(token);
+    const charge = await this.prisma.charge.findFirst({
+      where: { id: chargeId, tenantId: payload.tenantId, customerId: payload.customerId },
+    });
+    if (!charge) throw new NotFoundException('Cobranca nao encontrada no portal.');
+    const enabled = await this.asaas.isEnabled(payload.tenantId);
+    if (!enabled) throw new NotFoundException('Gateway de pagamento nao configurado.');
+    await this.asaas.syncCharge(payload.tenantId, chargeId);
+    return this.prisma.charge.findFirst({ where: { id: chargeId }, select: { paymentLink: true, bankSlipUrl: true, gatewayChargeId: true } });
   }
 
   private async verify(token: string): Promise<PortalPayload> {

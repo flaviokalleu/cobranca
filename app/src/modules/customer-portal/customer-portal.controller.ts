@@ -36,4 +36,16 @@ export class CustomerPortalController {
   pix(@Param('token') token: string, @Param('chargeId') chargeId: string) {
     return this.portal.pix(token, chargeId);
   }
+
+  @Public()
+  @Get('portal/:token/charges/:chargeId/asaas-pix')
+  asaasPixQrCode(@Param('token') token: string, @Param('chargeId') chargeId: string) {
+    return this.portal.asaasPixQrCode(token, chargeId);
+  }
+
+  @Public()
+  @Post('portal/:token/charges/:chargeId/sync')
+  syncWithAsaas(@Param('token') token: string, @Param('chargeId') chargeId: string) {
+    return this.portal.syncWithAsaas(token, chargeId);
+  }
 }

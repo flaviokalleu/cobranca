@@ -56,6 +56,7 @@ import { AccountPlanModule } from './modules/account-plan/account-plan.module';
 import { TaxCalculatorModule } from './modules/tax-calculator/tax-calculator.module';
 import { InvitationsModule } from './modules/invitations/invitations.module';
 import { PushModule } from './modules/push/push.module';
+import { AsaasGatewayModule } from './modules/asaas/asaas-gateway.module';
 import { RequestLoggerMiddleware } from './common/middleware/request-logger.middleware';
 
 @Module({
@@ -108,6 +109,7 @@ import { RequestLoggerMiddleware } from './common/middleware/request-logger.midd
     TaxCalculatorModule,
     InvitationsModule,
     PushModule,
+    AsaasGatewayModule,
   ],
   controllers: [HealthController],
   providers: [
