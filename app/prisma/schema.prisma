@@ -1030,3 +1030,15 @@ model PlatformSettings {
   asaasEnv    String   @default("sandbox")
   updatedAt   DateTime @updatedAt
 }
+
+/// Registro de webhooks processados para garantir idempotencia.
+model WebhookDelivery {
+  id          String   @id @default(cuid())
+  source      String   // ASAAS | MERCADOPAGO
+  eventId     String   // ID do evento externo (payment.id ou similar)
+  event       String   // PAYMENT_RECEIVED etc
+  processedAt DateTime @default(now())
+
+  @@unique([source, eventId])
+  @@index([source, processedAt])
+}
