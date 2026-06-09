@@ -940,8 +940,10 @@ Sem markdown, sem tabelas. Use *negrito*, hifen p/ listas. Valores: R$ 0,00.`;
 
     const totalCents = resolvedItems.reduce((s, i) => s + i.product.priceCents * i.qty, 0);
 
+    const orderCount = await this.prisma.salesOrder.count({ where: { tenantId } });
+
     const order = await this.prisma.salesOrder.create({
-      data: { tenantId, customerId: customer.id, status: 'CONFIRMED', totalCents },
+      data: { tenantId, number: orderCount + 1, customerId: customer.id, status: 'CONFIRMED', totalCents },
     });
 
     await this.prisma.salesOrderItem.createMany({
@@ -967,7 +969,7 @@ Sem markdown, sem tabelas. Use *negrito*, hifen p/ listas. Valores: R$ 0,00.`;
       })),
     });
 
-    return { ok: true, orderNumber: String(order.id).slice(0, 8), customer: customer.name, totalCents, itemCount: resolvedItems.length };
+    return { ok: true, orderNumber: `PED-${String(order.number).padStart(4, '0')}`, customer: customer.name, totalCents, itemCount: resolvedItems.length };
   }
 
   private async toolQuerySuppliers(tenantId: string) {
