@@ -10,9 +10,9 @@ export class WebhookController {
   @Post('asaas')
   asaas(
     @Body() body: Record<string, unknown>,
-    @Headers('asaas-access-token') _token: string,
+    @Headers('asaas-access-token') token: string,
   ) {
-    return this.webhook.handleAsaas(body);
+    return this.webhook.handleAsaas(body, token ?? '');
   }
 
   @Public()

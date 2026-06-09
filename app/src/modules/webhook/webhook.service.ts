@@ -13,7 +13,14 @@ export class WebhookService {
     private readonly audit: AuditService,
   ) {}
 
-  async handleAsaas(payload: Record<string, unknown>): Promise<{ ok: boolean }> {
+  async handleAsaas(payload: Record<string, unknown>, accessToken: string): Promise<{ ok: boolean }> {
+    // FIX 3: Validate static Asaas webhook token
+    const expectedToken = process.env.ASAAS_WEBHOOK_TOKEN;
+    if (expectedToken && accessToken !== expectedToken) {
+      this.logger.warn('Webhook Asaas rejeitado: token invalido');
+      return { ok: false };
+    }
+
     const event = payload.event as string | undefined;
     if (event !== 'PAYMENT_RECEIVED' && event !== 'PAYMENT_CONFIRMED') {
       return { ok: true };
@@ -22,24 +29,31 @@ export class WebhookService {
     const payment = payload.payment as Record<string, unknown> | undefined;
     if (!payment) return { ok: true };
 
-    const externalReference = (payment.externalReference ?? payment.id) as string | undefined;
-    if (!externalReference) return { ok: true };
+    // FIX 2: Idempotency check — reject duplicate webhook deliveries
+    const eventId = payment.id as string | undefined;
+    if (!eventId) return { ok: true };
 
-    const charge = await this.prisma.charge.findFirst({
-      where: { id: externalReference },
-    });
-
-    if (!charge) {
-      this.logger.warn(`Webhook Asaas: cobranca nao encontrada para ref ${externalReference}`);
+    try {
+      await this.prisma.webhookDelivery.create({
+        data: { source: 'ASAAS', eventId, event: event ?? 'UNKNOWN' },
+      });
+    } catch {
+      // unique constraint violation = already processed
       return { ok: true };
     }
 
-    if (charge.status === 'PAID') return { ok: true };
+    const externalReference = (payment.externalReference ?? payment.id) as string | undefined;
+    if (!externalReference) return { ok: true };
 
-    await this.prisma.charge.update({
-      where: { id: charge.id },
+    // FIX 1: Atomic updateMany prevents double ledger posting on concurrent webhooks
+    const result = await this.prisma.charge.updateMany({
+      where: { id: externalReference, status: { not: 'PAID' } },
       data: { status: 'PAID', paidAt: new Date() },
     });
+    if (result.count === 0) return { ok: true }; // already paid or not found
+
+    const charge = await this.prisma.charge.findFirst({ where: { id: externalReference } });
+    if (!charge) return { ok: true };
 
     await this.ledger.post(charge.tenantId, `payment:${charge.id}`, [
       { accountCode: 'CASH', direction: 'DEBIT', amountCents: charge.amountCents, description: `Recebimento Asaas ${charge.id}` },
@@ -69,16 +83,24 @@ export class WebhookService {
     const paymentId = data?.id as string | undefined;
     if (!paymentId) return { ok: true };
 
-    const charge = await this.prisma.charge.findFirst({
-      where: { id: paymentId },
-    });
+    // FIX 2: Idempotency check — reject duplicate webhook deliveries
+    try {
+      await this.prisma.webhookDelivery.create({
+        data: { source: 'MERCADOPAGO', eventId: paymentId, event: `${type}.${action}` },
+      });
+    } catch {
+      return { ok: true };
+    }
 
-    if (!charge || charge.status === 'PAID') return { ok: true };
-
-    await this.prisma.charge.update({
-      where: { id: charge.id },
+    // FIX 1: Atomic updateMany prevents double ledger posting on concurrent webhooks
+    const result = await this.prisma.charge.updateMany({
+      where: { id: paymentId, status: { not: 'PAID' } },
       data: { status: 'PAID', paidAt: new Date() },
     });
+    if (result.count === 0) return { ok: true }; // already paid or not found
+
+    const charge = await this.prisma.charge.findFirst({ where: { id: paymentId } });
+    if (!charge) return { ok: true };
 
     await this.ledger.post(charge.tenantId, `payment:${charge.id}`, [
       { accountCode: 'CASH', direction: 'DEBIT', amountCents: charge.amountCents, description: `Recebimento MercadoPago ${charge.id}` },

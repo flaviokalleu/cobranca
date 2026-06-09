@@ -9,6 +9,13 @@ import DailyRotateFile from 'winston-daily-rotate-file';
 import { AppModule } from './app.module';
 
 async function bootstrap(): Promise<void> {
+  // FIX 5: Fail fast if JWT_SECRET is missing or uses an insecure default value
+  const jwtSecret = process.env.JWT_SECRET;
+  if (!jwtSecret || jwtSecret.length < 32 || jwtSecret.includes('troque')) {
+    console.error('FATAL: JWT_SECRET nao configurado ou usa valor padrao inseguro. Abortando.');
+    process.exit(1);
+  }
+
   const isProduction = process.env.NODE_ENV === 'production';
   const logger = WinstonModule.createLogger({
     level: process.env.LOG_LEVEL ?? (isProduction ? 'info' : 'debug'),
