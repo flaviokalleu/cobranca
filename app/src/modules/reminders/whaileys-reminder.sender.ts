@@ -1,16 +1,16 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { WhatsappOutboundService } from '../whatsapp-bot/whatsapp-outbound.service';
+import { PixService } from '../pix/pix.service';
 import { ReminderSender, ReminderMessage } from './reminder-sender';
 
-/**
- * Envio via WhatsApp principal do robo.
- * A sessao Whaileys e gerenciada pelo WhatsappAdminModule e persistida no banco.
- */
 @Injectable()
 export class WhaileysReminderSender extends ReminderSender implements OnModuleInit {
   private readonly logger = new Logger('WhatsApp(Whaileys)');
 
-  constructor(private readonly outbound: WhatsappOutboundService) {
+  constructor(
+    private readonly outbound: WhatsappOutboundService,
+    private readonly pix: PixService,
+  ) {
     super();
   }
 
@@ -26,11 +26,23 @@ export class WhaileysReminderSender extends ReminderSender implements OnModuleIn
     const venc = new Date(message.dueDate).toLocaleDateString('pt-BR', {
       timeZone: 'UTC',
     });
-    const text =
-      `Ola ${message.customerName}, sua cobranca de ${valor} vence em ${venc}.\n` +
-      `PIX copia-e-cola:\n${message.pixCopyPaste}`;
 
-    await this.outbound.sendText(message.phone, text);
-    this.logger.log(`Lembrete enviado para ${message.phone}`);
+    const caption =
+      `Ola *${message.customerName}*, sua cobranca de *${valor}* vence em *${venc}*.\n\n` +
+      `Escaneie o QR Code acima ou use o PIX copia-e-cola:\n\n` +
+      `\`${message.pixCopyPaste}\``;
+
+    try {
+      const qrBuffer = await this.pix.buildQrImageBuffer(message.pixCopyPaste);
+      await this.outbound.sendImage(message.phone, qrBuffer, caption);
+    } catch {
+      // fallback: envia so texto se a geracao de imagem falhar
+      await this.outbound.sendText(
+        message.phone,
+        `Ola *${message.customerName}*, sua cobranca de *${valor}* vence em *${venc}*.\n\nPIX copia-e-cola:\n${message.pixCopyPaste}`,
+      );
+    }
+
+    this.logger.log(`Lembrete com QR enviado para ${message.phone}`);
   }
 }

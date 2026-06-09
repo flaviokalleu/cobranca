@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import * as QRCode from 'qrcode';
 
 export interface PixInput {
   pixKey: string;
@@ -38,6 +39,11 @@ export class PixService {
 
     payload += '6304'; // ID + tamanho do campo CRC, antes de calcula-lo
     return payload + this.crc16(payload);
+  }
+
+  /** Gera imagem PNG do QR Code PIX como Buffer (para envio no WhatsApp). */
+  async buildQrImageBuffer(pixCode: string): Promise<Buffer> {
+    return QRCode.toBuffer(pixCode, { type: 'png', width: 512, margin: 2 });
   }
 
   /** Campo TLV: ID(2) + tamanho(2 digitos) + valor. */

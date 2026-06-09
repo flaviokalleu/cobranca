@@ -26,6 +26,18 @@ export class WhatsappOutboundService {
     await this.socket.sendMessage(this.toJid(to), { text });
   }
 
+  async sendImage(to: string, imageBuffer: Buffer, caption: string): Promise<void> {
+    if (!this.socket) {
+      this.logger.warn(`WhatsApp nao conectado; imagem nao enviada para ${to}.`);
+      return;
+    }
+    await this.socket.sendMessage(this.toJid(to), {
+      image: imageBuffer,
+      caption,
+      mimetype: 'image/png',
+    });
+  }
+
   async sendReceiptTypeButtons(to: string): Promise<void> {
     if (!this.socket) return this.sendText(to, 'Classifique o comprovante como Gasto ou Receita.');
     await this.socket.sendMessage(this.toJid(to), {

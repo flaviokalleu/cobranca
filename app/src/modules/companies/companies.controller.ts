@@ -10,6 +10,31 @@ import { CreateActivationCodeDto } from './dto/create-activation-code.dto';
 export class CompaniesController {
   constructor(private readonly activation: CompanyActivationService) {}
 
+  // --- Endpoints self-service: ADMIN gerencia os codigos do proprio tenant ---
+
+  @Get('my/activation-codes')
+  listMyActivationCodes(@CurrentUser() user: JwtUser) {
+    return this.activation.listActivationCodes(user, user.tenantId);
+  }
+
+  @Post('my/activation-codes')
+  createMyActivationCode(
+    @CurrentUser() user: JwtUser,
+    @Body() dto: CreateActivationCodeDto,
+  ) {
+    return this.activation.createActivationCode(user, user.tenantId, dto);
+  }
+
+  @Post('my/activation-codes/:reference/revoke')
+  revokeMyActivationCode(
+    @CurrentUser() user: JwtUser,
+    @Param('reference') reference: string,
+  ) {
+    return this.activation.revokeActivationCode(user, user.tenantId, reference);
+  }
+
+  // --- Endpoints admin/superadmin por companyRef ---
+
   @Get(':companyRef/activation-codes')
   listActivationCodes(
     @CurrentUser() user: JwtUser,

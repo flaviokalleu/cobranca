@@ -1,8 +1,15 @@
-import { Body, Controller, Get, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Put } from '@nestjs/common';
 import { BillingService } from './billing.service';
 import { ChangePlanDto } from './dto/change-plan.dto';
 import { Tenant } from '../../common/tenant/tenant.decorator';
 import { Roles } from '../../auth/decorators/roles.decorator';
+import { IsArray, IsString } from 'class-validator';
+
+class UpdatePlanFeaturesDto {
+  @IsArray()
+  @IsString({ each: true })
+  features!: string[];
+}
 
 @Controller()
 export class BillingController {
@@ -24,5 +31,20 @@ export class BillingController {
   @Post('subscription/change')
   change(@Tenant() tenantId: string, @Body() dto: ChangePlanDto) {
     return this.billing.changePlan(tenantId, dto.planCode);
+  }
+
+  @Roles('SUPERADMIN')
+  @Put('plans/:planCode/features')
+  updatePlanFeatures(
+    @Param('planCode') planCode: string,
+    @Body() dto: UpdatePlanFeaturesDto,
+  ) {
+    return this.billing.updatePlanFeatures(planCode, dto.features);
+  }
+
+  @Roles('SUPERADMIN')
+  @Get('plans/:planCode/features')
+  getPlanFeatures(@Param('planCode') planCode: string) {
+    return this.billing.getPlanFeatures(planCode);
   }
 }

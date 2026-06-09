@@ -30,13 +30,15 @@ export class ReminderProcessor implements OnModuleInit {
         txid: payload.chargeId,
       });
 
-      await this.sender.send({
-        phone: payload.phone,
-        customerName: payload.customerName,
-        amountCents: payload.amountCents,
-        dueDate: payload.dueDate,
-        pixCopyPaste,
-      });
+      if (cfg.chargeRobotEnabled && cfg.notifyByWhatsapp) {
+        await this.sender.send({
+          phone: payload.phone,
+          customerName: payload.customerName,
+          amountCents: payload.amountCents,
+          dueDate: payload.dueDate,
+          pixCopyPaste,
+        });
+      }
 
       await this.sendEmailReminder(payload, pixCopyPaste);
     });

@@ -27,6 +27,7 @@ export interface EffectiveSettings {
   nfeCodServico?: string | null;
   nfeCodMunicipio?: string | null;
   theme: string;
+  chargeRobotEnabled: boolean;
 }
 
 /// Configuracoes do recebedor PIX por tenant. Cai para os defaults do .env se nao houver.
@@ -61,6 +62,7 @@ export class SettingsService {
       nfeCodServico: s?.nfeCodServico ?? null,
       nfeCodMunicipio: s?.nfeCodMunicipio ?? null,
       theme: s?.theme ?? 'system',
+      chargeRobotEnabled: s?.chargeRobotEnabled ?? false,
     };
   }
 
@@ -97,6 +99,7 @@ export class SettingsService {
         nfeCodServico: clean.nfeCodServico ?? null,
         nfeCodMunicipio: clean.nfeCodMunicipio ?? null,
         theme: clean.theme ?? defaults.theme,
+        chargeRobotEnabled: clean.chargeRobotEnabled ?? defaults.chargeRobotEnabled,
       },
       update: { ...clean },
     });
@@ -125,6 +128,7 @@ export class SettingsService {
       nfeCodServico: s.nfeCodServico,
       nfeCodMunicipio: s.nfeCodMunicipio,
       theme: s.theme,
+      chargeRobotEnabled: s.chargeRobotEnabled,
     };
   }
 }

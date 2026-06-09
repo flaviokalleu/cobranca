@@ -321,10 +321,11 @@ model Settings {
   nfeCodServico    String?
   nfeCodMunicipio  String?
   theme            String   @default("system")
-  paymentProvider  String   @default("NONE") // NONE | ASAAS | MERCADOPAGO
-  asaasApiKey      String?
-  mercadoPagoToken String?
-  updatedAt        DateTime @updatedAt
+  paymentProvider    String   @default("NONE") // NONE | ASAAS | MERCADOPAGO
+  asaasApiKey        String?
+  mercadoPagoToken   String?
+  chargeRobotEnabled Boolean  @default(false)
+  updatedAt          DateTime @updatedAt
 }
 
 /// Usuario do sistema, sempre dentro de um tenant. Senha guardada como hash (bcrypt).
@@ -1004,6 +1005,8 @@ model Plan {
   priceCents      Int      @default(0)
   maxUsers        Int      @default(3)
   maxChargesMonth Int      @default(50)
+  /// JSON array de módulos habilitados. Ex: ["pix","reminders","whatsapp_bot","charge_robot","ai_consultant","nfe"]
+  features        String   @default("[]")
   createdAt       DateTime @default(now())
 }
 

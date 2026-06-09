@@ -109,4 +109,8 @@ export class UpdateSettingsDto {
   @IsOptional()
   @IsString()
   theme?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  chargeRobotEnabled?: boolean;
 }
