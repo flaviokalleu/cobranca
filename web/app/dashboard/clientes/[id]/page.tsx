@@ -1,9 +1,9 @@
-﻿'use client';
+'use client';
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { RefreshCw } from 'lucide-react';
-import { api } from '@/lib/api';
+import { api } from '@/lib/http-client';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';

@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
@@ -24,7 +24,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { PageHeader } from '@/components/page-header';
-import { API_URL, api, getToken } from '@/lib/api';
+import { API_URL, api, getToken } from '@/lib/http-client';
 import { asArray } from '@/lib/pagination';
 import { Calculator, Download, FileText, Play, Plus } from 'lucide-react';
 

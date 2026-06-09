@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { API_URL } from '@/lib/api';
+import { API_URL } from '@/lib/http-client';
 import { CheckCircle2, Copy, Loader2, LockKeyhole, Wallet } from 'lucide-react';
 
 interface PublicCharge {

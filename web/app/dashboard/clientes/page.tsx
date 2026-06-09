@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -10,7 +10,7 @@ import {
   updateCustomer,
   type Customer,
 } from '@/store/dataSlice';
-import { api } from '@/lib/api';
+import { api } from '@/lib/http-client';
 import { PageHeader } from '@/components/page-header';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -74,7 +74,7 @@ export default function ClientesPage() {
   const [stage, setStage] = useState('LEAD');
 
   useEffect(() => {
-    // sincroniza leads sem customer e entÃ£o recarrega a lista
+    // sincroniza leads sem customer e então recarrega a lista
     api('POST', '/leads/sync-customers')
       .then(() => dispatch(fetchCustomers({ page })))
       .catch(() => dispatch(fetchCustomers({ page })));

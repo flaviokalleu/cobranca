@@ -1,9 +1,9 @@
-﻿'use client';
+'use client';
 
 import { useEffect, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { fetchSummary } from '@/store/financeSlice';
-import { api } from '@/lib/api';
+import { api } from '@/lib/http-client';
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import {
   TrendingUp,
@@ -217,7 +217,7 @@ export default function DrePage() {
           </div>
         </div>
 
-        {/* KPI rÃ¡pidos */}
+        {/* KPI rápidos */}
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {[
             { label: 'Receita', value: brl(d.revenueCents), icon: TrendingUp, bg: 'bg-emerald-50', iconColor: 'text-emerald-500', textColor: 'text-emerald-700' },
@@ -354,7 +354,7 @@ export default function DrePage() {
           <div className="flex items-center justify-between px-5 py-4 border-t border-gray-100" style={{ background: '#f8fafc' }}>
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Posicao Liquida Projetada</p>
-              <p className="mt-0.5 text-xs text-gray-400">Caixa + A receber âˆ’ A pagar</p>
+              <p className="mt-0.5 text-xs text-gray-400">Caixa + A receber − A pagar</p>
             </div>
             <p className={`text-xl font-bold tabular-nums ${posicaoLiquida >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
               {brl(posicaoLiquida)}

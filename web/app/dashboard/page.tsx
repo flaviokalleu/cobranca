@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
@@ -7,7 +7,7 @@ import { fetchDashboardKpis, fetchPayables } from '@/store/financeSlice';
 import { fetchLeads } from '@/store/crmSlice';
 import { fetchTasks } from '@/store/tasksSlice';
 import { fetchFinancialEntries } from '@/store/financialEntriesSlice';
-import { api } from '@/lib/api';
+import { api } from '@/lib/http-client';
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
   CartesianGrid, BarChart, Bar, Cell, PieChart, Pie, Legend,

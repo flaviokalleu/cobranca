@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { api } from '@/lib/api';
+import { api } from '@/lib/http-client';
 import { asArray } from '@/lib/pagination';
 
 export interface FinancialEntry {
@@ -7,6 +7,7 @@ export interface FinancialEntry {
   tipo: string;
   valorCents: number;
   descricao: string;
+  observacao?: string | null;
   pagadorNome?: string | null;
   recebedorNome?: string | null;
   dataTransacao?: string | null;
@@ -31,7 +32,7 @@ export const fetchFinancialEntries = createAsyncThunk('financialEntries/fetch', 
 export const updateFinancialEntry = createAsyncThunk(
   'financialEntries/update',
   async (
-    { id, ...dto }: { id: string; descricao?: string; tipo?: string; valorCents?: number; recorrencia?: string; dataTransacao?: string; pagadorNome?: string },
+    { id, ...dto }: { id: string; descricao?: string; observacao?: string | null; tipo?: string; valorCents?: number; recorrencia?: string; dataTransacao?: string; pagadorNome?: string },
     { rejectWithValue },
   ) => {
     const { status, data } = await api('PATCH', `/financial-entries/${id}`, dto);

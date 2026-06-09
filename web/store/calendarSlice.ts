@@ -1,5 +1,5 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
-import { api } from '@/lib/api';
+import { api } from '@/lib/http-client';
 import { asArray } from '@/lib/pagination';
 
 export interface CalendarEvent {

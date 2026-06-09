@@ -1,9 +1,9 @@
-﻿'use client';
+'use client';
 
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { CopyPlus, Trash2 } from 'lucide-react';
-import { api } from '@/lib/api';
+import { api } from '@/lib/http-client';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';

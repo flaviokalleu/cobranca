@@ -1,8 +1,8 @@
-﻿'use client';
+'use client';
 
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { api } from '@/lib/api';
+import { api } from '@/lib/http-client';
 import {
   Building2, RefreshCw, Trash2, Plus, TrendingUp, TrendingDown,
   Wallet, CreditCard, AlertCircle, CheckCircle2, Clock, WifiOff,
@@ -20,9 +20,9 @@ const brl = (cents: number) =>
   (cents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
 const fmt = (d: string | null | undefined) =>
-  d ? new Date(d).toLocaleDateString('pt-BR') : 'â€”';
+  d ? new Date(d).toLocaleDateString('pt-BR') : '—';
 
-// â”€â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Types ─────────────────────────────────────────────────────────────────
 
 interface Connection {
   id: string;
@@ -62,7 +62,7 @@ interface Summary {
   lastSyncAt: string | null;
 }
 
-// â”€â”€â”€ Status badge â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Status badge ────────────────────────────────────────────────────────────
 
 const STATUS_MAP: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
   UPDATED:     { label: 'Atualizado',      icon: <CheckCircle2 size={14} />, color: 'text-green-400' },
@@ -82,7 +82,7 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-// â”€â”€â”€ Page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Page ──────────────────────────────────────────────────────────────────
 
 export default function OpenFinancePage() {
   const [summary, setSummary] = useState<Summary | null>(null);
@@ -139,7 +139,7 @@ export default function OpenFinancePage() {
     setConnecting(true);
     const r = await api<{ accessToken: string }>('POST', '/open-finance/connect-token', {});
     if (r.status !== 201 && r.status !== 200) {
-      toast.error('Erro ao iniciar conexÃ£o');
+      toast.error('Erro ao iniciar conexão');
       setConnecting(false);
       return;
     }
@@ -157,7 +157,7 @@ export default function OpenFinancePage() {
           await load();
         },
         onError: (err: unknown) => {
-          toast.error(`Erro na conexÃ£o: ${String(err)}`);
+          toast.error(`Erro na conexão: ${String(err)}`);
         },
         onClose: () => {
           setConnecting(false);
@@ -169,13 +169,13 @@ export default function OpenFinancePage() {
   };
 
   const handleDelete = async (id: string, connector: string) => {
-    if (!confirm(`Desconectar ${connector}? As transaÃ§Ãµes sincronizadas serÃ£o removidas.`)) return;
+    if (!confirm(`Desconectar ${connector}? As transações sincronizadas serão removidas.`)) return;
     const r = await api('DELETE', `/open-finance/connections/${id}`);
     if (r.status === 200 || r.status === 204) {
-      toast.success('ConexÃ£o removida');
+      toast.success('Conexão removida');
       load();
     } else {
-      toast.error('Erro ao remover conexÃ£o');
+      toast.error('Erro ao remover conexão');
     }
   };
 
@@ -206,7 +206,7 @@ export default function OpenFinancePage() {
             Bancos conectados
           </h1>
           <p className="text-sm text-slate-400 mt-1">
-            Conecte suas contas bancÃ¡rias e visualize tudo em um sÃ³ lugar
+            Conecte suas contas bancárias e visualize tudo em um só lugar
           </p>
         </div>
         <div className="flex gap-2">
@@ -230,7 +230,7 @@ export default function OpenFinancePage() {
             positive
           />
           <SummaryCard
-            label="CartÃµes de crÃ©dito"
+            label="Cartões de crédito"
             value={brl(summary.totalCreditCents)}
             icon={<CreditCard size={20} className="text-blue-400" />}
             sub="saldo devedor"
@@ -242,7 +242,7 @@ export default function OpenFinancePage() {
             sub={summary.lastSyncAt ? `Sync ${fmt(summary.lastSyncAt)}` : 'Nunca sincronizado'}
           />
           <SummaryCard
-            label="TransaÃ§Ãµes"
+            label="Transações"
             value={String(txTotal)}
             icon={<TrendingUp size={20} className="text-yellow-400" />}
             sub="carregadas"
@@ -281,7 +281,7 @@ export default function OpenFinancePage() {
                   </Button>
                 </div>
                 <p className="text-xs text-slate-500 mb-3">
-                  Ãšltima sync: {fmt(c.lastSyncAt)}
+                  Última sync: {fmt(c.lastSyncAt)}
                 </p>
                 <div className="space-y-1">
                   {c.accounts.map((a) => (
@@ -304,7 +304,7 @@ export default function OpenFinancePage() {
 
       {/* Category Chart */}
       {categoryData.length > 0 && (
-        <Section title="Gastos por categoria (perÃ­odo filtrado)">
+        <Section title="Gastos por categoria (período filtrado)">
           <div className="h-52">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={categoryData} layout="vertical" margin={{ left: 16 }}>
@@ -322,7 +322,7 @@ export default function OpenFinancePage() {
       )}
 
       {/* Transactions */}
-      <Section title={`TransaÃ§Ãµes (${txTotal} ao todo)`}>
+      <Section title={`Transações (${txTotal} ao todo)`}>
         {/* Filters */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
           <div>
@@ -344,7 +344,7 @@ export default function OpenFinancePage() {
             <Input
               value={filterCategory}
               onChange={(e) => { setFilterCategory(e.target.value); setPage(1); }}
-              placeholder="Ex: AlimentaÃ§Ã£o"
+              placeholder="Ex: Alimentação"
               className="h-8 text-xs bg-slate-800 border-slate-700"
             />
           </div>
@@ -354,7 +354,7 @@ export default function OpenFinancePage() {
               className="h-8 text-xs bg-slate-800 border-slate-700" />
           </div>
           <div>
-            <Label className="text-xs text-slate-400 mb-1 block">AtÃ©</Label>
+            <Label className="text-xs text-slate-400 mb-1 block">Até</Label>
             <Input type="date" value={filterTo} onChange={(e) => { setFilterTo(e.target.value); setPage(1); }}
               className="h-8 text-xs bg-slate-800 border-slate-700" />
           </div>
@@ -362,16 +362,16 @@ export default function OpenFinancePage() {
 
         {/* Table */}
         {loadingTx ? (
-          <p className="text-slate-500 text-sm text-center py-8">Carregando transaÃ§Ãµes...</p>
+          <p className="text-slate-500 text-sm text-center py-8">Carregando transações...</p>
         ) : transactions.length === 0 ? (
-          <p className="text-slate-500 text-sm text-center py-8">Nenhuma transaÃ§Ã£o encontrada.</p>
+          <p className="text-slate-500 text-sm text-center py-8">Nenhuma transação encontrada.</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-slate-500 text-xs border-b border-slate-800">
                   <th className="text-left py-2 pr-3">Data</th>
-                  <th className="text-left py-2 pr-3">DescriÃ§Ã£o</th>
+                  <th className="text-left py-2 pr-3">Descrição</th>
                   <th className="text-left py-2 pr-3 hidden md:table-cell">Categoria</th>
                   <th className="text-left py-2 pr-3 hidden lg:table-cell">Conta</th>
                   <th className="text-right py-2">Valor</th>
@@ -391,11 +391,11 @@ export default function OpenFinancePage() {
                     </td>
                     <td className="py-2 pr-3 hidden md:table-cell">
                       <span className="text-xs bg-slate-700 text-slate-300 px-2 py-0.5 rounded-full">
-                        {t.category ?? 'â€”'}
+                        {t.category ?? '—'}
                       </span>
                     </td>
                     <td className="py-2 pr-3 text-slate-400 text-xs hidden lg:table-cell">
-                      {t.account?.connection?.connector} Â· {t.account?.name}
+                      {t.account?.connection?.connector} · {t.account?.name}
                     </td>
                     <td className="py-2 text-right whitespace-nowrap">
                       <span className={`font-semibold flex items-center justify-end gap-1 ${t.type === 'CREDIT' ? 'text-green-400' : 'text-red-400'}`}>
@@ -420,10 +420,10 @@ export default function OpenFinancePage() {
               onClick={() => setPage((p) => p - 1)} className="border-slate-700 text-slate-300">
               Anterior
             </Button>
-            <span className="text-sm text-slate-400">PÃ¡gina {page} de {totalPages}</span>
+            <span className="text-sm text-slate-400">Página {page} de {totalPages}</span>
             <Button variant="outline" size="sm" disabled={page >= totalPages}
               onClick={() => setPage((p) => p + 1)} className="border-slate-700 text-slate-300">
-              PrÃ³xima
+              Próxima
             </Button>
           </div>
         )}
@@ -441,14 +441,14 @@ export default function OpenFinancePage() {
               </div>
             </div>
             <p className="text-sm text-slate-300 mb-6">
-              VocÃª serÃ¡ direcionado ao widget seguro do Pluggy para autorizar o acesso
-              Ã s suas contas. A conexÃ£o usa o padrÃ£o Bancos conectados do Banco Central.
+              Você será direcionado ao widget seguro do Pluggy para autorizar o acesso
+              às suas contas. A conexão usa o padrão Bancos conectados do Banco Central.
             </p>
             <div className="bg-slate-800 rounded-xl p-4 mb-6 text-xs text-slate-400 space-y-1">
-              <p>âœ“ Leitura de saldo e extrato</p>
-              <p>âœ“ Sem permissÃ£o para movimentaÃ§Ãµes</p>
-              <p>âœ“ Revogue a qualquer momento</p>
-              <p>âœ“ Dados criptografados em trÃ¢nsito</p>
+              <p>✓ Leitura de saldo e extrato</p>
+              <p>✓ Sem permissão para movimentações</p>
+              <p>✓ Revogue a qualquer momento</p>
+              <p>✓ Dados criptografados em trânsito</p>
             </div>
             <div className="flex gap-3">
               <Button variant="outline" className="flex-1 border-slate-700 text-slate-300"
@@ -468,7 +468,7 @@ export default function OpenFinancePage() {
   );
 }
 
-// â”€â”€â”€ Sub-components â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Sub-components ───────────────────────────────────────────────────────────
 
 function SummaryCard({
   label, value, icon, sub, positive,

@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { api } from '@/lib/api';
+import { api } from '@/lib/http-client';
 
 export interface AuthState {
   token: string | null;
@@ -40,7 +40,7 @@ async function callAuth(
   body: Credentials | RegisterInput,
 ): Promise<{ ok: true; payload: LoginResult } | { ok: false; message: string }> {
   const { status, data } = await api<AuthResponse>('POST', path, body);
-  if (path === '/auth/login' && data.requiresTwoFactor) {
+  if (path === '/auth/login' && data?.requiresTwoFactor) {
     return {
       ok: true,
       payload: {
@@ -49,8 +49,8 @@ async function callAuth(
       },
     };
   }
-  if (status >= 300 || !data.accessToken) {
-    return { ok: false, message: data.message ?? 'Não foi possível continuar.' };
+  if (status >= 300 || !data?.accessToken) {
+    return { ok: false, message: data?.message ?? 'Nao foi possivel continuar.' };
   }
   return {
     ok: true,

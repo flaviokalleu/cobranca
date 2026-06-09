@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
@@ -15,7 +15,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { PageHeader } from '@/components/page-header';
-import { API_URL, api, getToken } from '@/lib/api';
+import { API_URL, api, getToken } from '@/lib/http-client';
 import { Download, Receipt, RotateCcw } from 'lucide-react';
 
 interface LoanInstallment {

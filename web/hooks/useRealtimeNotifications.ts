@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { API_URL, getToken } from '@/lib/api';
+import { API_URL, getToken } from '@/lib/http-client';
 import { fetchCharges, fetchUpcomingCharges } from '@/store/dataSlice';
 import { fetchLeads } from '@/store/crmSlice';
 import { useAppDispatch } from '@/store/hooks';

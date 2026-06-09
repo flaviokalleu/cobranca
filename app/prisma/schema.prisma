@@ -899,6 +899,7 @@ model FinancialEntry {
   bancoEmissor         String?
   situacao             String?
   descricao            String
+  observacao           String?
   confianca            String
   fonteExtracao        String
   arquivoUrl           String?

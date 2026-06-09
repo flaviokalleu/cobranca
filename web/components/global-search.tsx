@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Banknote, ClipboardList, Package, Search, Truck, Users } from 'lucide-react';
 import { useAppSelector } from '@/store/hooks';
-import { api } from '@/lib/api';
+import { api } from '@/lib/http-client';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { navSections } from './nav';
 

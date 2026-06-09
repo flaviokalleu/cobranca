@@ -1,10 +1,10 @@
-﻿'use client';
+'use client';
 
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { CheckCircle2, Pencil, Plus, Power, RefreshCw, Save, X } from 'lucide-react';
 import { PageHeader } from '@/components/page-header';
-import { api } from '@/lib/api';
+import { api } from '@/lib/http-client';
 
 type AccountType = 'REVENUE' | 'EXPENSE' | 'ASSET' | 'LIABILITY';
 

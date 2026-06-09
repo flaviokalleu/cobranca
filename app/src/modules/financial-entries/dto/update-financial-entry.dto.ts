@@ -1,9 +1,14 @@
-import { IsIn, IsInt, IsISO8601, IsOptional, IsString, Min } from 'class-validator';
+import { IsIn, IsInt, IsISO8601, IsOptional, IsString, MaxLength, Min } from 'class-validator';
 
 export class UpdateFinancialEntryDto {
   @IsOptional()
   @IsString()
   descricao?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
+  observacao?: string;
 
   @IsOptional()
   @IsIn(['receita', 'gasto'])

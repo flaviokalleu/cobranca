@@ -1,10 +1,10 @@
-﻿'use client';
+'use client';
 
 import { useEffect, useMemo, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { fetchCashflow, type CashflowRow } from '@/store/financeSlice';
 import { fetchFinancialEntries } from '@/store/financialEntriesSlice';
-import { API_URL, api, getToken } from '@/lib/api';
+import { API_URL, api, getToken } from '@/lib/http-client';
 import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { NotificationBell } from '@/components/notification-bell';
 import {

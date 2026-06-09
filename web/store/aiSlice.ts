@@ -1,6 +1,6 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 import type { PayloadAction } from '@reduxjs/toolkit';
-import { api } from '@/lib/api';
+import { api } from '@/lib/http-client';
 
 export interface AiAnswer {
   intent: string;

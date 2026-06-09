@@ -37,6 +37,7 @@ export class FinancialEntriesService {
       where: { id: entry.id },
       data: {
         ...(dto.descricao !== undefined && { descricao: dto.descricao }),
+        ...(dto.observacao !== undefined && { observacao: dto.observacao || null }),
         ...(dto.tipo !== undefined && { tipo: dto.tipo }),
         ...(dto.valorCents !== undefined && { valorCents: dto.valorCents }),
         ...(dto.recorrencia !== undefined && { recorrencia: dto.recorrencia }),

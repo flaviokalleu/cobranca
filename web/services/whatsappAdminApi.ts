@@ -1,4 +1,4 @@
-import { API_URL, api, getToken } from '@/lib/api';
+import { API_URL, api, getToken } from '@/lib/http-client';
 
 export type WhatsappConnectionStatus =
   | 'disconnected'

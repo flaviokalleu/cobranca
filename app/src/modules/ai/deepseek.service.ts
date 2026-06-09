@@ -43,11 +43,13 @@ export interface ClassifiedTransaction {
 export class DeepSeekService {
   private readonly logger = new Logger(DeepSeekService.name);
   private readonly apiKey: string | undefined;
-  private readonly baseUrl = 'https://api.deepseek.com';
-  private readonly model = 'deepseek-chat';
+  private readonly baseUrl: string;
+  private readonly model: string;
 
   constructor(private readonly config: ConfigService) {
-    this.apiKey = config.get<string>('DEEPSEEK_API_KEY');
+    this.apiKey = config.get<string>('DEEPSEEK_API_KEY')?.trim();
+    this.baseUrl = (config.get<string>('DEEPSEEK_BASE_URL')?.trim() || 'https://api.deepseek.com').replace(/\/$/, '');
+    this.model = config.get<string>('DEEPSEEK_MODEL')?.trim() || 'deepseek-chat';
   }
 
   get isConfigured(): boolean {
@@ -87,7 +89,7 @@ export class DeepSeekService {
     if (!response.ok) {
       const err = await response.text();
       this.logger.error(`DeepSeek error ${response.status}: ${err}`);
-      throw new Error(`DeepSeek API retornou ${response.status}`);
+      throw new Error(`DeepSeek API retornou ${response.status}: ${err.slice(0, 300)}`);
     }
 
     const data = (await response.json()) as {

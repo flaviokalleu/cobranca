@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { CheckCircle2, KeyRound } from 'lucide-react';
-import { API_URL } from '@/lib/api';
+import { API_URL } from '@/lib/http-client';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';

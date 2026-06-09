@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -10,7 +10,7 @@ import {
   type User,
   updateUser,
 } from '@/store/dataSlice';
-import { api } from '@/lib/api';
+import { api } from '@/lib/http-client';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';

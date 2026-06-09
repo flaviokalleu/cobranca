@@ -1,9 +1,9 @@
-﻿'use client';
+'use client';
 
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { CheckCircle2, FileUp, RefreshCw, Trash2 } from 'lucide-react';
-import { API_URL, api, getToken } from '@/lib/api';
+import { API_URL, api, getToken } from '@/lib/http-client';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';

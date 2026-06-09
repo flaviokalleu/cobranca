@@ -1,10 +1,12 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { AskAiDto } from './dto/ask-ai.dto';
 import { DeepSeekService } from './deepseek.service';
 
 @Injectable()
 export class AiService {
+  private readonly logger = new Logger(AiService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly deepseek: DeepSeekService,
@@ -26,7 +28,11 @@ export class AiService {
 
   async ask(tenantId: string, dto: AskAiDto) {
     if (this.deepseek.isConfigured) {
-      return this.askWithDeepSeek(tenantId, dto.question);
+      try {
+        return await this.askWithDeepSeek(tenantId, dto.question);
+      } catch (err) {
+        this.logger.warn(`DeepSeek indisponivel, usando regras locais: ${String(err)}`);
+      }
     }
     return this.askWithRules(tenantId, dto.question);
   }

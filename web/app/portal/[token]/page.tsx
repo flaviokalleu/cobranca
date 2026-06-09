@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Copy, QrCode, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
-import { API_URL } from '@/lib/api';
+import { API_URL } from '@/lib/http-client';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 

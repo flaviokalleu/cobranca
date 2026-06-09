@@ -1,9 +1,9 @@
-﻿'use client';
+'use client';
 
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { useAppSelector } from '@/store/hooks';
-import { api, type ApiResult } from '@/lib/api';
+import { api } from '@/lib/http-client';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -34,6 +34,8 @@ interface Settings {
   nfeCodMunicipio?: string | null;
   theme?: string;
 }
+
+type ApiResult<T> = { status: number; data: T };
 
 const tabs = ['Empresa', 'PIX/Cobranca', 'Avisos', 'Integracoes', 'Seguranca'] as const;
 type Tab = (typeof tabs)[number];

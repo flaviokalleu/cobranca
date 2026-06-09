@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
@@ -25,7 +25,7 @@ import {
 const brl = (cents: number) =>
   (cents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const fmtDate = (iso?: string | null) =>
-  iso ? new Date(iso).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : 'â€”';
+  iso ? new Date(iso).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : '-';
 const inputToCents = (v: string) => Math.round(Number(v || '0') * 100);
 const centsToInput = (c: number) => (c / 100).toFixed(2);
 const isOverdue = (c: { status: string; dueDate: string }) =>
@@ -56,7 +56,7 @@ function StatusBadge({ charge }: { charge: Charge }) {
 function WaBadge({ confianca }: { confianca: string }) {
   const map: Record<string, { dot: string; bg: string; text: string; label: string }> = {
     alta:  { dot: 'bg-emerald-500', bg: 'bg-emerald-50', text: 'text-emerald-700', label: 'Confirmado' },
-    media: { dot: 'bg-amber-400',   bg: 'bg-amber-50',   text: 'text-amber-700',   label: 'ProvÃ¡vel'   },
+    media: { dot: 'bg-amber-400',   bg: 'bg-amber-50',   text: 'text-amber-700',   label: 'Provavel'   },
     baixa: { dot: 'bg-red-500',     bg: 'bg-red-50',     text: 'text-red-600',     label: 'Revisar'    },
   };
   const s = map[confianca] ?? map.baixa;
@@ -106,7 +106,7 @@ export default function CobrancasPage() {
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [showFilters, setShowFilters] = useState(false);
 
-  // criar cobranÃ§a
+  // criar cobranca
   const [createOpen, setCreateOpen] = useState(false);
   const [customerId, setCustomerId] = useState('');
   const [amount, setAmount] = useState('49.90');
@@ -119,7 +119,7 @@ export default function CobrancasPage() {
   const [interestRateBps, setInterestRateBps] = useState('0');
   const [interestGraceDays, setInterestGraceDays] = useState('0');
 
-  // editar cobranÃ§a
+  // editar cobranca
   const [editChargeOpen, setEditChargeOpen] = useState(false);
   const [editCharge, setEditCharge] = useState<Charge | null>(null);
   const [editChargeDesc, setEditChargeDesc] = useState('');
@@ -140,6 +140,7 @@ export default function CobrancasPage() {
   const [editWaRecorrencia, setEditWaRecorrencia] = useState('AVULSO');
   const [editWaData, setEditWaData] = useState('');
   const [editWaPagador, setEditWaPagador] = useState('');
+  const [editWaObservacao, setEditWaObservacao] = useState('');
 
   useEffect(() => {
     void dispatch(fetchCharges({ page }));
@@ -184,7 +185,8 @@ export default function CobrancasPage() {
       .filter(e => {
         if (origemFilter === 'manual') return false;
         if (q && !e.descricao.toLowerCase().includes(q) &&
-          !(e.pagadorNome ?? '').toLowerCase().includes(q)) return false;
+          !(e.pagadorNome ?? '').toLowerCase().includes(q) &&
+          !(e.observacao ?? '').toLowerCase().includes(q)) return false;
         if (tipoFilter !== 'ALL' && e.tipo !== tipoFilter) return false;
         if (statusFilter !== 'ALL' && statusFilter !== 'WA') return false;
         return true;
@@ -213,7 +215,7 @@ export default function CobrancasPage() {
       interestRateBps: Number(interestRateBps || 0),
       interestGraceDays: Number(interestGraceDays || 0),
     }));
-    if (createCharge.fulfilled.match(res)) { toast.success('CobranÃ§a criada'); setCreateOpen(false); resetCreate(); }
+    if (createCharge.fulfilled.match(res)) { toast.success('Cobranca criada'); setCreateOpen(false); resetCreate(); }
   }
   function resetCreate() {
     setAmount('49.90'); setDescription('Mensalidade'); setDueDate(''); setCategory('');
@@ -247,13 +249,13 @@ export default function CobrancasPage() {
       interestRateBps: Number(editChargeInterestRateBps || 0),
       interestGraceDays: Number(editChargeInterestGraceDays || 0),
     }));
-    if (updateCharge.fulfilled.match(res)) { toast.success('CobranÃ§a atualizada'); setEditChargeOpen(false); }
+    if (updateCharge.fulfilled.match(res)) { toast.success('Cobranca atualizada'); setEditChargeOpen(false); }
     else toast.error(typeof res.payload === 'string' ? res.payload : 'Erro');
   }
   async function onDeleteCharge(c: Charge) {
     if (!window.confirm(`Excluir "${c.description}"?`)) return;
     const res = await dispatch(deleteCharge(c.id));
-    if (deleteCharge.fulfilled.match(res)) toast.success('ExcluÃ­do');
+    if (deleteCharge.fulfilled.match(res)) toast.success('Excluido');
     else toast.error(typeof res.payload === 'string' ? res.payload : 'Erro');
   }
 
@@ -291,19 +293,30 @@ export default function CobrancasPage() {
     setEditWa(e); setEditWaDesc(e.descricao); setEditWaTipo(e.tipo);
     setEditWaValor(centsToInput(e.valorCents)); setEditWaRecorrencia(e.recorrencia);
     setEditWaData(e.dataTransacao ? e.dataTransacao.slice(0, 10) : '');
-    setEditWaPagador(e.pagadorNome ?? ''); setEditWaOpen(true);
+    setEditWaPagador(e.pagadorNome ?? '');
+    setEditWaObservacao(e.observacao ?? '');
+    setEditWaOpen(true);
   }
   async function onEditWa(e: React.FormEvent) {
     e.preventDefault();
     if (!editWa) return;
-    const res = await dispatch(updateFinancialEntry({ id: editWa.id, descricao: editWaDesc, tipo: editWaTipo, valorCents: inputToCents(editWaValor), recorrencia: editWaRecorrencia, dataTransacao: editWaData || undefined, pagadorNome: editWaPagador || undefined }));
+    const res = await dispatch(updateFinancialEntry({
+      id: editWa.id,
+      descricao: editWaDesc,
+      observacao: editWaObservacao.trim() || null,
+      tipo: editWaTipo,
+      valorCents: inputToCents(editWaValor),
+      recorrencia: editWaRecorrencia,
+      dataTransacao: editWaData || undefined,
+      pagadorNome: editWaPagador || undefined,
+    }));
     if (updateFinancialEntry.fulfilled.match(res)) { toast.success('Atualizado'); setEditWaOpen(false); }
     else toast.error(typeof res.payload === 'string' ? res.payload : 'Erro');
   }
   async function onDeleteWa(e: FinancialEntry) {
     if (!window.confirm(`Excluir "${e.descricao}"?`)) return;
     const res = await dispatch(deleteFinancialEntry(e.id));
-    if (deleteFinancialEntry.fulfilled.match(res)) toast.success('ExcluÃ­do');
+    if (deleteFinancialEntry.fulfilled.match(res)) toast.success('Excluido');
     else toast.error(typeof res.payload === 'string' ? res.payload : 'Erro');
   }
   const activeFilters = [origemFilter !== 'ALL', tipoFilter !== 'ALL', statusFilter !== 'ALL'].filter(Boolean).length;
@@ -336,9 +349,9 @@ export default function CobrancasPage() {
           {/* â”€â”€ KPI CARDS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-7">
             {[
-              { label: 'Valor cobrado', value: brl(summary.total), sub: `${charges.length} cobranÃ§as`, color: 'text-gray-900', bg: 'bg-gray-50', icon: Wallet, iconColor: 'text-gray-500' },
+              { label: 'Valor cobrado', value: brl(summary.total), sub: `${charges.length} cobrancas`, color: 'text-gray-900', bg: 'bg-gray-50', icon: Wallet, iconColor: 'text-gray-500' },
               { label: 'Recebido', value: brl(summary.pagas), sub: `${charges.filter(c => c.status === 'PAID').length} pagas`, color: 'text-emerald-700', bg: 'bg-emerald-50', icon: TrendingUp, iconColor: 'text-emerald-500' },
-              { label: 'A receber', value: brl(summary.pendente), sub: `${charges.filter(c => c.status === 'PENDING').length} cobranÃ§as`, color: 'text-amber-700', bg: 'bg-amber-50', icon: Clock, iconColor: 'text-amber-500' },
+              { label: 'A receber', value: brl(summary.pendente), sub: `${charges.filter(c => c.status === 'PENDING').length} cobrancas`, color: 'text-amber-700', bg: 'bg-amber-50', icon: Clock, iconColor: 'text-amber-500' },
               { label: 'Vencidas', value: String(summary.vencidas), sub: 'em atraso', color: summary.vencidas > 0 ? 'text-red-600' : 'text-gray-900', bg: summary.vencidas > 0 ? 'bg-red-50' : 'bg-gray-50', icon: TrendingDown, iconColor: summary.vencidas > 0 ? 'text-red-500' : 'text-gray-400' },
               { label: 'Mensais proximas', value: brl(summary.upcoming), sub: `${upcomingCharges.length} em 30 dias`, color: 'text-indigo-700', bg: 'bg-indigo-50', icon: Clock, iconColor: 'text-indigo-500' },
               { label: 'Entrou no WhatsApp', value: brl(summary.waR), sub: `${waEntries.filter(e => e.tipo === 'receita').length} entradas`, color: 'text-green-700', bg: 'bg-green-50', icon: MessageCircle, iconColor: 'text-green-500' },
@@ -442,7 +455,7 @@ export default function CobrancasPage() {
             {rows.map(row => {
               if (row.kind === 'manual') {
                 const c = row.data;
-                const nome = (c as { customer?: { name: string } }).customer?.name ?? 'â€”';
+                const nome = (c as { customer?: { name: string } }).customer?.name ?? '-';
                 return (
                   <div key={`m-${c.id}`} className="rounded-2xl bg-white p-4" style={{ border: '1px solid #e5e7eb' }}>
                     <div className="flex items-start gap-3">
@@ -486,7 +499,7 @@ export default function CobrancasPage() {
               }
 
               const e = row.data;
-              const pagador = e.pagadorNome ?? e.recebedorNome ?? 'â€”';
+              const pagador = e.pagadorNome ?? e.recebedorNome ?? '-';
               return (
                 <div key={`wa-${e.id}`} className="rounded-2xl bg-white p-4" style={{ border: '1px solid #e5e7eb' }}>
                   <div className="flex items-start gap-3">
@@ -495,10 +508,13 @@ export default function CobrancasPage() {
                       <div className="flex items-start justify-between gap-2">
                         <p className="truncate text-sm font-semibold text-gray-900">{pagador}</p>
                         <span className={`text-sm font-bold tabular-nums flex-shrink-0 ${e.tipo === 'receita' ? 'text-emerald-600' : 'text-red-600'}`}>
-                          {e.tipo === 'gasto' ? 'âˆ’' : '+'}{brl(e.valorCents)}
+                          {e.tipo === 'gasto' ? '-' : '+'}{brl(e.valorCents)}
                         </span>
                       </div>
                       <p className="mt-0.5 truncate text-xs text-gray-500">{e.descricao}</p>
+                      {e.observacao && (
+                        <p className="mt-1 line-clamp-2 text-[11px] text-gray-400">{e.observacao}</p>
+                      )}
                       <div className="mt-2 flex items-center gap-2">
                         <OrigemBadge kind="wa" />
                         <WaBadge confianca={e.confianca} />
@@ -524,7 +540,7 @@ export default function CobrancasPage() {
                 <p className="text-sm font-medium text-gray-400">Nenhum registro encontrado</p>
                 <button onClick={() => setCreateOpen(true)}
                   className="mt-3 text-xs font-semibold text-red-600 hover:text-red-700">
-                  Criar primeira cobranÃ§a â†’
+                  Criar primeira cobranca
                 </button>
               </div>
             )}
@@ -536,7 +552,7 @@ export default function CobrancasPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-gray-50 bg-gray-50/60">
-                    {['Origem', 'Cliente / Pagador', 'DescriÃ§Ã£o', 'Tipo', 'Vencimento', 'Valor', 'Status', ''].map((h, i) => (
+                    {['Origem', 'Cliente / Pagador', 'Descricao', 'Tipo', 'Vencimento', 'Valor', 'Status', ''].map((h, i) => (
                       <th key={h + i} className="px-5 py-3.5 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-400 last:text-right">
                         {h}
                       </th>
@@ -547,7 +563,7 @@ export default function CobrancasPage() {
                   {rows.map(row => {
                     if (row.kind === 'manual') {
                       const c = row.data;
-                      const nome = (c as { customer?: { name: string } }).customer?.name ?? 'â€”';
+                      const nome = (c as { customer?: { name: string } }).customer?.name ?? '-';
                       const overdue = isOverdue(c);
                       return (
                         <tr key={`c-${c.id}`} className={`transition-colors hover:bg-gray-50/60 ${overdue ? 'bg-red-50/30' : ''}`}>
@@ -602,7 +618,7 @@ export default function CobrancasPage() {
                     }
 
                     const e = row.data;
-                    const pagador = e.pagadorNome ?? e.recebedorNome ?? 'â€”';
+                    const pagador = e.pagadorNome ?? e.recebedorNome ?? '-';
                     return (
                       <tr key={`wa-${e.id}`} className="transition-colors hover:bg-gray-50/60">
                         <td className="px-5 py-4"><OrigemBadge kind="wa" /></td>
@@ -617,6 +633,9 @@ export default function CobrancasPage() {
                         </td>
                         <td className="px-5 py-4">
                           <span className="block max-w-[180px] truncate text-gray-600">{e.descricao}</span>
+                          {e.observacao && (
+                            <span className="mt-0.5 block max-w-[220px] truncate text-[11px] text-gray-400">{e.observacao}</span>
+                          )}
                         </td>
                         <td className="px-5 py-4">
                           <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-medium ${e.tipo === 'receita' ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-600'}`}>
@@ -626,7 +645,7 @@ export default function CobrancasPage() {
                         <td className="px-5 py-4 text-sm text-gray-500">{fmtDate(e.dataTransacao)}</td>
                         <td className="px-5 py-4">
                           <span className={`font-bold tabular-nums ${e.tipo === 'receita' ? 'text-emerald-600' : 'text-red-600'}`}>
-                            {e.tipo === 'gasto' ? 'âˆ’' : '+'}{brl(e.valorCents)}
+                            {e.tipo === 'gasto' ? '-' : '+'}{brl(e.valorCents)}
                           </span>
                         </td>
                         <td className="px-5 py-4"><WaBadge confianca={e.confianca} /></td>
@@ -651,7 +670,7 @@ export default function CobrancasPage() {
                         <p className="text-sm text-gray-400">Nenhum registro encontrado</p>
                         <button onClick={() => setCreateOpen(true)}
                           className="mt-2 text-xs font-semibold text-red-600 hover:text-red-700">
-                          Criar primeira cobranÃ§a â†’
+                          Criar primeira cobranca
                         </button>
                       </td>
                     </tr>
@@ -697,7 +716,7 @@ export default function CobrancasPage() {
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs font-semibold text-gray-600">DescriÃ§Ã£o</Label>
+              <Label className="text-xs font-semibold text-gray-600">Descricao</Label>
               <Input value={description} onChange={e => setDescription(e.target.value)} className="rounded-xl border-gray-200 bg-gray-50" />
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -706,7 +725,7 @@ export default function CobrancasPage() {
                 <Input value={category} onChange={e => setCategory(e.target.value)} placeholder="Opcional" className="rounded-xl border-gray-200 bg-gray-50" />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs font-semibold text-gray-600">RecorrÃªncia</Label>
+                <Label className="text-xs font-semibold text-gray-600">Recorrencia</Label>
                 <Select value={recurrence} onValueChange={setRecurrence}>
                   <SelectTrigger className="rounded-xl border-gray-200 bg-gray-50"><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -758,11 +777,11 @@ export default function CobrancasPage() {
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="text-base font-bold">Editar cobranca</DialogTitle>
-            <DialogDescription className="text-xs">Atualize os dados da cobranÃ§a manual.</DialogDescription>
+            <DialogDescription className="text-xs">Atualize os dados da cobranca manual.</DialogDescription>
           </DialogHeader>
           <form onSubmit={onEditCharge} className="space-y-4">
             <div className="space-y-1.5">
-              <Label className="text-xs font-semibold text-gray-600">DescriÃ§Ã£o</Label>
+              <Label className="text-xs font-semibold text-gray-600">Descricao</Label>
               <Input value={editChargeDesc} onChange={e => setEditChargeDesc(e.target.value)} required className="rounded-xl border-gray-200 bg-gray-50" />
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -771,7 +790,7 @@ export default function CobrancasPage() {
                 <Input type="date" value={editChargeDue} onChange={e => setEditChargeDue(e.target.value)} required className="rounded-xl border-gray-200 bg-gray-50" />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs font-semibold text-gray-600">RecorrÃªncia</Label>
+                <Label className="text-xs font-semibold text-gray-600">Recorrencia</Label>
                 <Select value={editChargeRecurrence} onValueChange={setEditChargeRecurrence}>
                   <SelectTrigger className="rounded-xl border-gray-200 bg-gray-50"><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -815,7 +834,7 @@ export default function CobrancasPage() {
             )}
             <button type="submit"
               className="w-full rounded-xl bg-gray-900 py-2.5 text-sm font-semibold text-white transition hover:bg-gray-800">
-              Salvar alteraÃ§Ãµes
+              Salvar alteracoes
             </button>
           </form>
         </DialogContent>
@@ -825,17 +844,27 @@ export default function CobrancasPage() {
       <Dialog open={editWaOpen} onOpenChange={setEditWaOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-base font-bold">Editar lanÃ§amento WhatsApp</DialogTitle>
-            <DialogDescription className="text-xs">Corrija os dados extraÃ­dos do comprovante.</DialogDescription>
+            <DialogTitle className="text-base font-bold">Editar lancamento WhatsApp</DialogTitle>
+            <DialogDescription className="text-xs">Corrija os dados extraidos do comprovante.</DialogDescription>
           </DialogHeader>
           <form onSubmit={onEditWa} className="space-y-4">
             <div className="space-y-1.5">
-              <Label className="text-xs font-semibold text-gray-600">DescriÃ§Ã£o</Label>
+              <Label className="text-xs font-semibold text-gray-600">Descricao</Label>
               <Input value={editWaDesc} onChange={e => setEditWaDesc(e.target.value)} required className="rounded-xl border-gray-200 bg-gray-50" />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold text-gray-600">Pagador / Remetente</Label>
               <Input value={editWaPagador} onChange={e => setEditWaPagador(e.target.value)} className="rounded-xl border-gray-200 bg-gray-50" />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold text-gray-600">Observacao</Label>
+              <textarea
+                value={editWaObservacao}
+                onChange={e => setEditWaObservacao(e.target.value)}
+                rows={3}
+                placeholder="Anote algo importante sobre este lancamento"
+                className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-red-300 focus:bg-white focus:ring-2 focus:ring-red-100"
+              />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
@@ -859,7 +888,7 @@ export default function CobrancasPage() {
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs font-semibold text-gray-600">RecorrÃªncia</Label>
+                <Label className="text-xs font-semibold text-gray-600">Recorrencia</Label>
                 <Select value={editWaRecorrencia} onValueChange={setEditWaRecorrencia}>
                   <SelectTrigger className="rounded-xl border-gray-200 bg-gray-50"><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -871,7 +900,7 @@ export default function CobrancasPage() {
             </div>
             <button type="submit"
               className="w-full rounded-xl bg-gray-900 py-2.5 text-sm font-semibold text-white transition hover:bg-gray-800">
-              Salvar alteraÃ§Ãµes
+              Salvar alteracoes
             </button>
           </form>
         </DialogContent>

@@ -1,0 +1,91 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: crm-webba-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${CRM_DB_USER:-crm_webba}
+      POSTGRES_PASSWORD: ${CRM_DB_PASSWORD}
+      POSTGRES_DB: ${CRM_DB_NAME:-crm_webba}
+    volumes:
+      - crm-webba-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - crm-webba-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: crm-webba-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - crm-webba-redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - crm-webba-network
+
+  app:
+    build:
+      context: ./app
+    container_name: crm-webba-api
+    restart: unless-stopped
+    env_file:
+      - ./.env
+      - ./.env.app
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: postgresql://${CRM_DB_USER:-crm_webba}:${CRM_DB_PASSWORD}@postgres:5432/${CRM_DB_NAME:-crm_webba}?schema=public
+      REDIS_URL: redis://redis:6379
+      QUEUE_DRIVER: bullmq
+      FRONTEND_URL: https://crm.webba.site
+    ports:
+      - "127.0.0.1:3910:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+    networks:
+      - crm-webba-network
+
+  web:
+    build:
+      context: ./web
+      args:
+        NEXT_PUBLIC_API_URL: ${PUBLIC_API_URL:-https://crm.webba.site/api}
+    container_name: crm-webba-web
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      NEXT_PUBLIC_API_URL: ${PUBLIC_API_URL:-https://crm.webba.site/api}
+    ports:
+      - "127.0.0.1:3911:3001"
+    depends_on:
+      app:
+        condition: service_healthy
+    networks:
+      - crm-webba-network
+
+volumes:
+  crm-webba-postgres-data:
+  crm-webba-redis-data:
+
+networks:
+  crm-webba-network:
+    name: crm-webba-network
+    driver: bridge
