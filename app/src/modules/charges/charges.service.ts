@@ -107,7 +107,7 @@ export class ChargesService {
           email: customer.email ?? null,
           city: customer.city ?? null,
           estimatedCents: charge.amountCents,
-          stage: customer.stage ?? 'LEAD',
+          stage: 'LEAD', // always start at LEAD; stage progression is manual
         },
       });
     }
@@ -122,9 +122,11 @@ export class ChargesService {
     };
     this.queue.enqueue(REMINDER_JOB, payload);
 
-    // Sincroniza com Asaas em background se o tenant tiver gateway configurado
+    // Sincroniza com Asaas via fila (com retry em caso de falha)
     void this.asaas.isEnabled(tenantId).then((enabled) => {
-      if (enabled) void this.asaas.syncCharge(tenantId, charge.id);
+      if (enabled) {
+        this.queue.enqueue('asaas.sync', { tenantId, chargeId: charge.id });
+      }
     });
 
     return charge;
@@ -219,26 +221,28 @@ export class ChargesService {
 
   async importCsv(tenantId: string, content: string) {
     const rows = this.parseCsv(content);
-    const errors: Array<{ row: number; message: string }> = [];
-    let imported = 0;
+    const results: { row: number; ok: boolean; error?: string }[] = [];
     let paid = 0;
 
-    for (const [index, row] of rows.entries()) {
-      try {
-        const { charge, status } = await this.rowToChargeDto(tenantId, row);
-        const created = await this.create(tenantId, charge);
-        imported += 1;
-        if (status === 'PAID') {
-          await this.pay(tenantId, created.id);
-          paid += 1;
+    await this.prisma.$transaction(async () => {
+      for (let i = 0; i < rows.length; i++) {
+        try {
+          const { charge, status } = await this.rowToChargeDto(tenantId, rows[i]);
+          const created = await this.create(tenantId, charge);
+          if (status === 'PAID') {
+            await this.pay(tenantId, created.id);
+            paid += 1;
+          }
+          results.push({ row: i + 1, ok: true });
+        } catch (err: unknown) {
+          const msg = err instanceof Error ? err.message : String(err);
+          results.push({ row: i + 1, ok: false, error: msg });
+          throw new Error(`Linha ${i + 1}: ${msg}`); // forces rollback
         }
-      } catch (error) {
-        errors.push({
-          row: index + 2,
-          message: error instanceof Error ? error.message : 'Linha invalida.',
-        });
       }
-    }
+    }, { timeout: 30000 });
+
+    const imported = results.filter(r => r.ok).length;
 
     await this.audit.record({
       tenantId,
@@ -246,10 +250,10 @@ export class ChargesService {
       action: 'CHARGES_CSV_IMPORTED',
       entityType: 'Charge',
       entityId: tenantId,
-      metadata: { imported, paid, errors: errors.length },
+      metadata: { imported, paid, errors: results.filter(r => !r.ok).length },
     });
 
-    return { imported, paid, skipped: errors.length, errors };
+    return { imported, results };
   }
 
   upcoming(tenantId: string, days = 30) {
@@ -289,6 +293,24 @@ export class ChargesService {
     for (const template of dueTemplates) {
       if (!template.nextDueAt) continue;
       const dueAt = template.nextDueAt;
+      const newDueDate = dueAt;
+      const startOfMonth = new Date(newDueDate);
+      startOfMonth.setDate(1);
+      startOfMonth.setHours(0, 0, 0, 0);
+      const endOfMonth = new Date(startOfMonth);
+      endOfMonth.setMonth(endOfMonth.getMonth() + 1);
+
+      const alreadyExists = await this.prisma.charge.findFirst({
+        where: {
+          tenantId: template.tenantId,
+          customerId: template.customerId,
+          description: template.description,
+          dueDate: { gte: startOfMonth, lt: endOfMonth },
+          recurrence: 'ONCE',
+        },
+      });
+      if (alreadyExists) continue; // skip - already generated this month
+
       const nextDueAt = this.addMonths(dueAt, 1);
       const created = await this.prisma.$transaction(async (db) => {
         const fresh = await db.charge.findFirst({

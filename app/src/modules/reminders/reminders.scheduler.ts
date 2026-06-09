@@ -29,26 +29,43 @@ export class RemindersScheduler {
   }
 
   async enqueueDue(): Promise<number> {
+    this.logger.log(`[Scheduler] enqueueDue: processando ate 500 registros`);
     const limit = new Date();
     limit.setDate(limit.getDate() + 3);
 
     const charges = await this.prisma.charge.findMany({
       where: { status: 'PENDING', dueDate: { lte: limit } },
-      include: { customer: true },
+      include: {
+        customer: {
+          select: {
+            name: true,
+            phone: true,
+            whatsapp: true,
+            notifyConsented: true,
+          },
+        },
+      },
+      take: 500,
     });
 
+    let enqueued = 0;
     for (const charge of charges) {
+      // Only send WhatsApp if customer consented (LGPD)
+      if (!charge.customer.notifyConsented) continue;
+
       const payload: ReminderJobPayload = {
         tenantId: charge.tenantId,
         chargeId: charge.id,
         customerName: charge.customer.name,
-        phone: charge.customer.phone,
+        phone: charge.customer.whatsapp ?? charge.customer.phone,
         amountCents: charge.amountCents,
         dueDate: charge.dueDate.toISOString(),
       };
       this.queue.enqueue(REMINDER_JOB, payload);
+      enqueued++;
     }
-    return charges.length;
+    this.logger.log(`[Scheduler] enqueueDue: ${enqueued} lembretes enfileirados de ${charges.length} cobrancas`);
+    return enqueued;
   }
 
   async sendOwnerDailySummary(): Promise<number> {
@@ -142,9 +159,11 @@ export class RemindersScheduler {
   // Roda no dia 1 de cada mes as 8h: envia resumo financeiro pessoal por WhatsApp.
   @Cron('0 8 1 * *')
   async sendMonthlyPersonalReport(): Promise<void> {
+    this.logger.log(`[Scheduler] sendMonthlyPersonalReport: processando ate 500 registros`);
     const tenants = await this.prisma.whatsappUser.findMany({
       where: { status: 'ACTIVE' },
       select: { tenantId: true, phone: true },
+      take: 500,
     });
     const byTenant = new Map<string, string>();
     for (const u of tenants) {
@@ -172,12 +191,13 @@ export class RemindersScheduler {
         this.logger.warn(`Falha ao enviar relatorio mensal: ${String(err)}`);
       }
     }
-    this.logger.log(`Relatorios mensais enviados: ${sent}`);
+    this.logger.log(`[Scheduler] sendMonthlyPersonalReport: relatorios enviados: ${sent}`);
   }
 
   // Roda no dia 1 de cada mes: gera proxima cobranca/conta para recorrencias MONTHLY.
   @Cron('0 6 1 * *')
   async createMonthlyRecurrences(): Promise<void> {
+    this.logger.log(`[Scheduler] createMonthlyRecurrences: processando ate 500 registros`);
     const now = new Date();
     const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, now.getDate());
 
@@ -186,10 +206,12 @@ export class RemindersScheduler {
         where: { recurrence: 'MONTHLY', status: 'PAID' },
         include: { customer: true },
         orderBy: { dueDate: 'desc' },
+        take: 500,
       }),
       this.prisma.payable.findMany({
         where: { recurrence: 'MONTHLY', status: 'PAID' },
         orderBy: { dueDate: 'desc' },
+        take: 500,
       }),
     ]);
 
@@ -255,7 +277,7 @@ export class RemindersScheduler {
       payablesCreated++;
     }
 
-    this.logger.log(`Recorrencias mensais: ${chargesCreated} cobrancas + ${payablesCreated} despesas criadas`);
+    this.logger.log(`[Scheduler] createMonthlyRecurrences: ${chargesCreated} cobrancas + ${payablesCreated} despesas criadas`);
   }
 
   private money(cents: number) {
