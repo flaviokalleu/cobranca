@@ -1,4 +1,4 @@
-﻿'use client';
+�'use client';
 
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -130,7 +130,7 @@ export default function ComprasPage() {
   }
 
   async function handleReceive(id: string) {
-    if (!confirm('Marcar este pedido como recebido? O estoque serÃ¡ atualizado.')) return;
+    if (!confirm('Marcar este pedido como recebido? O estoque será atualizado.')) return;
     const res = await dispatch(receivePurchase(id));
     if (receivePurchase.fulfilled.match(res)) toast.success('Pedido recebido! Estoque atualizado.');
     else toast.error('Erro ao receber pedido.');
@@ -139,7 +139,7 @@ export default function ComprasPage() {
   async function handleDelete(id: string) {
     if (!confirm('Excluir este pedido de compra?')) return;
     const res = await dispatch(deletePurchase(id));
-    if (deletePurchase.fulfilled.match(res)) toast.success('Pedido excluÃ­do.');
+    if (deletePurchase.fulfilled.match(res)) toast.success('Pedido excluído.');
     else toast.error('Erro ao excluir.');
   }
 
@@ -167,12 +167,12 @@ export default function ComprasPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>NÂº</TableHead>
+              <TableHead>Nº</TableHead>
               <TableHead>Fornecedor</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="text-right">Total</TableHead>
               <TableHead>Data</TableHead>
-              <TableHead className="w-32 text-right">AÃ§Ãµes</TableHead>
+              <TableHead className="w-32 text-right">Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>

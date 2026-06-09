@@ -1,4 +1,4 @@
-﻿'use client';
+�'use client';
 
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -85,7 +85,7 @@ export default function FornecedoresPage() {
   async function handleDelete(id: string, nome: string) {
     if (!confirm(`Excluir fornecedor "${nome}"?`)) return;
     const res = await dispatch(deleteSupplier(id));
-    if (deleteSupplier.fulfilled.match(res)) toast.success('Fornecedor excluÃ­do.');
+    if (deleteSupplier.fulfilled.match(res)) toast.success('Fornecedor excluído.');
     else toast.error('Erro ao excluir.');
   }
 
@@ -125,7 +125,7 @@ export default function FornecedoresPage() {
               <TableHead>CNPJ / CPF</TableHead>
               <TableHead>Telefone</TableHead>
               <TableHead>E-mail</TableHead>
-              <TableHead className="w-24 text-right">AÃ§Ãµes</TableHead>
+              <TableHead className="w-24 text-right">Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -140,9 +140,9 @@ export default function FornecedoresPage() {
             {filtered.map((s) => (
               <TableRow key={s.id}>
                 <TableCell className="font-medium">{s.name}</TableCell>
-                <TableCell>{s.document ?? 'â€”'}</TableCell>
-                <TableCell>{s.phone ?? 'â€”'}</TableCell>
-                <TableCell>{s.email ?? 'â€”'}</TableCell>
+                <TableCell>{s.document ?? '�'}</TableCell>
+                <TableCell>{s.phone ?? '�'}</TableCell>
+                <TableCell>{s.email ?? '�'}</TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-1">
                     <Button variant="ghost" size="icon" onClick={() => openEdit(s)}>

@@ -35,7 +35,10 @@ export function AuthShell({ title, subtitle, children }: AuthShellProps) {
         <div className="auth-left-content">
           {/* Logo */}
           <div className="auth-logo-float">
-            <Image src="/logo.png" alt="WEBBA ERP" width={160} height={54} priority />
+            <picture>
+              <source srcSet="/logo.webp" type="image/webp" />
+              <Image src="/logo.png" alt="WEBBA ERP" width={160} height={54} priority fetchPriority="high" />
+            </picture>
           </div>
 
           {/* Headline + features */}
@@ -91,7 +94,10 @@ export function AuthShell({ title, subtitle, children }: AuthShellProps) {
         <div className="auth-form-card">
           {/* Logo mobile */}
           <div className="mb-8 flex justify-center lg:hidden">
-            <Image src="/logo.png" alt="WEBBA ERP" width={140} height={46} priority />
+            <picture>
+              <source srcSet="/logo.webp" type="image/webp" />
+              <Image src="/logo.png" alt="WEBBA ERP" width={140} height={46} priority fetchPriority="high" />
+            </picture>
           </div>
 
           <h2 className="auth-form-title">{title}</h2>

@@ -1,4 +1,4 @@
-﻿'use client';
+�'use client';
 
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -102,7 +102,7 @@ export default function ProdutosPage() {
   async function handleDelete(id: string, nome: string) {
     if (!confirm(`Excluir produto "${nome}"?`)) return;
     const res = await dispatch(deleteProduct(id));
-    if (deleteProduct.fulfilled.match(res)) toast.success('Produto excluÃ­do.');
+    if (deleteProduct.fulfilled.match(res)) toast.success('Produto excluído.');
     else toast.error('Erro ao excluir.');
   }
 
@@ -147,10 +147,10 @@ export default function ProdutosPage() {
               <TableHead>SKU</TableHead>
               <TableHead>Nome</TableHead>
               <TableHead>Unidade</TableHead>
-              <TableHead className="text-right">PreÃ§o Venda</TableHead>
+              <TableHead className="text-right">Preço Venda</TableHead>
               <TableHead className="text-right">Custo</TableHead>
               <TableHead className="text-center">Estoque</TableHead>
-              <TableHead className="w-24 text-right">AÃ§Ãµes</TableHead>
+              <TableHead className="w-24 text-right">Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -211,7 +211,7 @@ export default function ProdutosPage() {
               </div>
               <div className="grid gap-1.5">
                 <Label>Unidade</Label>
-                <Input value={unit} onChange={(e) => setUnit(e.target.value)} placeholder="un, kg, mÂ²..." />
+                <Input value={unit} onChange={(e) => setUnit(e.target.value)} placeholder="un, kg, m²..." />
               </div>
             </div>
             <div className="grid gap-1.5">
@@ -219,12 +219,12 @@ export default function ProdutosPage() {
               <Input value={name} onChange={(e) => setName(e.target.value)} required />
             </div>
             <div className="grid gap-1.5">
-              <Label>DescriÃ§Ã£o</Label>
+              <Label>Descrição</Label>
               <Input value={description} onChange={(e) => setDescription(e.target.value)} />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="grid gap-1.5">
-                <Label>PreÃ§o de Venda (R$)</Label>
+                <Label>Preço de Venda (R$)</Label>
                 <Input
                   type="number"
                   step="0.01"

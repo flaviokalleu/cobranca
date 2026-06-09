@@ -1,4 +1,4 @@
-'use client';
+﻿﻿﻿﻿'use client';
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
@@ -19,7 +19,7 @@ import {
   CalendarDays, TrendingDown, BarChart2, Percent,
 } from 'lucide-react';
 
-// â”€â”€â”€ tipos de perÃ­odo â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  tipos de período 
 type Period = 'hoje' | '7d' | '30d' | 'trim' | 'ano';
 
 const PERIOD_LABELS: Record<Period, string> = {
@@ -52,7 +52,7 @@ function periodRange(p: Period): { from: Date; to: Date } {
   return { from, to };
 }
 
-// â”€â”€â”€ helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  helpers 
 const brl = (cents: number) =>
   (cents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const fmtDate = (iso: string) =>
@@ -65,7 +65,7 @@ const inRange = (iso: string, from: Date, to: Date) => {
 const isOverdue = (c: { status: string; dueDate: string }) =>
   c.status === 'PENDING' && new Date(c.dueDate).getTime() < Date.now();
 
-// â”€â”€â”€ sub-componentes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  sub-componentes 
 function PeriodFilter({ value, onChange }: { value: Period; onChange: (p: Period) => void }) {
   return (
     <div className="flex items-center gap-1 rounded-xl bg-gray-100 p-1">
@@ -171,7 +171,7 @@ interface AlertsSummary {
   chargingDueToday: { count: number; totalCents: number };
 }
 
-// â”€â”€â”€ Page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  Page 
 export default function PainelPage() {
   const dispatch = useAppDispatch();
   const { customers, charges } = useAppSelector((s) => s.data);
@@ -193,7 +193,7 @@ export default function PainelPage() {
     });
   }, [dispatch]);
 
-  // â”€â”€ Filtros de data â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  //  Filtros de data 
   const { from, to } = useMemo(() => periodRange(period), [period]);
 
   useEffect(() => {
@@ -213,7 +213,7 @@ export default function PainelPage() {
     [financialEntries, from, to],
   );
 
-  // â”€â”€ KPIs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  //  KPIs 
   const localKpis = useMemo(() => {
     const pending = chargesFiltered.filter(c => c.status === 'PENDING');
     const aReceber = pending.reduce((s, c) => s + c.amountCents, 0);
@@ -229,7 +229,7 @@ export default function PainelPage() {
     const saldo = recebido - despesasPagas - waGastos;
     const tarefas = tasks.filter(t => !t.done).length;
 
-    // Prazo de recebimento: dias mÃ©dios de recebimento
+    // Prazo de recebimento: dias médios de recebimento
     const paidCharges = chargesFiltered.filter(c => c.status === 'PAID' && c.paidAt);
     const dso = paidCharges.length > 0
       ? Math.round(paidCharges.reduce((s, c) => {
@@ -238,7 +238,7 @@ export default function PainelPage() {
         }, 0) / paidCharges.length)
       : 0;
 
-    // Taxa de inadimplÃªncia
+    // Taxa de inadimplência
     const totalCharges = chargesFiltered.length;
     const inadimplencia = totalCharges > 0 ? Math.round((vencidas / totalCharges) * 100) : 0;
 
@@ -267,7 +267,7 @@ export default function PainelPage() {
     };
   }, [dashboardKpis, localKpis]);
 
-  // â”€â”€ Chart: Ã¡rea (tendÃªncia mensal ou diÃ¡ria) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  //  Chart: área (tendência mensal ou diária) 
   const chartData = useMemo(() => {
     if (dashboardKpis?.chart?.length) {
       return dashboardKpis.chart.map((point) => ({
@@ -344,7 +344,7 @@ export default function PainelPage() {
     return pts;
   }, [charges, dashboardKpis, payables, financialEntries, period]);
 
-  // â”€â”€ Donut: composiÃ§Ã£o de receita â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  //  Donut: composição de receita 
   const donutData = useMemo(() => {
     const manual = chargesFiltered.filter(c => c.status === 'PAID').reduce((s, c) => s + c.amountCents / 100, 0);
     const whatsapp = entriesFiltered.filter(e => e.tipo === 'receita').reduce((s, e) => s + e.valorCents / 100, 0);
@@ -357,13 +357,13 @@ export default function PainelPage() {
     return data.length > 0 ? data : [{ name: 'Sem dados', value: 1 }];
   }, [chargesFiltered, entriesFiltered]);
 
-  // â”€â”€ Recentes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  //  Recentes 
   const recentes = useMemo<RecentRow[]>(() => {
     const rows: RecentRow[] = [
       ...chargesFiltered.map(c => ({
         kind: 'charge' as const,
         id: c.id,
-        nome: (c as { customer?: { name: string } }).customer?.name ?? 'â€”',
+        nome: (c as { customer?: { name: string } }).customer?.name ?? '?',
         descricao: c.description,
         tipo: c.recurrence === 'MONTHLY' ? 'Mensal' : 'Avulso',
         data: c.dueDate,
@@ -374,7 +374,7 @@ export default function PainelPage() {
       ...entriesFiltered.map(e => ({
         kind: 'wa' as const,
         id: e.id,
-        nome: e.pagadorNome ?? e.recebedorNome ?? 'â€”',
+        nome: e.pagadorNome ?? e.recebedorNome ?? '?',
         descricao: e.descricao,
         tipo: e.tipo === 'receita' ? 'Entrada' : 'Gasto',
         data: e.dataTransacao ?? e.createdAt,
@@ -391,7 +391,7 @@ export default function PainelPage() {
   return (
     <div className="min-h-screen bg-gray-50">
 
-      {/* â”€â”€ PAGE HEADER â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/*  PAGE HEADER  */}
       <div className="sticky top-0 z-10 border-b border-gray-100 bg-white">
         <div className="mx-auto max-w-7xl px-4 sm:px-6">
           <div className="flex h-16 items-center justify-between gap-3">
@@ -399,7 +399,7 @@ export default function PainelPage() {
               <h1 className="text-base font-bold text-gray-900">Painel</h1>
               <p className="hidden text-xs text-gray-400 capitalize sm:block">{mesAtual}</p>
             </div>
-            {/* Filtro de perÃ­odo - desktop */}
+            {/* Filtro de período - desktop */}
             <div className="hidden sm:block">
               <PeriodFilter value={period} onChange={setPeriod} />
             </div>
@@ -411,7 +411,7 @@ export default function PainelPage() {
               <span className="hidden sm:inline">Nova cobranca</span>
             </Link>
           </div>
-          {/* Filtro de perÃ­odo - mobile */}
+          {/* Filtro de período - mobile */}
           <div className="pb-3 sm:hidden overflow-x-auto">
             <PeriodFilter value={period} onChange={setPeriod} />
           </div>
@@ -420,7 +420,7 @@ export default function PainelPage() {
 
       <div className="mx-auto max-w-7xl space-y-4 p-4 sm:p-6">
 
-        {/* â”€â”€ SALDO + INDICADORES TOPO â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+        {/*  SALDO + INDICADORES TOPO  */}
         <div className="grid gap-4 lg:grid-cols-3">
 
           {/* Saldo principal */}
@@ -532,14 +532,14 @@ export default function PainelPage() {
           </div>
         </div>
 
-        {/* â”€â”€ KPI CARDS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+        {/*  KPI CARDS  */}
         <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
           <KpiCard label="A receber" value={brl(kpis.aReceber)}
-            sub={`${chargesFiltered.filter(c => c.status === 'PENDING').length} cobranÃ§as`}
+            sub={`${chargesFiltered.filter(c => c.status === 'PENDING').length} cobranças`}
             icon={Wallet} iconBg="#fef9c3" iconColor="#ca8a04"
             href="/dashboard/cobrancas" />
           <KpiCard label="Vencidas" value={String(kpis.vencidas)}
-            sub="cobranÃ§as em atraso"
+            sub="cobranças em atraso"
             icon={AlertTriangle} iconBg="#fee2e2" iconColor="#dc2626"
             delta={kpis.vencidas > 0 ? `${kpis.vencidas} atrasada${kpis.vencidas > 1 ? 's' : ''}` : '0 em atraso'}
             deltaUp={kpis.vencidas === 0}
@@ -573,7 +573,7 @@ export default function PainelPage() {
           </div>
         )}
 
-        {/* â”€â”€ GRÃFICO ÃREA + DONUT â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+        {/*  GRÁFICO ÁREA + DONUT  */}
         <div className="grid gap-4 lg:grid-cols-3">
 
           {/* Area chart */}
@@ -582,7 +582,7 @@ export default function PainelPage() {
               <div>
                 <h2 className="text-sm font-bold text-gray-900">Entradas e saidas</h2>
                 <p className="mt-0.5 text-xs text-gray-400">
-                  Entradas e saidas Â· {PERIOD_LABELS[period]}
+                  Entradas e saidas · {PERIOD_LABELS[period]}
                 </p>
               </div>
               <div className="flex items-center gap-3 text-xs font-medium text-gray-500">
@@ -621,7 +621,7 @@ export default function PainelPage() {
             </div>
           </div>
 
-          {/* Donut: composiÃ§Ã£o */}
+          {/* Donut: composição */}
           <div className="rounded-2xl bg-white p-5" style={{ border: '1px solid #e5e7eb' }}>
             <h2 className="text-sm font-bold text-gray-900">De onde veio o dinheiro</h2>
             <p className="mt-0.5 mb-4 text-xs text-gray-400">Por origem · {PERIOD_LABELS[period]}</p>
@@ -653,10 +653,10 @@ export default function PainelPage() {
           </div>
         </div>
 
-        {/* â”€â”€ BAR CHART + AÃ‡Ã•ES RÃPIDAS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+        {/*  BAR CHART + A!"ES RÁPIDAS  */}
         <div className="grid gap-4 lg:grid-cols-3">
 
-          {/* Bar chart: receita vs despesa por mÃªs */}
+          {/* Bar chart: receita vs despesa por mês */}
           <div className="lg:col-span-2 rounded-2xl bg-white p-5 sm:p-6" style={{ border: '1px solid #e5e7eb' }}>
             <div className="mb-5 flex items-start justify-between">
               <div>
@@ -702,7 +702,7 @@ export default function PainelPage() {
               </div>
             </div>
 
-            {/* aÃ§Ãµes rÃ¡pidas */}
+            {/* ações rápidas */}
             <div className="rounded-2xl bg-white p-5" style={{ border: '1px solid #e5e7eb' }}>
               <h3 className="mb-3 text-sm font-bold text-gray-900">Atalhos</h3>
               <div className="space-y-1">
@@ -726,13 +726,13 @@ export default function PainelPage() {
           </div>
         </div>
 
-        {/* â”€â”€ MOVIMENTAÃ‡Ã•ES RECENTES â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+        {/*  MOVIMENTA!"ES RECENTES  */}
         <div className="rounded-2xl bg-white overflow-hidden" style={{ border: '1px solid #e5e7eb' }}>
           <div className="flex items-center justify-between border-b border-gray-50 px-5 py-4">
             <div>
-              <h2 className="text-sm font-bold text-gray-900">MovimentaÃ§Ãµes recentes</h2>
+              <h2 className="text-sm font-bold text-gray-900">Movimentações recentes</h2>
               <p className="mt-0.5 text-xs text-gray-400">
-                {chargesFiltered.length} cobranÃ§as Â· {entriesFiltered.length} via WhatsApp Â· {PERIOD_LABELS[period]}
+                {chargesFiltered.length} cobranças · {entriesFiltered.length} via WhatsApp · {PERIOD_LABELS[period]}
               </p>
             </div>
             <Link href="/dashboard/cobrancas"
@@ -756,7 +756,7 @@ export default function PainelPage() {
                     : row.kind === 'charge' && row.status === 'PAID' ? 'text-emerald-600'
                     : 'text-gray-700'
                   }`}>
-                    {row.kind === 'wa' && row.tipo === 'Gasto' ? 'âˆ’' : '+'}{brl(row.valorCents)}
+                    {row.kind === 'wa' && row.tipo === 'Gasto' ? '-' : '+'}{brl(row.valorCents)}
                   </p>
                   <p className="text-[10px] text-gray-400">{fmtDate(row.data)}</p>
                 </div>
@@ -765,7 +765,7 @@ export default function PainelPage() {
             {recentes.length === 0 && (
               <div className="px-4 py-10 text-center">
                 <CircleDollarSign className="mx-auto mb-2 h-8 w-8 text-gray-300" />
-                <p className="text-sm text-gray-400">Nenhuma movimentaÃ§Ã£o no perÃ­odo</p>
+                <p className="text-sm text-gray-400">Nenhuma movimentação no período</p>
               </div>
             )}
           </div>
@@ -775,7 +775,7 @@ export default function PainelPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-50 bg-gray-50/50">
-                  {['Origem', 'Cliente / Pagador', 'DescriÃ§Ã£o', 'Tipo', 'Data', 'Valor', 'Status'].map(h => (
+                  {['Origem', 'Cliente / Pagador', 'Descrição', 'Tipo', 'Data', 'Valor', 'Status'].map(h => (
                     <th key={h} className="px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-400">
                       {h}
                     </th>
@@ -814,7 +814,7 @@ export default function PainelPage() {
                         : row.kind === 'charge' && row.status === 'PAID' ? 'text-emerald-600'
                         : 'text-gray-900'
                       }`}>
-                        {row.kind === 'wa' && row.tipo === 'Gasto' ? 'âˆ’' : '+'}{brl(row.valorCents)}
+                        {row.kind === 'wa' && row.tipo === 'Gasto' ? '-' : '+'}{brl(row.valorCents)}
                       </span>
                     </td>
                     <td className="px-5 py-4">
@@ -827,7 +827,7 @@ export default function PainelPage() {
                             }}>
                             <span className="h-1.5 w-1.5 rounded-full"
                               style={{ background: row.confianca === 'alta' ? '#10b981' : row.confianca === 'media' ? '#f59e0b' : '#f43f5e' }} />
-                            {row.confianca === 'alta' ? 'Confirmado' : row.confianca === 'media' ? 'ProvÃ¡vel' : 'Revisar'}
+                            {row.confianca === 'alta' ? 'Confirmado' : row.confianca === 'media' ? 'Provável' : 'Revisar'}
                           </span>}
                     </td>
                   </tr>
@@ -836,9 +836,9 @@ export default function PainelPage() {
                   <tr>
                     <td colSpan={7} className="px-5 py-12 text-center">
                       <CircleDollarSign className="mx-auto mb-3 h-10 w-10 text-gray-200" />
-                      <p className="text-sm text-gray-400">Nenhuma movimentaÃ§Ã£o em {PERIOD_LABELS[period]}</p>
+                      <p className="text-sm text-gray-400">Nenhuma movimentação em {PERIOD_LABELS[period]}</p>
                       <Link href="/dashboard/cobrancas" className="mt-1 block text-xs font-semibold text-red-600 hover:text-red-700">
-                        Criar primeira cobranÃ§a â†’
+                        Criar primeira cobrança 
                       </Link>
                     </td>
                   </tr>

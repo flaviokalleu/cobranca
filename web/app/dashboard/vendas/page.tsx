@@ -1,4 +1,4 @@
-﻿'use client';
+�'use client';
 
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -118,12 +118,12 @@ export default function VendasPage() {
   async function handleDelete(id: string) {
     if (!confirm('Excluir este pedido?')) return;
     const res = await dispatch(deleteSale(id));
-    if (deleteSale.fulfilled.match(res)) toast.success('Pedido excluÃ­do.');
+    if (deleteSale.fulfilled.match(res)) toast.success('Pedido excluído.');
     else toast.error('Erro ao excluir.');
   }
 
   function getCustomerName(id: string) {
-    return customers.find((c) => c.id === id)?.name ?? 'â€”';
+    return customers.find((c) => c.id === id)?.name ?? '�';
   }
 
   const totalVendas = orders
@@ -147,12 +147,12 @@ export default function VendasPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>NÂº</TableHead>
+              <TableHead>Nº</TableHead>
               <TableHead>Cliente</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="text-right">Total</TableHead>
               <TableHead>Data</TableHead>
-              <TableHead className="w-32 text-right">AÃ§Ãµes</TableHead>
+              <TableHead className="w-32 text-right">Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -230,7 +230,7 @@ export default function VendasPage() {
                     <SelectContent>
                       {products.map((p) => (
                         <SelectItem key={p.id} value={p.id}>
-                          {p.name} â€” {brl(p.priceCents)}
+                          {p.name} � {brl(p.priceCents)}
                         </SelectItem>
                       ))}
                     </SelectContent>

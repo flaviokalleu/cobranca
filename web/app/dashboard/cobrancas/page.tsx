@@ -21,7 +21,7 @@ import {
   MessageCircle, X,
 } from 'lucide-react';
 
-// â”€â”€â”€ helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ������ helpers ������������������������������������������������������������������������������������������������������������������������������������
 const brl = (cents: number) =>
   (cents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const fmtDate = (iso?: string | null) =>
@@ -36,7 +36,7 @@ const addMonth = (iso: string) => {
   return date.toISOString().slice(0, 10);
 };
 
-// â”€â”€â”€ badges â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ������ badges ��������������������������������������������������������������������������������������������������������������������������������������
 function OrigemBadge({ kind }: { kind: 'manual' | 'wa' }) {
   return kind === 'wa'
     ? <span className="inline-flex items-center gap-1 rounded-full bg-green-50 px-2.5 py-1 text-[11px] font-semibold text-green-700"><MessageCircle className="h-3 w-3" />WhatsApp</span>
@@ -89,10 +89,10 @@ function IconBtn({ title, onClick, className = '', children }: {
   );
 }
 
-// â”€â”€â”€ types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ������ types ����������������������������������������������������������������������������������������������������������������������������������������
 type Row = { kind: 'manual'; data: Charge } | { kind: 'wa'; data: FinancialEntry };
 
-// â”€â”€â”€ Page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ������ Page ������������������������������������������������������������������������������������������������������������������������������������������
 export default function CobrancasPage() {
   const dispatch = useAppDispatch();
   const { customers, charges, upcomingCharges, chargesPagination } = useAppSelector((s) => s.data);
@@ -153,7 +153,7 @@ export default function CobrancasPage() {
     void dispatch(fetchCustomers({ limit: 100 }));
   }, [dispatch]);
 
-  // â”€â”€ summary â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ���� summary ������������������������������������������������������������������������������������������������������������������������������
   const summary = useMemo(() => {
     const total    = charges.filter(c => c.status !== 'CANCELED').reduce((s, c) => s + c.amountCents, 0);
     const pagas    = charges.filter(c => c.status === 'PAID').reduce((s, c) => s + c.amountCents, 0);
@@ -165,7 +165,7 @@ export default function CobrancasPage() {
     return { total, pagas, pendente, vencidas, waR, waG, upcoming };
   }, [charges, upcomingCharges, waEntries]);
 
-  // â”€â”€ rows â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ���� rows ������������������������������������������������������������������������������������������������������������������������������������
   const rows = useMemo<Row[]>(() => {
     const q = search.toLowerCase();
     const manual: Row[] = charges
@@ -200,7 +200,7 @@ export default function CobrancasPage() {
     });
   }, [charges, waEntries, search, origemFilter, tipoFilter, statusFilter]);
 
-  // â”€â”€ handlers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ���� handlers ����������������������������������������������������������������������������������������������������������������������������
   async function onCreateCharge(e: React.FormEvent) {
     e.preventDefault();
     const res = await dispatch(createCharge({
@@ -325,13 +325,13 @@ export default function CobrancasPage() {
     <>
       <div className="min-h-screen bg-gray-50">
 
-        {/* â”€â”€ HEADER â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+        {/* ���� HEADER �������������������������������������������������������������������������������������������������������������������� */}
         <div className="sticky top-0 z-10 border-b border-gray-100 bg-white">
           <div className="flex h-16 items-center justify-between gap-3 px-4 sm:px-6">
             <div>
               <h1 className="text-base font-bold text-gray-900">Receber dinheiro</h1>
               <p className="hidden text-xs text-gray-400 sm:block">
-                {charges.length} cobrancas · {waEntries.length} via WhatsApp
+                {charges.length} cobrancas � {waEntries.length} via WhatsApp
               </p>
             </div>
             <button
@@ -346,7 +346,7 @@ export default function CobrancasPage() {
 
         <div className="mx-auto max-w-7xl space-y-4 p-4 sm:p-6">
 
-          {/* â”€â”€ KPI CARDS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+          {/* ���� KPI CARDS ������������������������������������������������������������������������������������������������������ */}
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-7">
             {[
               { label: 'Valor cobrado', value: brl(summary.total), sub: `${charges.length} cobrancas`, color: 'text-gray-900', bg: 'bg-gray-50', icon: Wallet, iconColor: 'text-gray-500' },
@@ -368,7 +368,7 @@ export default function CobrancasPage() {
             ))}
           </div>
 
-          {/* â”€â”€ FILTROS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+          {/* ���� FILTROS ���������������������������������������������������������������������������������������������������������� */}
           <div className="rounded-2xl bg-white p-4" style={{ border: '1px solid #e5e7eb' }}>
             <div className="flex items-center gap-2">
               {/* Search */}
@@ -450,7 +450,7 @@ export default function CobrancasPage() {
             </p>
           </div>
 
-          {/* â”€â”€ MOBILE: cards â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+          {/* ���� MOBILE: cards ���������������������������������������������������������������������������������������������� */}
           <div className="space-y-2 sm:hidden">
             {rows.map(row => {
               if (row.kind === 'manual') {
@@ -546,7 +546,7 @@ export default function CobrancasPage() {
             )}
           </div>
 
-          {/* â”€â”€ DESKTOP: tabela â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+          {/* ���� DESKTOP: tabela ������������������������������������������������������������������������������������������ */}
           <div className="hidden overflow-hidden rounded-2xl bg-white sm:block" style={{ border: '1px solid #e5e7eb' }}>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -690,7 +690,7 @@ export default function CobrancasPage() {
         </div>
       </div>
 
-      {/* â”€â”€ DIALOG: Nova cobranca â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ���� DIALOG: Nova cobranca �������������������������������������������������������������������������������������� */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
@@ -772,7 +772,7 @@ export default function CobrancasPage() {
         </DialogContent>
       </Dialog>
 
-      {/* â”€â”€ DIALOG: Editar cobranca â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ���� DIALOG: Editar cobranca ���������������������������������������������������������������������������������� */}
       <Dialog open={editChargeOpen} onOpenChange={setEditChargeOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
@@ -840,7 +840,7 @@ export default function CobrancasPage() {
         </DialogContent>
       </Dialog>
 
-      {/* â”€â”€ DIALOG: Editar WA â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ���� DIALOG: Editar WA ���������������������������������������������������������������������������������������������� */}
       <Dialog open={editWaOpen} onOpenChange={setEditWaOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>

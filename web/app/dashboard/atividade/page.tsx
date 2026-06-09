@@ -1,4 +1,4 @@
-﻿'use client';
+�'use client';
 
 import { useEffect, useMemo, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
@@ -87,7 +87,7 @@ export default function HistoricoPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Quando</TableHead>
-                <TableHead>AÃ§Ã£o</TableHead>
+                <TableHead>Ação</TableHead>
                 <TableHead>Tipo</TableHead>
                 <TableHead>Por</TableHead>
               </TableRow>
