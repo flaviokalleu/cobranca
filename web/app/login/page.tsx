@@ -1,21 +1,22 @@
 'use client';
 
+import type { Metadata } from 'next';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
-import { register } from '@/store/authSlice';
+import { login } from '@/store/authSlice';
 import { AuthShell } from '@/components/auth-shell';
-import { ArrowRight, Building2, Lock, Mail } from 'lucide-react';
+import { ArrowRight, Lock, Mail, ShieldCheck } from 'lucide-react';
 
-export default function RegisterPage() {
+export default function LoginPage() {
   const router = useRouter();
   const dispatch = useAppDispatch();
-  const { token, status, error } = useAppSelector((s) => s.auth);
+  const { token, status, error, requiresTwoFactor } = useAppSelector((s) => s.auth);
 
-  const [companyName, setCompanyName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [twoFactorCode, setTwoFactorCode] = useState('');
 
   useEffect(() => {
     if (token) router.push('/dashboard');
@@ -23,27 +24,19 @@ export default function RegisterPage() {
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const res = await dispatch(register({ companyName, email, password }));
-    if (register.fulfilled.match(res)) router.push('/dashboard');
+    const res = await dispatch(login({
+      email,
+      password,
+      twoFactorCode: requiresTwoFactor ? twoFactorCode : undefined,
+    }));
+    if (login.fulfilled.match(res) && !('requiresTwoFactor' in res.payload)) {
+      router.push('/dashboard');
+    }
   }
 
   return (
-    <AuthShell title="Criar conta" subtitle="O primeiro usuário entra como administrador.">
+    <AuthShell title="Bem-vindo de volta" subtitle="Acesse sua conta para continuar.">
       <form onSubmit={onSubmit} className="grid gap-5">
-        <div className="grid gap-2">
-          <label className="auth-field-label">Nome da empresa</label>
-          <div className="auth-field-wrap">
-            <Building2 className="auth-field-icon" />
-            <input
-              className="auth-input"
-              placeholder="Minha Empresa Ltda"
-              value={companyName}
-              onChange={(e) => setCompanyName(e.target.value)}
-              required
-            />
-          </div>
-        </div>
-
         <div className="grid gap-2">
           <label className="auth-field-label">E-mail</label>
           <div className="auth-field-wrap">
@@ -55,6 +48,7 @@ export default function RegisterPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
+              autoComplete="email"
             />
           </div>
         </div>
@@ -66,13 +60,33 @@ export default function RegisterPage() {
             <input
               type="password"
               className="auth-input"
-              placeholder="mínimo 6 caracteres"
+              placeholder="••••••••"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
+              autoComplete="current-password"
             />
           </div>
         </div>
+
+        {requiresTwoFactor && (
+          <div className="grid gap-2">
+            <label className="auth-field-label">Código 2FA</label>
+            <div className="auth-field-wrap">
+              <ShieldCheck className="auth-field-icon" />
+              <input
+                type="text"
+                className="auth-input"
+                placeholder="123456"
+                value={twoFactorCode}
+                onChange={(e) => setTwoFactorCode(e.target.value)}
+                required
+                inputMode="numeric"
+                autoComplete="one-time-code"
+              />
+            </div>
+          </div>
+        )}
 
         {error && <div className="auth-error">{error}</div>}
 
@@ -87,11 +101,11 @@ export default function RegisterPage() {
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
               </svg>
-              Criando...
+              Entrando...
             </>
           ) : (
             <>
-              Criar minha conta
+              Entrar na plataforma
               <ArrowRight className="h-4 w-4" />
             </>
           )}
@@ -100,12 +114,17 @@ export default function RegisterPage() {
 
       <div className="auth-divider" />
 
-      <p className="text-center text-sm text-gray-500">
-        Já tem conta?{' '}
-        <Link href="/login" className="font-semibold text-red-600 hover:text-red-700">
-          Fazer login
-        </Link>
-      </p>
+      <div className="space-y-3 text-center">
+        <p className="text-sm text-gray-500">
+          Não tem conta?{' '}
+          <Link href="/register" className="font-semibold text-red-600 hover:text-red-700">
+            Cadastre sua empresa grátis
+          </Link>
+        </p>
+        <p className="text-xs text-gray-400">
+          Demo: admin@demo.com · demo1234
+        </p>
+      </div>
     </AuthShell>
   );
 }
