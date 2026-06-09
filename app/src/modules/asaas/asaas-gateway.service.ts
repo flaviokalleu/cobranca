@@ -1,7 +1,8 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import axios, { AxiosInstance } from 'axios';
 import { SettingsService } from '../../common/settings/settings.service';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { QueueService } from '../../common/queue/queue.service';
 
 export interface AsaasCustomerInput {
   name: string;
@@ -33,13 +34,20 @@ export interface AsaasPixQrCode {
 }
 
 @Injectable()
-export class AsaasGatewayService {
+export class AsaasGatewayService implements OnModuleInit {
   private readonly logger = new Logger('AsaasGateway');
 
   constructor(
     private readonly settings: SettingsService,
     private readonly prisma: PrismaService,
+    private readonly queue: QueueService,
   ) {}
+
+  onModuleInit() {
+    this.queue.register<{ tenantId: string; chargeId: string }>('asaas.sync', async (payload) => {
+      await this.syncCharge(payload.tenantId, payload.chargeId);
+    });
+  }
 
   async isEnabled(tenantId: string): Promise<boolean> {
     const cfg = await this.settings.get(tenantId);

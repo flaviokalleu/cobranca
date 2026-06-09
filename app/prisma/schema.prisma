@@ -24,14 +24,16 @@ model Customer {
   profession      String?
   incomeCents     Int?
   stage           String   @default("LEAD") // LEAD | FIRST_CONTACT | DOCUMENTATION | ANALYSIS | APPROVED | CONTRACT | CUSTOMER | LOST
-  asaasCustomerId String?  // ID do cliente no Asaas (para reutilizar em cobranças)
-  createdAt       DateTime @default(now())
+  asaasCustomerId  String?  // ID do cliente no Asaas (para reutilizar em cobranças)
+  notifyConsented  Boolean  @default(false) // LGPD: cliente consentiu receber WhatsApp
+  createdAt        DateTime @default(now())
   charges         Charge[]
   loans           Loan[]
   lead            Lead?
 
   @@index([tenantId])
   @@index([tenantId, stage])
+  @@index([tenantId, document])
 }
 
 /// Cobranca emitida para um cliente.
@@ -66,6 +68,8 @@ model Charge {
   @@index([tenantId])
   @@index([tenantId, status])
   @@index([tenantId, recurrence, nextDueAt])
+  @@index([tenantId, dueDate])
+  @@index([customerId, tenantId, status])
 }
 
 /// Emprestimo ou credito pessoal formalizado para um cliente.
