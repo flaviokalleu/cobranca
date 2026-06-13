@@ -6,3 +6,4 @@ backend.log
 frontend.log
 *.err.log
 app/logs/
+deploy.sh

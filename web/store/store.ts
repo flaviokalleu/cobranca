@@ -14,6 +14,7 @@ import aiReducer from './aiSlice';
 import personalFinanceReducer from './personalFinanceSlice';
 import financialEntriesReducer from './financialEntriesSlice';
 import categoriesReducer from './categoriesSlice';
+import openFinanceReducer from './openFinanceSlice';
 
 export const store = configureStore({
   reducer: {
@@ -32,6 +33,7 @@ export const store = configureStore({
     personalFinance: personalFinanceReducer,
     financialEntries: financialEntriesReducer,
     categories: categoriesReducer,
+    openFinance: openFinanceReducer,
   },
 });
 

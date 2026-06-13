@@ -7,6 +7,7 @@ import {
   Settings,
   List,
   BarChart2,
+  Landmark,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -35,6 +36,7 @@ export const navSections: NavSection[] = [
       { href: '/dashboard/cobrancas', label: 'A receber', icon: Wallet },
       { href: '/dashboard/financeiro/pagar', label: 'A pagar', icon: Banknote },
       { href: '/dashboard/financeiro/pessoal', label: 'Meu dinheiro e metas', icon: PiggyBank },
+      { href: '/dashboard/carteira', label: 'Carteira e bancos', icon: Landmark },
       { href: '/dashboard/lancamentos', label: 'Lançamentos', icon: List },
       { href: '/dashboard/relatorios', label: 'Relatórios', icon: BarChart2 },
     ],

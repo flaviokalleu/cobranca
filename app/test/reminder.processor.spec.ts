@@ -15,6 +15,8 @@ describe('ReminderProcessor', () => {
         pixKey: 'pix@example.com',
         merchantName: 'Empresa',
         merchantCity: 'Sao Paulo',
+        chargeRobotEnabled: true,
+        notifyByWhatsapp: true,
       }),
     };
     const prisma = {
