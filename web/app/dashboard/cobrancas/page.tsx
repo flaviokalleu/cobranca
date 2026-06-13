@@ -603,14 +603,17 @@ export default function CobrancasPage() {
           {/* ���� DESKTOP: tabela ������������������������������������������������������������������������������������������ */}
           <div className="hidden overflow-hidden rounded-2xl bg-white sm:block" style={{ border: '1px solid #e5e7eb' }}>
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full min-w-[640px] text-sm">
                 <thead>
-                  <tr className="border-b border-gray-50 bg-gray-50/60">
-                    {['Origem', 'Cliente / Pagador', 'Descricao', 'Tipo', 'Vencimento', 'Valor', 'Status', ''].map((h, i) => (
-                      <th key={h + i} className="px-5 py-3.5 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-400 last:text-right">
-                        {h}
-                      </th>
-                    ))}
+                  <tr className="border-b border-gray-100 bg-gray-50/60">
+                    <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-400">Cliente / Pagador</th>
+                    <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-400">Descricao</th>
+                    <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-400 hidden lg:table-cell">Vencimento</th>
+                    <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-400">Valor</th>
+                    <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-400">Status</th>
+                    <th className="sticky right-0 bg-gray-50/90 px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-wider text-gray-400" style={{boxShadow:'-4px 0 8px -4px rgba(0,0,0,0.06)'}}>
+                      Acoes
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
@@ -621,37 +624,34 @@ export default function CobrancasPage() {
                       const overdue = isOverdue(c);
                       return (
                         <tr key={`c-${c.id}`} className={`transition-colors hover:bg-gray-50/60 ${overdue ? 'bg-red-50/30' : ''}`}>
-                          <td className="px-5 py-4"><OrigemBadge kind="manual" /></td>
-                          <td className="px-5 py-4">
-                            <div className="flex items-center gap-2.5">
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-2">
                               <Avatar name={nome} />
-                              <span className="truncate font-medium text-gray-900 max-w-[120px]">{nome}</span>
+                              <div className="min-w-0">
+                                <p className="truncate font-medium text-gray-900 max-w-[130px]">{nome}</p>
+                                <OrigemBadge kind="manual" />
+                              </div>
                             </div>
                           </td>
-                          <td className="px-5 py-4">
-                            <span className="block max-w-[180px] truncate text-gray-600">{c.description}</span>
-                            {c.category && <span className="text-[10px] text-gray-400">{c.category}</span>}
-                          </td>
-                          <td className="px-5 py-4">
-                            <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-medium ${c.recurrence === 'MONTHLY' ? 'bg-violet-50 text-violet-700' : 'bg-gray-100 text-gray-600'}`}>
-                              {c.recurrence === 'MONTHLY' ? 'Mensal' : 'Avulso'}
-                            </span>
-                            {c.recurrence === 'MONTHLY' && c.nextDueAt && (
-                              <span className="mt-1 block text-[10px] font-medium text-indigo-600">
-                                Proxima: {fmtDate(c.nextDueAt)}
+                          <td className="px-4 py-3">
+                            <p className="max-w-[160px] truncate text-sm text-gray-700">{c.description}</p>
+                            <div className="flex items-center gap-1.5 mt-0.5">
+                              {c.category && <span className="text-[10px] text-gray-400">{c.category}</span>}
+                              <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium ${c.recurrence === 'MONTHLY' ? 'bg-violet-50 text-violet-700' : 'bg-gray-100 text-gray-500'}`}>
+                                {c.recurrence === 'MONTHLY' ? 'Mensal' : 'Avulso'}
                               </span>
-                            )}
+                            </div>
                           </td>
-                          <td className="px-5 py-4">
+                          <td className="px-4 py-3 hidden lg:table-cell">
                             <span className={`text-sm ${overdue ? 'font-semibold text-red-600' : 'text-gray-500'}`}>{fmtDate(c.dueDate)}</span>
                           </td>
-                          <td className="px-5 py-4">
-                            <span className={`font-bold tabular-nums ${c.status === 'PAID' ? 'text-emerald-600' : 'text-gray-900'}`}>
+                          <td className="px-4 py-3">
+                            <span className={`font-bold tabular-nums text-sm ${c.status === 'PAID' ? 'text-emerald-600' : 'text-gray-900'}`}>
                               {brl(c.amountCents)}
                             </span>
                           </td>
-                          <td className="px-5 py-4"><StatusBadge charge={c} /></td>
-                          <td className="px-5 py-4">
+                          <td className="px-4 py-3"><StatusBadge charge={c} /></td>
+                          <td className="sticky right-0 bg-white px-4 py-3" style={{boxShadow:'-4px 0 8px -4px rgba(0,0,0,0.06)'}}>
                             <div className="flex items-center justify-end gap-0.5">
                               {c.status === 'PENDING' && (
                                 <IconBtn title="Marcar como recebido" onClick={() => void onMarkAsPaid(c)} className="hover:bg-emerald-50 hover:text-emerald-600">
@@ -659,19 +659,19 @@ export default function CobrancasPage() {
                                 </IconBtn>
                               )}
                               {c.status === 'PENDING' && (
-                                <IconBtn title="Enviar lembrete WhatsApp" onClick={() => void onSendReminder(c)} className="hover:bg-green-50 hover:text-green-600">
+                                <IconBtn title="Lembrete WhatsApp" onClick={() => void onSendReminder(c)} className="hover:bg-green-50 hover:text-green-600">
                                   <Bell className="h-3.5 w-3.5" />
                                 </IconBtn>
                               )}
                               {c.status === 'PENDING' && (
-                                <IconBtn title="Cancelar cobrança" onClick={() => void onCancelCharge(c)} className="hover:bg-orange-50 hover:text-orange-500">
+                                <IconBtn title="Cancelar" onClick={() => void onCancelCharge(c)} className="hover:bg-orange-50 hover:text-orange-500">
                                   <Ban className="h-3.5 w-3.5" />
                                 </IconBtn>
                               )}
-                              <IconBtn title="Copiar link de pagamento" onClick={() => void copyPublicPaymentLink(c)}>
+                              <IconBtn title="Copiar link" onClick={() => void copyPublicPaymentLink(c)}>
                                 <Copy className="h-3.5 w-3.5" />
                               </IconBtn>
-                              <IconBtn title="Duplicar cobranca" onClick={() => void duplicateCharge(c)}>
+                              <IconBtn title="Duplicar" onClick={() => void duplicateCharge(c)}>
                                 <CopyPlus className="h-3.5 w-3.5" />
                               </IconBtn>
                               <IconBtn title="Editar" onClick={() => openEditCharge(c)}>
@@ -690,35 +690,32 @@ export default function CobrancasPage() {
                     const pagador = e.pagadorNome ?? e.recebedorNome ?? '-';
                     return (
                       <tr key={`wa-${e.id}`} className="transition-colors hover:bg-gray-50/60">
-                        <td className="px-5 py-4"><OrigemBadge kind="wa" /></td>
-                        <td className="px-5 py-4">
-                          <div className="flex items-center gap-2.5">
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2">
                             <Avatar name={pagador} />
                             <div className="min-w-0">
-                              <p className="truncate font-medium text-gray-900 max-w-[120px]">{pagador}</p>
-                              {e.lead && <p className="truncate text-[10px] text-sky-600">Lead: {e.lead.name}</p>}
+                              <p className="truncate font-medium text-gray-900 max-w-[130px]">{pagador}</p>
+                              <OrigemBadge kind="wa" />
                             </div>
                           </div>
                         </td>
-                        <td className="px-5 py-4">
-                          <span className="block max-w-[180px] truncate text-gray-600">{e.descricao}</span>
+                        <td className="px-4 py-3">
+                          <p className="max-w-[160px] truncate text-sm text-gray-700">{e.descricao}</p>
                           {e.observacao && (
-                            <span className="mt-0.5 block max-w-[220px] truncate text-[11px] text-gray-400">{e.observacao}</span>
+                            <p className="max-w-[160px] truncate text-[11px] text-gray-400 mt-0.5">{e.observacao}</p>
                           )}
-                        </td>
-                        <td className="px-5 py-4">
-                          <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-medium ${e.tipo === 'receita' ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-600'}`}>
+                          <span className={`mt-0.5 inline-flex rounded-full px-1.5 py-0.5 text-[10px] font-medium ${e.tipo === 'receita' ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-600'}`}>
                             {e.tipo === 'receita' ? 'Entrada' : 'Saida'}
                           </span>
                         </td>
-                        <td className="px-5 py-4 text-sm text-gray-500">{fmtDate(e.dataTransacao)}</td>
-                        <td className="px-5 py-4">
-                          <span className={`font-bold tabular-nums ${e.tipo === 'receita' ? 'text-emerald-600' : 'text-red-600'}`}>
+                        <td className="px-4 py-3 text-sm text-gray-500 hidden lg:table-cell">{fmtDate(e.dataTransacao)}</td>
+                        <td className="px-4 py-3">
+                          <span className={`font-bold tabular-nums text-sm ${e.tipo === 'receita' ? 'text-emerald-600' : 'text-red-600'}`}>
                             {e.tipo === 'gasto' ? '-' : '+'}{brl(e.valorCents)}
                           </span>
                         </td>
-                        <td className="px-5 py-4"><WaBadge confianca={e.confianca} /></td>
-                        <td className="px-5 py-4">
+                        <td className="px-4 py-3"><WaBadge confianca={e.confianca} /></td>
+                        <td className="sticky right-0 bg-white px-4 py-3" style={{boxShadow:'-4px 0 8px -4px rgba(0,0,0,0.06)'}}>
                           <div className="flex items-center justify-end gap-0.5">
                             <IconBtn title="Editar" onClick={() => openEditWa(e)}>
                               <Pencil className="h-3.5 w-3.5" />
@@ -734,7 +731,7 @@ export default function CobrancasPage() {
 
                   {rows.length === 0 && (
                     <tr>
-                      <td colSpan={8} className="px-5 py-16 text-center">
+                      <td colSpan={6} className="px-5 py-16 text-center">
                         <Wallet className="mx-auto mb-3 h-10 w-10 text-gray-200" />
                         <p className="text-sm text-gray-400">Nenhum registro encontrado</p>
                         <button onClick={() => setCreateOpen(true)}
