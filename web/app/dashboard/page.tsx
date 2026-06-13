@@ -166,6 +166,7 @@ export default function PainelPage() {
 
         {/* Cartão de saldo */}
         <div
+          data-tour="saldo"
           className="rounded-2xl p-6 text-white"
           style={{ background: saldo >= 0 ? 'linear-gradient(135deg,#10b981,#059669)' : 'linear-gradient(135deg,#ef4444,#dc2626)' }}
         >
@@ -215,7 +216,7 @@ export default function PainelPage() {
 
         {/* Para onde foi o dinheiro */}
         {byCategory.length > 0 && (
-          <div className="rounded-2xl bg-white p-5" style={{ border: '1px solid #e5e7eb' }}>
+          <div data-tour="categorias" className="rounded-2xl bg-white p-5" style={{ border: '1px solid #e5e7eb' }}>
             <div className="mb-4 flex items-center justify-between">
               <div>
                 <h2 className="text-sm font-bold text-gray-900">Para onde foi o dinheiro</h2>

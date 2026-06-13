@@ -108,6 +108,11 @@ export function Sidebar() {
                       key={item.href}
                       href={item.href}
                       title={collapsed ? item.label : undefined}
+                      data-tour={
+                        item.href === '/dashboard/carteira' ? 'nav-carteira' :
+                        item.href === '/dashboard/relatorios' ? 'nav-relatorios' :
+                        undefined
+                      }
                       className={cn(
                         'flex items-center rounded-lg transition-all',
                         collapsed

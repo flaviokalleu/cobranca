@@ -32,6 +32,17 @@ export function QuickAdd() {
     if (!seeded) void dispatch(fetchCategories());
   }, [dispatch, seeded]);
 
+  // Tour pode abrir o QuickAdd via evento customizado
+  useEffect(() => {
+    const handler = () => {
+      handleOpen();
+      window.dispatchEvent(new CustomEvent('tour:quick-add-opened'));
+    };
+    window.addEventListener('tour:open-quick-add', handler);
+    return () => window.removeEventListener('tour:open-quick-add', handler);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const categories = allCategories.filter((c) =>
     type === 'EXPENSE' ? c.type === 'EXPENSE' : c.type === 'INCOME',
   );
@@ -86,6 +97,7 @@ export function QuickAdd() {
     <>
       {/* Botão flutuante */}
       <button
+        data-tour="quick-add"
         onClick={handleOpen}
         title="Registrar lançamento"
         className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full shadow-lg transition-transform hover:scale-105 active:scale-95 md:bottom-8 md:right-8"
