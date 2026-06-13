@@ -4,8 +4,11 @@ import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import {
-  createCharge, deleteCharge, fetchCharges, fetchCustomers, fetchUpcomingCharges, updateCharge, type Charge,
+  createCharge, cancelCharge, deleteCharge, fetchCharges, fetchCustomers, fetchUpcomingCharges,
+  updateCharge, payCharge, sendChargeWhatsappReminder, type Charge,
 } from '@/store/dataSlice';
+import { fetchCategories, seedCategories } from '@/store/categoriesSlice';
+import { CategoryManager } from '@/components/category-manager';
 import {
   fetchFinancialEntries, updateFinancialEntry, deleteFinancialEntry,
   type FinancialEntry,
@@ -18,7 +21,7 @@ import { DataPagination } from '@/components/ui/data-pagination';
 import {
   Copy, CopyPlus, Pencil, Plus, Search, Trash2, Wallet,
   Filter, TrendingUp, TrendingDown, Clock,
-  MessageCircle, X,
+  MessageCircle, X, CheckCircle2, Ban, Bell, Settings2,
 } from 'lucide-react';
 
 // ������ helpers ������������������������������������������������������������������������������������������������������������������������������������
@@ -97,7 +100,11 @@ export default function CobrancasPage() {
   const dispatch = useAppDispatch();
   const { customers, charges, upcomingCharges, chargesPagination } = useAppSelector((s) => s.data);
   const { entries: waEntries } = useAppSelector((s) => s.financialEntries);
+  const { items: allCategories, seeded } = useAppSelector((s) => s.categories);
+  const incomeCategories = allCategories.filter((c) => c.type === 'INCOME');
   const [page, setPage] = useState(1);
+  const [loadingId, setLoadingId] = useState<string | null>(null);
+  const [catManagerOpen, setCatManagerOpen] = useState(false);
 
   // filtros
   const [search, setSearch] = useState('');
@@ -148,6 +155,10 @@ export default function CobrancasPage() {
     void dispatch(fetchUpcomingCharges());
     if (customers[0] && !customerId) setCustomerId(customers[0].id);
   }, [dispatch, customers, customerId, page]);
+
+  useEffect(() => {
+    if (!seeded) void dispatch(fetchCategories());
+  }, [dispatch, seeded]);
 
   useEffect(() => {
     void dispatch(fetchCustomers({ limit: 100 }));
@@ -257,6 +268,34 @@ export default function CobrancasPage() {
     const res = await dispatch(deleteCharge(c.id));
     if (deleteCharge.fulfilled.match(res)) toast.success('Excluido');
     else toast.error(typeof res.payload === 'string' ? res.payload : 'Erro');
+  }
+
+  async function onMarkAsPaid(c: Charge) {
+    if (loadingId) return;
+    setLoadingId(c.id);
+    const res = await dispatch(payCharge(c.id));
+    setLoadingId(null);
+    if (payCharge.fulfilled.match(res)) toast.success(`"${c.description}" marcada como recebida`);
+    else toast.error(typeof res.payload === 'string' ? res.payload : 'Erro ao registrar recebimento');
+  }
+
+  async function onCancelCharge(c: Charge) {
+    if (!window.confirm(`Cancelar a cobrança "${c.description}"?`)) return;
+    if (loadingId) return;
+    setLoadingId(c.id);
+    const res = await dispatch(cancelCharge(c.id));
+    setLoadingId(null);
+    if (cancelCharge.fulfilled.match(res)) toast.success('Cobrança cancelada');
+    else toast.error(typeof res.payload === 'string' ? res.payload : 'Erro ao cancelar');
+  }
+
+  async function onSendReminder(c: Charge) {
+    if (loadingId) return;
+    setLoadingId(c.id);
+    const res = await dispatch(sendChargeWhatsappReminder(c.id));
+    setLoadingId(null);
+    if (sendChargeWhatsappReminder.fulfilled.match(res)) toast.success('Lembrete enviado pelo WhatsApp');
+    else toast.error(typeof res.payload === 'string' ? res.payload : 'Erro ao enviar lembrete');
   }
 
   async function copyPublicPaymentLink(c: Charge) {
@@ -481,6 +520,21 @@ export default function CobrancasPage() {
                       </div>
                     </div>
                     <div className="mt-3 flex items-center justify-end gap-1 border-t border-gray-50 pt-3">
+                      {c.status === 'PENDING' && (
+                        <IconBtn title="Marcar como recebido" onClick={() => void onMarkAsPaid(c)} className="hover:bg-emerald-50 hover:text-emerald-600">
+                          <CheckCircle2 className={`h-3.5 w-3.5 ${loadingId === c.id ? 'animate-pulse' : ''}`} />
+                        </IconBtn>
+                      )}
+                      {c.status === 'PENDING' && (
+                        <IconBtn title="Enviar lembrete WhatsApp" onClick={() => void onSendReminder(c)} className="hover:bg-green-50 hover:text-green-600">
+                          <Bell className="h-3.5 w-3.5" />
+                        </IconBtn>
+                      )}
+                      {c.status === 'PENDING' && (
+                        <IconBtn title="Cancelar cobrança" onClick={() => void onCancelCharge(c)} className="hover:bg-orange-50 hover:text-orange-500">
+                          <Ban className="h-3.5 w-3.5" />
+                        </IconBtn>
+                      )}
                       <IconBtn title="Copiar link de pagamento" onClick={() => void copyPublicPaymentLink(c)}>
                         <Copy className="h-3.5 w-3.5" />
                       </IconBtn>
@@ -599,6 +653,21 @@ export default function CobrancasPage() {
                           <td className="px-5 py-4"><StatusBadge charge={c} /></td>
                           <td className="px-5 py-4">
                             <div className="flex items-center justify-end gap-0.5">
+                              {c.status === 'PENDING' && (
+                                <IconBtn title="Marcar como recebido" onClick={() => void onMarkAsPaid(c)} className="hover:bg-emerald-50 hover:text-emerald-600">
+                                  <CheckCircle2 className={`h-3.5 w-3.5 ${loadingId === c.id ? 'animate-pulse' : ''}`} />
+                                </IconBtn>
+                              )}
+                              {c.status === 'PENDING' && (
+                                <IconBtn title="Enviar lembrete WhatsApp" onClick={() => void onSendReminder(c)} className="hover:bg-green-50 hover:text-green-600">
+                                  <Bell className="h-3.5 w-3.5" />
+                                </IconBtn>
+                              )}
+                              {c.status === 'PENDING' && (
+                                <IconBtn title="Cancelar cobrança" onClick={() => void onCancelCharge(c)} className="hover:bg-orange-50 hover:text-orange-500">
+                                  <Ban className="h-3.5 w-3.5" />
+                                </IconBtn>
+                              )}
                               <IconBtn title="Copiar link de pagamento" onClick={() => void copyPublicPaymentLink(c)}>
                                 <Copy className="h-3.5 w-3.5" />
                               </IconBtn>
@@ -721,8 +790,29 @@ export default function CobrancasPage() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label className="text-xs font-semibold text-gray-600">Categoria</Label>
-                <Input value={category} onChange={e => setCategory(e.target.value)} placeholder="Opcional" className="rounded-xl border-gray-200 bg-gray-50" />
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-semibold text-gray-600">Categoria</Label>
+                  <button type="button" onClick={() => setCatManagerOpen(true)}
+                    className="flex items-center gap-1 text-[10px] font-medium text-indigo-600 hover:text-indigo-700">
+                    <Settings2 className="h-3 w-3" />Gerenciar
+                  </button>
+                </div>
+                <Select value={category} onValueChange={setCategory}>
+                  <SelectTrigger className="rounded-xl border-gray-200 bg-gray-50 text-sm">
+                    <SelectValue placeholder="Selecione..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Sem categoria</SelectItem>
+                    {incomeCategories.map(c => (
+                      <SelectItem key={c.id} value={c.name}>
+                        <span className="flex items-center gap-2">
+                          <span className="h-2.5 w-2.5 rounded-full flex-shrink-0" style={{ background: c.color }} />
+                          {c.name}
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs font-semibold text-gray-600">Recorrencia</Label>
@@ -801,8 +891,29 @@ export default function CobrancasPage() {
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs font-semibold text-gray-600">Categoria</Label>
-              <Input value={editChargeCategory} onChange={e => setEditChargeCategory(e.target.value)} placeholder="Opcional" className="rounded-xl border-gray-200 bg-gray-50" />
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-semibold text-gray-600">Categoria</Label>
+                <button type="button" onClick={() => setCatManagerOpen(true)}
+                  className="flex items-center gap-1 text-[10px] font-medium text-indigo-600 hover:text-indigo-700">
+                  <Settings2 className="h-3 w-3" />Gerenciar
+                </button>
+              </div>
+              <Select value={editChargeCategory} onValueChange={setEditChargeCategory}>
+                <SelectTrigger className="rounded-xl border-gray-200 bg-gray-50 text-sm">
+                  <SelectValue placeholder="Selecione..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Sem categoria</SelectItem>
+                  {incomeCategories.map(c => (
+                    <SelectItem key={c.id} value={c.name}>
+                      <span className="flex items-center gap-2">
+                        <span className="h-2.5 w-2.5 rounded-full flex-shrink-0" style={{ background: c.color }} />
+                        {c.name}
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="grid grid-cols-3 gap-3">
               <div className="space-y-1.5">
@@ -840,7 +951,10 @@ export default function CobrancasPage() {
         </DialogContent>
       </Dialog>
 
-      {/* ���� DIALOG: Editar WA ���������������������������������������������������������������������������������������������� */}
+      {/* Gerenciador de categorias de entrada */}
+      <CategoryManager open={catManagerOpen} onClose={() => setCatManagerOpen(false)} type="INCOME" />
+
+      {/* DIALOG: Editar WA */}
       <Dialog open={editWaOpen} onOpenChange={setEditWaOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>

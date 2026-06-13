@@ -31,7 +31,7 @@ interface AuthResponse {
   message?: string;
 }
 type Credentials = { email: string; password: string; tenantSlug?: string; twoFactorCode?: string };
-type RegisterInput = { companyName: string; email: string; password: string };
+type RegisterInput = { companyName: string; email: string; password: string; cpfCnpj?: string; phone?: string; asaasApiKey?: string; };
 type AuthPayload = { token: string; role: string; tenantId: string };
 type LoginResult = AuthPayload | { requiresTwoFactor: true; message: string };
 

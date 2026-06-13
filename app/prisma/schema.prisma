@@ -1046,3 +1046,18 @@ model WebhookDelivery {
   @@unique([source, eventId])
   @@index([source, processedAt])
 }
+
+/// Categorias financeiras por tenant (INCOME = A receber, EXPENSE = A pagar).
+model FinancialCategory {
+  id        String   @id @default(cuid())
+  tenantId  String
+  name      String
+  type      String   // INCOME | EXPENSE
+  color     String   @default("#6366f1")
+  isDefault Boolean  @default(false)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  @@unique([tenantId, name, type])
+  @@index([tenantId, type])
+}

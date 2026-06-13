@@ -40,7 +40,9 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Check, Pencil, Plus, Trash2 } from 'lucide-react';
+import { Check, Pencil, Plus, Trash2, Settings2 } from 'lucide-react';
+import { fetchCategories } from '@/store/categoriesSlice';
+import { CategoryManager } from '@/components/category-manager';
 
 const brl = (cents: number) =>
   (cents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -64,8 +66,11 @@ export default function ContasPagarPage() {
   const dispatch = useAppDispatch();
   const { payables } = useAppSelector((state) => state.finance);
   const { suppliers } = useAppSelector((state) => state.catalog);
+  const { items: allCategories, seeded } = useAppSelector((s) => s.categories);
+  const expenseCategories = allCategories.filter((c) => c.type === 'EXPENSE');
 
   const [open, setOpen] = useState(false);
+  const [catManagerOpen, setCatManagerOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingStatus, setEditingStatus] = useState('PENDING');
   const [description, setDescription] = useState('');
@@ -79,6 +84,10 @@ export default function ContasPagarPage() {
     void dispatch(fetchPayables());
     void dispatch(fetchSuppliers());
   }, [dispatch]);
+
+  useEffect(() => {
+    if (!seeded) void dispatch(fetchCategories());
+  }, [dispatch, seeded]);
 
   const lockedFinancialFields = editingId !== null && editingStatus !== 'PENDING';
 
@@ -188,7 +197,13 @@ export default function ContasPagarPage() {
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
                   <p className="truncate font-semibold text-gray-900">{payable.description}</p>
-                  {payable.category && <p className="text-xs text-gray-400">{payable.category}</p>}
+                  {payable.category && (
+                    <p className="flex items-center gap-1 text-xs text-gray-400">
+                      <span className="h-2 w-2 rounded-full flex-shrink-0"
+                        style={{ background: expenseCategories.find(c => c.name === payable.category)?.color ?? '#9ca3af' }} />
+                      {payable.category}
+                    </p>
+                  )}
                 </div>
                 <StatusBadge payable={payable} />
               </div>
@@ -235,7 +250,15 @@ export default function ContasPagarPage() {
               {payables.map((payable) => (
                 <TableRow key={payable.id}>
                   <TableCell className="font-medium">{payable.description}</TableCell>
-                  <TableCell>{payable.category ?? '-'}</TableCell>
+                  <TableCell>
+                    {payable.category ? (
+                      <span className="flex items-center gap-1.5">
+                        <span className="h-2 w-2 rounded-full flex-shrink-0"
+                          style={{ background: expenseCategories.find(c => c.name === payable.category)?.color ?? '#9ca3af' }} />
+                        {payable.category}
+                      </span>
+                    ) : '-'}
+                  </TableCell>
                   <TableCell>{recurrenceLabel(payable.recurrence)}</TableCell>
                   <TableCell>{brl(payable.amountCents)}</TableCell>
                   <TableCell>{fmtDate(payable.dueDate)}</TableCell>
@@ -323,8 +346,29 @@ export default function ContasPagarPage() {
                 </Select>
               </div>
               <div className="grid gap-1.5">
-                <Label>Categoria</Label>
-                <Input value={category} onChange={(event) => setCategory(event.target.value)} />
+                <div className="flex items-center justify-between">
+                  <Label>Categoria</Label>
+                  <button type="button" onClick={() => setCatManagerOpen(true)}
+                    className="flex items-center gap-1 text-[10px] font-medium text-indigo-600 hover:text-indigo-700">
+                    <Settings2 className="h-3 w-3" />Gerenciar
+                  </button>
+                </div>
+                <Select value={category} onValueChange={setCategory}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Sem categoria</SelectItem>
+                    {expenseCategories.map((c) => (
+                      <SelectItem key={c.id} value={c.name}>
+                        <span className="flex items-center gap-2">
+                          <span className="h-2.5 w-2.5 rounded-full flex-shrink-0" style={{ background: c.color }} />
+                          {c.name}
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
             <div className="grid gap-1.5">
@@ -345,6 +389,8 @@ export default function ContasPagarPage() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <CategoryManager open={catManagerOpen} onClose={() => setCatManagerOpen(false)} type="EXPENSE" />
     </>
   );
 }

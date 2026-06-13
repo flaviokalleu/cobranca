@@ -53,6 +53,7 @@ import { CustomerPortalModule } from './modules/customer-portal/customer-portal.
 import { NfeModule } from './modules/nfe/nfe.module';
 import { ReconciliationModule } from './modules/reconciliation/reconciliation.module';
 import { AccountPlanModule } from './modules/account-plan/account-plan.module';
+import { CategoriesModule } from './modules/categories/categories.module';
 import { TaxCalculatorModule } from './modules/tax-calculator/tax-calculator.module';
 import { InvitationsModule } from './modules/invitations/invitations.module';
 import { PushModule } from './modules/push/push.module';
@@ -106,6 +107,7 @@ import { RequestLoggerMiddleware } from './common/middleware/request-logger.midd
     NfeModule,
     ReconciliationModule,
     AccountPlanModule,
+    CategoriesModule,
     TaxCalculatorModule,
     InvitationsModule,
     PushModule,

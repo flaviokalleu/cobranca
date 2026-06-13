@@ -6,7 +6,38 @@ import Link from 'next/link';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { register } from '@/store/authSlice';
 import { AuthShell } from '@/components/auth-shell';
-import { ArrowRight, Building2, Lock, Mail } from 'lucide-react';
+import { ArrowRight, Building2, Lock, Mail, Phone, User } from 'lucide-react';
+
+function Field({ label, required, hint, children }: { label: string; required?: boolean; hint?: string; children: React.ReactNode }) {
+  return (
+    <div className="grid gap-1.5">
+      <label className="auth-field-label">
+        {label}{required && <span className="ml-0.5 text-red-500">*</span>}
+      </label>
+      {children}
+      {hint && <p className="text-[11px] text-gray-400">{hint}</p>}
+    </div>
+  );
+}
+
+function formatCnpj(v: string) {
+  const d = v.replace(/\D/g, '').slice(0, 14);
+  if (d.length <= 11)
+    return d.replace(/(\d{3})(\d{3})(\d{3})(\d{1,2})/, '$1.$2.$3-$4')
+            .replace(/(\d{3})(\d{3})(\d{1,3})/, '$1.$2.$3')
+            .replace(/(\d{3})(\d{1,3})/, '$1.$2');
+  return d.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{1,2})/, '$1.$2.$3/$4-$5')
+          .replace(/(\d{2})(\d{3})(\d{3})(\d{1,4})/, '$1.$2.$3/$4')
+          .replace(/(\d{2})(\d{3})(\d{1,3})/, '$1.$2.$3')
+          .replace(/(\d{2})(\d{1,3})/, '$1.$2');
+}
+
+function formatPhone(v: string) {
+  const d = v.replace(/\D/g, '').slice(0, 11);
+  if (d.length <= 10)
+    return d.replace(/(\d{2})(\d{4})(\d{0,4})/, '($1) $2-$3').replace(/-$/, '');
+  return d.replace(/(\d{2})(\d{5})(\d{0,4})/, '($1) $2-$3').replace(/-$/, '');
+}
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -14,6 +45,8 @@ export default function RegisterPage() {
   const { token, status, error } = useAppSelector((s) => s.auth);
 
   const [companyName, setCompanyName] = useState('');
+  const [cpfCnpj, setCpfCnpj] = useState('');
+  const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
@@ -23,15 +56,21 @@ export default function RegisterPage() {
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const res = await dispatch(register({ companyName, email, password }));
+    const res = await dispatch(register({
+      companyName,
+      email,
+      password,
+      cpfCnpj: cpfCnpj || undefined,
+      phone: phone || undefined,
+    }));
     if (register.fulfilled.match(res)) router.push('/dashboard');
   }
 
   return (
-    <AuthShell title="Criar conta" subtitle="O primeiro usuário entra como administrador.">
-      <form onSubmit={onSubmit} className="grid gap-5">
-        <div className="grid gap-2">
-          <label className="auth-field-label">Nome da empresa</label>
+    <AuthShell title="Criar conta" subtitle="Cadastre sua empresa para começar a cobrar.">
+      <form onSubmit={onSubmit} className="grid gap-4">
+
+        <Field label="Nome da empresa" required>
           <div className="auth-field-wrap">
             <Building2 className="auth-field-icon" />
             <input
@@ -42,10 +81,39 @@ export default function RegisterPage() {
               required
             />
           </div>
+        </Field>
+
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="CNPJ / CPF" required hint="Usado para identificação nas cobranças">
+            <div className="auth-field-wrap">
+              <User className="auth-field-icon" />
+              <input
+                className="auth-input"
+                placeholder="00.000.000/0001-00"
+                value={cpfCnpj}
+                onChange={(e) => setCpfCnpj(formatCnpj(e.target.value))}
+                required
+                inputMode="numeric"
+              />
+            </div>
+          </Field>
+
+          <Field label="Telefone / Celular" required>
+            <div className="auth-field-wrap">
+              <Phone className="auth-field-icon" />
+              <input
+                className="auth-input"
+                placeholder="(11) 99999-9999"
+                value={phone}
+                onChange={(e) => setPhone(formatPhone(e.target.value))}
+                required
+                inputMode="tel"
+              />
+            </div>
+          </Field>
         </div>
 
-        <div className="grid gap-2">
-          <label className="auth-field-label">E-mail</label>
+        <Field label="E-mail" required>
           <div className="auth-field-wrap">
             <Mail className="auth-field-icon" />
             <input
@@ -55,24 +123,26 @@ export default function RegisterPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
+              autoComplete="email"
             />
           </div>
-        </div>
+        </Field>
 
-        <div className="grid gap-2">
-          <label className="auth-field-label">Senha</label>
+        <Field label="Senha" required hint="Mínimo 6 caracteres">
           <div className="auth-field-wrap">
             <Lock className="auth-field-icon" />
             <input
               type="password"
               className="auth-input"
-              placeholder="mínimo 6 caracteres"
+              placeholder="••••••••"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
+              minLength={6}
+              autoComplete="new-password"
             />
           </div>
-        </div>
+        </Field>
 
         {error && <div className="auth-error">{error}</div>}
 

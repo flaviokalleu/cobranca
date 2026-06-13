@@ -56,6 +56,26 @@ export class AuthService {
     await this.prisma.subscription.create({
       data: { tenantId: tenant.id, planCode: 'FREE', status: 'TRIALING' },
     });
+    if (dto.cpfCnpj || dto.phone) {
+      await this.prisma.settings.upsert({
+        where: { tenantId: tenant.id },
+        create: {
+          tenantId: tenant.id,
+          pixKey: '',
+          merchantName: dto.companyName.slice(0, 25),
+          merchantCity: 'Sao Paulo',
+          companyName: dto.companyName,
+          companyCnpj: dto.cpfCnpj ?? null,
+          companyPhone: dto.phone ?? null,
+          companyEmail: dto.email,
+        },
+        update: {
+          companyCnpj: dto.cpfCnpj ?? undefined,
+          companyPhone: dto.phone ?? undefined,
+          companyEmail: dto.email,
+        },
+      });
+    }
     await this.audit.record({
       tenantId: tenant.id,
       actor: user.email,

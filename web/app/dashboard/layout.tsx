@@ -7,6 +7,7 @@ import { fetchCustomers, fetchCharges, clearError } from '@/store/dataSlice';
 import { Sidebar } from '@/components/sidebar';
 import { MobileNav } from '@/components/mobile-nav';
 import { GlobalSearch } from '@/components/global-search';
+import { QuickAdd } from '@/components/quick-add';
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
@@ -43,6 +44,8 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         <MobileNav />
         {children}
       </div>
+
+      <QuickAdd />
 
       {error && (
         <div className="fixed bottom-4 right-4 z-50 flex max-w-sm items-center gap-3 rounded-lg bg-destructive px-4 py-3 text-sm text-destructive-foreground shadow-lg">

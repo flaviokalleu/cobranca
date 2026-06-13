@@ -121,9 +121,6 @@ export default function LoginPage() {
             Cadastre sua empresa grátis
           </Link>
         </p>
-        <p className="text-xs text-gray-400">
-          Demo: admin@demo.com · demo1234
-        </p>
       </div>
     </AuthShell>
   );

@@ -13,6 +13,7 @@ import notificationsReducer from './notificationsSlice';
 import aiReducer from './aiSlice';
 import personalFinanceReducer from './personalFinanceSlice';
 import financialEntriesReducer from './financialEntriesSlice';
+import categoriesReducer from './categoriesSlice';
 
 export const store = configureStore({
   reducer: {
@@ -30,6 +31,7 @@ export const store = configureStore({
     ai: aiReducer,
     personalFinance: personalFinanceReducer,
     financialEntries: financialEntriesReducer,
+    categories: categoriesReducer,
   },
 });
 

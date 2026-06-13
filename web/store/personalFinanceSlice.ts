@@ -86,6 +86,29 @@ export const fetchPersonalFinance = createAsyncThunk('personalFinance/fetchAll',
   };
 });
 
+export const createPersonalTransaction = createAsyncThunk(
+  'personalFinance/createTransaction',
+  async (
+    body: {
+      type: string;
+      amountCents: number;
+      description: string;
+      category?: string;
+      occurredAt: string;
+      accountId?: string;
+    },
+    { dispatch, rejectWithValue },
+  ) => {
+    const { status } = await api('POST', '/personal-finance/transactions', {
+      ...body,
+      source: 'MANUAL',
+    });
+    if (status >= 300) return rejectWithValue('Erro ao registrar lançamento.');
+    await dispatch(fetchPersonalFinance());
+    return true;
+  },
+);
+
 export const ingestFinanceMessage = createAsyncThunk(
   'personalFinance/ingest',
   async (message: string, { dispatch, rejectWithValue }) => {

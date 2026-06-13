@@ -256,6 +256,16 @@ export const sendChargeWhatsappReminder = createAsyncThunk(
   },
 );
 
+export const cancelCharge = createAsyncThunk(
+  'data/cancelCharge',
+  async (id: string, { dispatch, rejectWithValue }) => {
+    const { status } = await api('PATCH', '/charges/bulk', { ids: [id], action: 'cancel' });
+    if (status >= 300) return rejectWithValue('Erro ao cancelar cobrança.');
+    await Promise.all([dispatch(fetchCharges()), dispatch(fetchUpcomingCharges())]);
+    return true;
+  },
+);
+
 export const deleteCharge = createAsyncThunk(
   'data/deleteCharge',
   async (id: string, { dispatch, rejectWithValue }) => {
